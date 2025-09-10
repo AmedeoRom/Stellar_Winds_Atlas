@@ -1,0 +1,295 @@
+! For the sake of future readers of this file (yourself included),
+! ONLY include the controls you are actually using.  DO NOT include
+! all of the other controls that simply have their default values.
+
+&star_job
+  ! see star/defaults/star_job.defaults
+  ! begin with a pre-main sequence model
+    create_pre_main_sequence_model = .false.
+
+  ! load saved model
+   load_saved_model = .true.
+   load_model_filename = '75_ZAMS.mod'
+
+  ! save a model at the end of the run
+    save_model_when_terminate = .false.
+    save_model_filename = '75_ZAMS.mod'
+
+    clear_initial_pgstar_history = .true.
+    clear_pgstar_history = .true.
+    save_pgstar_files_when_terminate = .true.
+
+  ! display on-screen plots
+    pgstar_flag = .true.
+    pause_before_terminate = .false.
+
+     ! new_rotation_flag = .true.
+     ! change_rotation_flag = .true.
+     !
+     ! !new_surface_rotation_v = 350
+     ! !set_surface_rotation_v = .true.
+     ! !relax_surface_rotation_v = .true.
+     ! new_omega_div_omega_crit = 0.4
+     ! !set_omega_div_omega_crit = .true.
+     ! set_initial_omega_div_omega_crit = .true.
+     ! relax_omega_div_omega_crit = .true.
+     ! num_steps_to_relax_rotation = 100
+     ! set_omega_div_omega_crit_step_limit = 25
+
+     initial_zfracs = 8 ! A09_Prz_zfracs
+
+
+/ ! end of star_job namelist
+
+
+&eos
+  ! eos options
+  ! see eos/defaults/eos.defaults
+  !dbg = .true.
+
+
+/ ! end of eos namelist
+
+
+&kap
+  ! kap options
+  ! see kap/defaults/kap.defaults
+  use_Type2_opacities = .true.
+  Zbase = 0.0142
+
+/ ! end of kap namelist
+
+
+&controls
+  ! see star/defaults/controls.defaults
+
+  ! starting specifications
+    initial_mass = 75 ! in Msun units
+    initial_z = 0.0142
+
+
+  ! when to stop
+   max_model_number = 50000 ! models that become WR will probably stop here
+    ! stop when the center mass fraction of C12 drops below this limit
+    x_logical_ctrl(1) = .true.                                                  ! C12 core
+    x_ctrl(1) = 1d-2
+
+  ! wind
+
+    use_other_wind = .true.
+    Pextra_factor = 2                                                           ! Parameter for extra pressure in surface boundary conditions.
+
+
+    super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
+                                                                                !  it is just a way to not make MESA use its super-Eddington prescription
+
+    x_character_ctrl(1) = 'eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
+
+    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: GM23/V01/Bj23/K24/P25
+    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: V01/Bj21/K24/P25
+    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: V01/K24/P25 (x_logical_ctrl(1) == .true.)
+    x_character_ctrl(5) = 'V11'                                                 ! WR winds: NL00/Y06/GH08/V11/B20
+    x_character_ctrl(6) = 'Y06'                                                 ! WR H-poor winds: NL00/Y06/SV20
+    x_character_ctrl(7) = 'B23'                                                 ! 1st Dust-driven winds: dJ88/vL05/B23/Y23/A24/D24
+    x_character_ctrl(8) = 'D24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Y23/A24/D24
+    x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
+
+    x_character_ctrl(10) = 'Xsurf'                                               ! H-poor WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
+    x_ctrl(2) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
+
+    x_ctrl(3) = 0.05d0                                                          ! Delta for thick winds interpolation
+    x_logical_ctrl(2) = .false.                                                  ! Do I care about cool WR winds, or from thick winds I go
+                                                                                !  directly to higher mass loss rates?
+
+    x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
+    x_logical_ctrl(4) = .false.                                                 ! Interpolate thick winds: yes/no   -------- Need to debug
+    x_logical_ctrl(5) = .false.                                                 ! LBV winds beyond the HD limit
+    x_logical_ctrl(6) = .true.                                                  ! Dust-driven winds interpolation
+
+
+    cool_wind_full_on_T = 0.9d4                                                 ! [K] --- Dust-driven winds interpolation minimum
+    hot_wind_full_on_T = 1.1d4                                                  ! [K] --- Dust-driven winds interpolation maximum
+    x_ctrl(4) = 1.0d4                                                           ! [K] --- The actual threshold for dust-driven winds
+    x_ctrl(5) = 0.45d4                                                          ! [K] --- In case we have a second dust-driven winds switch
+    x_ctrl(6) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
+
+    ! ~~~~~~~~~ ADJUST MASS LOSS ~~~~~~~~~
+
+
+  ! atmosphere
+
+  ! rotation
+
+    D_DSI_factor = 1 ! Dynamical shear instability
+    D_SH_factor  = 1 ! Solberg-Høiland instability
+    D_SSI_factor = 1 ! Secular shear instability
+    D_ES_factor  = 1 ! Eddington-Sweet circulation
+    D_GSF_factor = 1 ! Goldreich-Schubert-Fricke instability
+    D_ST_factor  = 1 ! Spuit-Tayler dynamo
+
+    am_D_mix_factor = 0.033333333333333333333333333333333333333
+    am_gradmu_factor = 0.05d0 !f_mu = 0.05 in Heger+2000, 0.1 in Yoon+2006
+
+    am_nu_ST_factor = 1.0d0 ! 0:noTS, 1:TS
+    am_nu_factor = 1.0d0 !1.0d0
+    am_nu_non_rotation_factor = 1.0d0 !1.0d0
+    am_nu_visc_factor = 0.333d0 !1d0
+
+! Spatial smoothing is used in calculations of diffusion coefficients. They control the smoothing window widths (number of cells on each side).
+    smooth_D_DSI = 20
+    smooth_D_SH = 20
+    smooth_D_SSI = 20
+    smooth_D_ES = 20
+    smooth_D_GSF = 20
+    smooth_D_ST = 20
+    smooth_nu_ST = 20
+    smooth_D_omega = 20
+    smooth_am_nu_rot = 20
+
+  ! atomic diffusion --- Only important for radiative regions and slowly-rotating stars
+  ! Atomic diffusion is generally a slow process compared to other transport processes, time scales for atomic diffusion in stellar interiors may be several million years (and sometimes with the same order of magnitude as of the star's lifetime on the main-sequence)
+    ! do_element_diffusion = .true. ! determines whether or not we do diffusion
+    ! diffusion_dt_limit = 7d11 ! no element diffusion if dt < this limit (in seconds)
+    ! diffusion_T_full_on = 1d3
+    ! diffusion_T_full_off = 1d3
+    ! diffusion_calculates_ionization = .true.
+    !
+    ! diffusion_num_classes = 5 ! number of classes of species for diffusion calculations
+    ! diffusion_class_representative(1) = 'h1'
+    ! diffusion_class_representative(2) = 'he3'
+    ! diffusion_class_representative(3) = 'he4'
+    ! diffusion_class_representative(4) = 'o16'
+    ! diffusion_class_representative(5) = 'fe56'
+    !
+    ! diffusion_class_A_max(1) = 2
+    ! diffusion_class_A_max(2) = 3
+    ! diffusion_class_A_max(3) = 4
+    ! diffusion_class_A_max(4) = 16
+    ! diffusion_class_A_max(5) = 10000
+    !
+    ! diffusion_use_isolve = .true.
+    ! diffusion_rtol_for_isolve = 1d-4
+    ! diffusion_atol_for_isolve = 1d-5
+    ! diffusion_maxsteps_for_isolve = 1000
+    ! diffusion_isolve_solver = 'ros2_solver'
+
+  ! mlt
+    mixing_length_alpha = 1.82d0
+
+  ! ~~~~~~~~~ MLT++ ~~~~~~~~~~
+  !okay_to_reduce_gradT_excess = .true.
+    use_superad_reduction = .true.
+
+
+  ! mixing
+
+    thermohaline_coeff = 1d0
+    mlt_option = 'Henyey'
+
+    num_cells_for_smooth_gradL_composition_term = 3 ! default 3 || avoid grid size dependent smoothing
+    threshold_for_smooth_gradL_composition_term = 0 ! default 0
+
+    do_conv_premix = .true.
+    ! conv_premix_avoid_increase = .true.
+    conv_premix_time_factor = 1.0d0
+
+    use_Ledoux_criterion = .true.
+    alpha_semiconvection = 33.0d0
+
+   ! we use exp overshooting
+      overshoot_scheme(1) = 'exponential'
+      overshoot_zone_type(1) = 'any'
+      overshoot_zone_loc(1) = 'any'
+      overshoot_bdy_loc(1) = 'top'
+      overshoot_f(1) = 0.051
+      overshoot_f0(1) = 0.001
+
+      overshoot_scheme(2) = 'exponential'
+      overshoot_zone_type(2) = 'any'
+      overshoot_zone_loc(2) = 'any'
+      overshoot_bdy_loc(2) = 'bottom'
+      overshoot_f(2) = 0.0051
+      overshoot_f0(2) = 0.0001
+
+
+  ! timesteps
+    ! max_years_for_timestep = 1d3
+
+    varcontrol_target = 1!0.3d-3
+    convective_bdy_weight = 0.5d0
+    !
+    mesh_delta_coeff = 1!0.75d0
+    time_delta_coeff = 1!0.75d0 ! default 1d0. lower this to get a better resolution
+    !
+    ! !avoid large jumps in the HR diagram
+    delta_HR_limit = 0.01d0
+    delta_HR_hard_limit = 0.03d0
+    !
+    ! !Don’t merge neighboring cells if any abundance differs by more than this.
+    max_delta_x_for_merge = 0.01d0                                              ! 0.1d0
+
+    delta_lgL_H_limit = 0.01                                                    ! Limit for magnitude of change in lgL_nuc for category.
+    delta_lgL_He_limit = 0.05
+    delta_lgL_z_limit = 0.2
+    delta_lgL_nuc_limit = 0.05
+
+    ! lgL_H_burn_min = 2.0d0                                                      ! ignore changes in lgL_H if value is less than this
+
+    delta_HR_ds_Teff = 0.05d0
+    delta_HR_ds_L = 0.05d0
+
+    delta_XH_cntr_limit = 0.001d0
+    delta_XH_cntr_hard_limit = -1
+    !
+    delta_XHe_cntr_limit = 0.002d0
+    delta_XHe_cntr_hard_limit = -1
+
+    delta_XC_cntr_limit = 0.001d0
+    delta_XC_cntr_hard_limit = -1
+
+    max_mdot_redo_cnt = 50                                                      ! set it to 0 to not initiate this routine
+    surf_omega_div_omega_crit_limit = 0.95d0                                    !   near critical, redo mdot by adjusting mdot between
+    mdot_revise_factor = 2.0d0                                                  !   mdot_revise_factor*mdot and implicit_mdot_boost*mdot
+    implicit_mdot_boost = 0.75d0
+
+
+    adjust_J_q_limit = 0.99
+    adjust_J_q_hard_limit = -1
+
+
+  ! mesh
+     mesh_Pgas_div_P_exponent = 0.35d0
+     max_dq = 1d-2 ! 1d-2
+     ! min_dq_for_xa = 1d-5 ! default 1d-14
+     max_allowed_nz = 250000
+
+     mesh_dlog_pp_dlogP_extra = 0.15d0
+     mesh_dlog_cno_dlogP_extra = 0.15d0
+
+     xa_function_species(1) = 'he4'                                             ! Multiply mesh_delta_coeff by xa_mesh_delta_coeff
+     xa_mesh_delta_coeff(1) = 0.1
+
+     xa_function_species(2) = 'h1'
+     xa_mesh_delta_coeff(2) = 0.1
+
+     mesh_delta_coeff_for_highT = 3.0d0 ! 3.0d0
+     logT_max_for_standard_mesh_delta_coeff = 9.4d0 !9.0d0
+     D_mix_rotation_max_logT_full_on = 9.0d0                                    !Use rotational components of D_mix for locations where logT <= this. For numerical stability,
+                                                                                ! turn off rotational part of D_mix at very high T
+     D_mix_rotation_min_logT_full_off = 9.1d0
+
+  ! solver
+     ! options for energy conservation (see MESA V, Section 3)
+     energy_eqn_option = 'dedt'
+     use_gold_tolerances = .true.
+
+  ! output
+
+     history_interval = 1
+     profile_interval = 100
+     photo_interval = 100
+
+  ! extras
+
+
+/ ! end of controls namelist
