@@ -3,7 +3,7 @@
 
 Code for the Stellar winds atlas paper for black hole formation. **It includes the adopted MESA setup and the setup for creating the OB/WR galactic population**
 
-It uses the [StarEstate population synthesis tool](https://github.com/AmedeoRom/StarEstate) to generate entire populations of single stars for the Milky Way or elliptical galaxies (the galaxy shape is irrelevant in this paper).
+<--It uses the [StarEstate population synthesis tool](https://github.com/AmedeoRom/StarEstate) to generate entire populations of single stars for the Milky Way or elliptical galaxies (the galaxy shape is irrelevant in this paper).
 
 Most of the data not included because too heavy to be uploaded. The only data included is the observation csv files and the final stellar population from one model
 Use the GalPop.ipynb to produce a galactic population of massive stars. Use the following procedure:
@@ -17,4 +17,4 @@ Use the GalPop.ipynb to produce a galactic population of massive stars. Use the 
 7. In Section 1.3 define variables and functions, and load the observation samples
 8. Plot the HRD. It is the same as in Figure 4 of the Stellar Winds Atlas I paper, but only with two panels. Here below what you would plot by using the parquet files that were provided
 
-<img width="1692" height="1050" alt="image" src="https://github.com/user-attachments/assets/695179ca-950f-47af-a18c-ce5e69bcc76d" />
+<img width="1692" height="1050" alt="image" src="https://github.com/user-attachments/assets/695179ca-950f-47af-a18c-ce5e69bcc76d" /> -->
