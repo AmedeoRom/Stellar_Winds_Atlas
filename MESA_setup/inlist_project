@@ -83,22 +83,22 @@
     super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
                                                                                 !  it is just a way to not make MESA use its super-Eddington prescription
 
-    x_character_ctrl(1) = 'eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
+    x_character_ctrl(1) = 'eta'                                                 ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
 
-    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: GM23/V01/Bj23/K24/P25
-    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: V01/Bj21/K24/P25
+     x_character_ctrl(2) = 'P25'                                                ! High log g thin winds: NdJ90/GM23/V01/Bj23/K24/P25
+    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/Bj23/K24/P25
     x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: V01/K24/P25 (x_logical_ctrl(1) == .true.)
-    x_character_ctrl(5) = 'V11'                                                 ! WR winds: NL00/Y06/GH08/V11/B20
-    x_character_ctrl(6) = 'Y06'                                                 ! WR H-poor winds: NL00/Y06/SV20
-    x_character_ctrl(7) = 'B23'                                                 ! 1st Dust-driven winds: dJ88/vL05/B23/Y23/A24/D24
-    x_character_ctrl(8) = 'D24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Y23/A24/D24
+    x_character_ctrl(5) = 'B20'                                                 ! WR winds: Ha95/NL00/Y06/GH08/V11/Sh19/S19/B20
+    x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: NL00/Y06/Sh19/S19/SV20
+    x_character_ctrl(7) = 'dJ88'                                                ! 1st Dust-driven winds: dJ88/vL05/Be23/Ya23/A24/D24
+    x_character_ctrl(8) = 'A24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Ya23/A24/D24
     x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
 
-    x_character_ctrl(10) = 'Xsurf'                                               ! H-poor WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
+    x_character_ctrl(10) = 'Xsurf'                                              ! H-poor WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
     x_ctrl(2) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
 
     x_ctrl(3) = 0.05d0                                                          ! Delta for thick winds interpolation
-    x_logical_ctrl(2) = .false.                                                  ! Do I care about cool WR winds, or from thick winds I go
+    x_logical_ctrl(2) = .false.                                                 ! Do I care about cool WR winds, or from thick winds I go
                                                                                 !  directly to higher mass loss rates?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
