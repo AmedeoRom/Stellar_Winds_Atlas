@@ -365,7 +365,7 @@
        endif
 
 
-     if ( Tsurf < s% x_ctrl(4) ) then                                          ! Dust-driven winds
+     if ( Tsurf < s% x_ctrl(5) ) then                                          ! Dust-driven winds
 
          s% max_years_for_timestep = 1d2                                       ! To have more resolution during this phase
 
@@ -377,7 +377,7 @@
      elseif(thick_met) then
          already_thick = 1
 
-         if ((Tsurf/1000 < 30 .and. s% x_logical_ctrl(2) .and. &               ! Cool WR winds, if requested
+         if ((Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2) .and. &               ! Cool WR winds, if requested
          s% x_character_ctrl(5) /= "V11") .or. (.not. HPoor_WR_condition .and. gamma_edd < 0.4)) then                                 ! If it is V11, we go through Vink/Sabhahit procedure
            call eval_thin_winds(w)
          else
@@ -424,7 +424,7 @@
        if (s% x_logical_ctrl(4) .and. Tsurf > s% hot_wind_full_on_T .and. &
        (gamma_condition .or. eta_condition .or. xsurf_condition) .and. s% x_character_ctrl(5) /= "V11") then
 
-           if ( Tsurf/1000 < 30 .and. ((gmlogg>3.0d0 .and. s% x_character_ctrl(2) == s% x_character_ctrl(4)) .or. &
+           if ( Tsurf/1000 < s% x_ctrl(4) .and. ((gmlogg>3.0d0 .and. s% x_character_ctrl(2) == s% x_character_ctrl(4)) .or. &
            (gmlogg<=3.0d0 .and. s% x_character_ctrl(3) == s% x_character_ctrl(4))) ) then
              write(*,*) "Cool WR winds == Thin winds ; no need for transition"
 
@@ -432,7 +432,7 @@
              write(*,*) "Near optically-thick winds threshold interpolation"
              wind_scheme_interp = wind_scheme
 
-             if (Tsurf/1000 < 30 .and. s% x_logical_ctrl(2)) then
+             if (Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2)) then
                call eval_thin_winds(w1)
              else
                call eval_thick_winds(w1)
@@ -477,7 +477,7 @@
                                                                                !  transition, mass loss rates are not about to super-change
 
       else
-         if (Tsurf/1000 < 30 .and. s% x_logical_ctrl(2) .and. &
+         if (Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2) .and. &
          s% x_character_ctrl(5) /= "V11") then
            call eval_thin_winds(w2)
          else
@@ -935,8 +935,6 @@
 
       wind_scheme = 47.0
 
-      C4 = 1.42
-
      !*** + metallicity dependence from Vink & de Koeter (2005)
 
       xlmdot = 1.5*log10(L/Lsun) + 0.85*logZ_div_Zsun - 13.0
@@ -954,7 +952,6 @@
       real(dp) :: C1,C2,C3,C4,C5
 
       wind_scheme = 46.0
-
       C4 = 1.42
 
      !*** Shenar+ (2019)
@@ -992,6 +989,7 @@
     end subroutine eval_Shenar19_wind
 
     subroutine eval_Sander19_wind(w)
+      real(dp), intent(inout) :: w
       real(dp) :: xlmdot,fWN,fWCO,Zscale
 
       wind_scheme = 48.0
@@ -1004,11 +1002,13 @@
         Zscale = fWN
       else
         Zscale = fWCO
+      endif
 
       xlmdot = -8.31 + 0.68*log10(L/Lsun)
       ! xlmdot = xlmdot+Zscale                                                  ! I do not use Z-calibrations,
                                                                                 !  I don't get how to implement them
 
+      w = 10**(xlmdot)
       write(*,*) "Here are S19 winds: log(Mdot [Msun/yr]) =", xlmdot
 
 
@@ -1198,7 +1198,7 @@
 
          include 'formats'
 
-         if (s% x_ctrl(4) /= s% x_ctrl(5) .and. Tsurf < s% x_ctrl(5) .and. &   ! Second switch to dust-driven winds. For now these recipes are the only two implemented
+         if (s% x_ctrl(5) /= s% x_ctrl(6) .and. Tsurf < s% x_ctrl(6) .and. &   ! Second switch to dust-driven winds. For now these recipes are the only two implemented
             log10(L/Lsun) <= 5.8) then
            which_dust = 7
          else
