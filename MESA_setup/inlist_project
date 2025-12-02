@@ -23,20 +23,31 @@
     pgstar_flag = .true.
     pause_before_terminate = .false.
 
-     ! new_rotation_flag = .true.
-     ! change_rotation_flag = .true.
-     !
-     ! !new_surface_rotation_v = 350
-     ! !set_surface_rotation_v = .true.
-     ! !relax_surface_rotation_v = .true.
-     ! new_omega_div_omega_crit = 0.4
-     ! !set_omega_div_omega_crit = .true.
-     ! set_initial_omega_div_omega_crit = .true.
-     ! relax_omega_div_omega_crit = .true.
-     ! num_steps_to_relax_rotation = 100
-     ! set_omega_div_omega_crit_step_limit = 25
+     new_rotation_flag = .true.
+     change_rotation_flag = .true.
+
+     !new_surface_rotation_v = 350
+     !set_surface_rotation_v = .true.
+     !relax_surface_rotation_v = .true.
+     new_omega_div_omega_crit = 0.4
+     !set_omega_div_omega_crit = .true.
+     set_initial_omega_div_omega_crit = .true.
+     relax_omega_div_omega_crit = .true.
+     num_steps_to_relax_rotation = 100
+     set_omega_div_omega_crit_step_limit = 25
 
      initial_zfracs = 8 ! A09_Prz_zfracs
+
+     !show_net_reactions_info = .true.
+     !change_net = .true.
+     ! new_net_name = 'new_net.net'
+     !new_net_name = 'mesa_126.net'
+
+
+     !show_net_reactions_info = .true.
+     !change_net = .true.
+     !new_net_name = 'approx21.net'
+
 
 
 / ! end of star_job namelist
@@ -70,11 +81,23 @@
 
   ! when to stop
    max_model_number = 50000 ! models that become WR will probably stop here
-    ! stop when the center mass fraction of C12 drops below this limit
-    x_logical_ctrl(1) = .true.                                                  ! C12 core
-    x_ctrl(1) = 1d-2
+    ! stop when the center mass fraction of o16 drops below this limit
+    x_logical_ctrl(1) = .true.                                                  ! Oxygen core
+    x_ctrl(1) = 1d-4
+    ! stop_near_zams = .false.
+    ! stop_at_phase_WDCS = .true.
 
   ! wind
+
+    ! hot_wind_scheme = 'Dutch'
+    ! cool_wind_RGB_scheme = 'Dutch'
+    ! cool_wind_AGB_scheme = 'Dutch'
+    ! Dutch_wind_lowT_scheme = 'de Jager'
+    ! Dutch_scaling_factor = 1d0
+
+    !hot_wind_scheme = 'Vink'
+    !Vink_scaling_factor = 0.5d0
+
 
     use_other_wind = .true.
     Pextra_factor = 2                                                           ! Parameter for extra pressure in surface boundary conditions.
@@ -82,24 +105,26 @@
 
     super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
                                                                                 !  it is just a way to not make MESA use its super-Eddington prescription
+    !max_T_center_for_any_mass_loss = 2d10                                      ! Otherwise MESA thinks kaboom and not wind loss
 
-    x_character_ctrl(1) = 'eta'                                                 ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
+    x_character_ctrl(1) = 'gamma_eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
 
-     x_character_ctrl(2) = 'P25'                                                ! High log g thin winds: NdJ90/GM23/V01/Bj23/K24/P25
-    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/Bj23/K24/P25
-    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: V01/K24/P25 (x_logical_ctrl(1) == .true.)
+    x_character_ctrl(2) = 'K24'                                                 ! High log g thin winds: NdJ90/GM23/V01/Bj23/K24/P25
+    x_character_ctrl(3) = 'K24'                                                 ! Low log g thin winds: NdJ90/V01/Bj23/K24/P25
+    x_character_ctrl(4) = 'K24'                                                 ! Cool WR winds: V01/K24/P25 (x_logical_ctrl(1) == .true.)
     x_character_ctrl(5) = 'B20'                                                 ! WR winds: Ha95/NL00/Y06/GH08/V11/Sh19/S19/B20
     x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: NL00/Y06/Sh19/S19/SV20
     x_character_ctrl(7) = 'dJ88'                                                ! 1st Dust-driven winds: dJ88/vL05/Be23/Ya23/A24/D24
     x_character_ctrl(8) = 'A24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Ya23/A24/D24
-    x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
+    x_character_ctrl(9) = 'V17'                                                 ! NON-WR He star winds: V17/P25
 
     x_character_ctrl(10) = 'Xsurf'                                              ! H-poor WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
     x_ctrl(2) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
 
     x_ctrl(3) = 0.05d0                                                          ! Delta for thick winds interpolation
-    x_logical_ctrl(2) = .false.                                                 ! Do I care about cool WR winds, or from thick winds I go
-                                                                                !  directly to higher mass loss rates?
+    x_ctrl(4) = 30                                                              ! Teff threshold for cool WR winds [kK]
+    x_logical_ctrl(2) = .true.                                                  ! Cool WR thin winds: do I use thin (.true.)
+                                                                                !    or thick (.false.) winds for Mdot?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
     x_logical_ctrl(4) = .false.                                                 ! Interpolate thick winds: yes/no   -------- Need to debug
@@ -109,9 +134,9 @@
 
     cool_wind_full_on_T = 0.9d4                                                 ! [K] --- Dust-driven winds interpolation minimum
     hot_wind_full_on_T = 1.1d4                                                  ! [K] --- Dust-driven winds interpolation maximum
-    x_ctrl(4) = 1.0d4                                                           ! [K] --- The actual threshold for dust-driven winds
-    x_ctrl(5) = 0.45d4                                                          ! [K] --- In case we have a second dust-driven winds switch
-    x_ctrl(6) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
+    x_ctrl(5) = 1.0d4                                                           ! [K] --- The actual threshold for dust-driven winds
+    x_ctrl(6) = 0.45d4                                                          ! [K] --- In case we have a second dust-driven winds switch
+    x_ctrl(7) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
 
     ! ~~~~~~~~~ ADJUST MASS LOSS ~~~~~~~~~
 
@@ -213,13 +238,13 @@
 
 
   ! timesteps
-    ! max_years_for_timestep = 1d3
+    max_years_for_timestep = 1d3
 
-    varcontrol_target = 1!0.3d-3
+    varcontrol_target = 0.3d-3
     convective_bdy_weight = 0.5d0
     !
-    mesh_delta_coeff = 1!0.75d0
-    time_delta_coeff = 1!0.75d0 ! default 1d0. lower this to get a better resolution
+    mesh_delta_coeff = 0.75d0
+    time_delta_coeff = 0.75d0 ! default 1d0. lower this to get a better resolution
     !
     ! !avoid large jumps in the HR diagram
     delta_HR_limit = 0.01d0
@@ -259,7 +284,7 @@
 
   ! mesh
      mesh_Pgas_div_P_exponent = 0.35d0
-     max_dq = 1d-2 ! 1d-2
+     max_dq = 1d-4 ! 1d-2
      ! min_dq_for_xa = 1d-5 ! default 1d-14
      max_allowed_nz = 250000
 
