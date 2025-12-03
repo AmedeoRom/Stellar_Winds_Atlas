@@ -15,14 +15,14 @@ This repository contains the default [MESA](https://docs.mesastar.org/en/latest/
 <div align="center">
  <img width="300" height="300" alt="ARGUS" src="https://github.com/user-attachments/assets/1be8ee13-4cee-4c06-be57-68b6901d6dc2" />
   <h2>Introducing Argus: The Stellar Winds Builder</h2>
-  <h3><em>"The Architect of the Wind Atlas"</em></h3>
+  <h3><em>The Architect of the Wind Atlas</em></h3>
 </div>
 
 > **The Myth:** Argus was the master shipwright who constructed the *Argo* under the guidance of Athena for Jason and his Argonauts, who met the Hesperides, i.e. the daughters of Atlas.  
 > **The Tool:** Argus is an AI-assisted companion that constructs the MESA inlist_project files for the user based on the guidelines of the Atlas papers.
 
 > [!CAUTION]
-> Please, always scrutinize the physical validity of your models. This protocol is strictly a navigational tool for selecting initial metallicity and stellar wind configurations, issuing warnings where appropriate. It does not govern the full spectrum of initial conditions required for your simulations. Argus facilitates model construction but is by no means a substitute for human-based modelling and analysis. Do not treat your stellar model as a blackbox, please.
+> Please, always scrutinize the physical validity of your models. LLMs can produce wrong results! Also, this protocol is strictly a navigational tool for selecting initial metallicity and stellar wind configurations, issuing warnings where appropriate. It does not govern the full spectrum of initial conditions required for your simulations. Argus facilitates model construction but is by no means a substitute for human-based modelling and analysis. Do not treat your stellar model as a blackbox, please.
 
 ### What is Argus?
 Configuring stellar winds in MESA involves complex variable mapping in `run_star_extras.f90`. **Argus** is a configuration protocol (powered by a strictly structured JSON schema) that allows Large Language Models (like ChatGPT, Claude, or Gemini) to function as an expert MESA "shipwright."
