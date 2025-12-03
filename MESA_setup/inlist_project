@@ -125,6 +125,7 @@
     hot_wind_full_on_T = 1.1d4                                                  ! [K] --- Cool supergiant winds interpolation maximum
     x_ctrl(7) = 1.0d4                                                           ! [K] --- The actual threshold for cool supergiant winds
     x_ctrl(8) = 0.45d4                                                          ! [K] --- In case we have a second cool supergiant winds switch
+                                                                                !  ignore if x_character_ctrl(7) and x_character_ctrl(8) are the same
     x_ctrl(9) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
 
     ! ~~~~~~~~~ ADJUST MASS LOSS ~~~~~~~~~
