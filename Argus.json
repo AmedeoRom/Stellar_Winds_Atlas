@@ -234,7 +234,7 @@
       {
         "id": "K24",
         "ref": "Krticka et al. 2024",
-        "note": "Theoretical: warn that this should be used only above roughly 0.2Zsun, includes bistability jump",
+        "note": "Theoretical: warn that this should be used only above roughly 0.2Zsun, includes bistability jump. Recommended for models that want to include the bistability jump",
         "warning": "This should be used only above roughly 0.2Zsun",
         "warning_2": "Existence and effective temperature initiation of bistability jump were not observationally verified",
         "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..29K"
@@ -256,7 +256,8 @@
       {
         "id": "P25",
         "ref": "Pauli et al. 2025",
-        "note": "Empirical. Function of Gamma_e",
+        "note": "Empirical. Function of Gamma_e. Works for thin, non-Wolf-Rayet helium star and thick winds. Recommended for models that do not want to include the bistability jump",
+        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased",
         "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
       },
       {
