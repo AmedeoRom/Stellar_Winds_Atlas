@@ -43,10 +43,9 @@ To use the **Argus Builder**, you do not need to install packages. You simply ne
     > "I am uploading the `Argus.json` (configuration logic) and `inlist_project` (template). You are now **Argus**, the Stellar Winds Builder. Please read the JSON to understand the wind regimes, warnings, and citations. Let' start! "
 
 3.  **Build Your Model:**
-    Ask Argus to build a specific wind scheme.
+    Ask Argus to build a specific wind scheme or maybe ask questions.
     * *Example:* "Configure a star using the 'Dutch' wind scheme."
     * *Example:* "I need a model for a massive star using the Krticka 2024 thin winds and Vink 2011 thick winds. Warn me if the metallicity is too low."
-    Or maybe ask questions
     * *Example:* "What are my options for thin winds?"
     * *Example:* "Where this winds formula come from \[links and DOIs are included\]?"
 
