@@ -47,7 +47,7 @@ To use the **Argus Builder**, you do not need to install packages. You simply ne
     * *Example:* "Configure a star using the 'Dutch' wind scheme."
     * *Example:* "I need a model for a massive star using the Krticka 2024 thin winds and Vink 2011 thick winds. Warn me if the metallicity is too low."
     * *Example:* "What are my options for thin winds?"
-    * *Example:* "Where this winds formula come from \[links and DOIs are included\]?"
+    * *Example:* "Where does this winds formula come from \[links and DOIs are included\]?"
 
 4.  **Receive the Code:**
     Argus will output the exact changes needed for your `&controls` block, ensuring no syntax errors and preserving your existing settings. Now you can combine it with run_star_extras and simulate!
