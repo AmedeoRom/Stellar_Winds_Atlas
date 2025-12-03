@@ -53,7 +53,7 @@ To use the **Argus Builder**, you do not need to install packages. You simply ne
     Argus will output the exact changes needed for your `&controls` block, ensuring no syntax errors and preserving your existing settings. Now you can combine it with run_star_extras and simulate!
 
 ### Why use Argus?
-* **Safety:** It follows strict constraints defined in `Atlas_Builder.json`, warning you if parameters (like metallicity) leave the physical regime of validity (e.g., $Z < 0.1 Z_{\odot}$).
+* **Safety:** It follows strict constraints defined in `Argus.json`, warning you if parameters (like metallicity) leave the physical regime of validity (e.g., $Z < 0.1 Z_{\odot}$).
 * **Citations:** It automatically appends the correct BibTeX references for the wind prescriptions you choose.
 * **Consistency:** It ensures the `x_character_ctrl` flags map correctly to the `run_star_extras.f90` logic.
 
