@@ -84,28 +84,14 @@
     ! stop when the center mass fraction of o16 drops below this limit
     x_logical_ctrl(1) = .true.                                                  ! Oxygen core
     x_ctrl(1) = 1d-4
-    ! stop_near_zams = .false.
-    ! stop_at_phase_WDCS = .true.
 
   ! wind
 
-    ! hot_wind_scheme = 'Dutch'
-    ! cool_wind_RGB_scheme = 'Dutch'
-    ! cool_wind_AGB_scheme = 'Dutch'
-    ! Dutch_wind_lowT_scheme = 'de Jager'
-    ! Dutch_scaling_factor = 1d0
-
-    !hot_wind_scheme = 'Vink'
-    !Vink_scaling_factor = 0.5d0
-
-
     use_other_wind = .true.
-    Pextra_factor = 2                                                           ! Parameter for extra pressure in surface boundary conditions.
-
 
     super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
                                                                                 !  it is just a way to not make MESA use its super-Eddington prescription
-    
+
     x_character_ctrl(1) = 'gamma_eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
     x_ctrl(2) = 0.5
 
@@ -174,40 +160,14 @@
     smooth_D_omega = 20
     smooth_am_nu_rot = 20
 
-  ! atomic diffusion --- Only important for radiative regions and slowly-rotating stars
-  ! Atomic diffusion is generally a slow process compared to other transport processes, time scales for atomic diffusion in stellar interiors may be several million years (and sometimes with the same order of magnitude as of the star's lifetime on the main-sequence)
-    ! do_element_diffusion = .true. ! determines whether or not we do diffusion
-    ! diffusion_dt_limit = 7d11 ! no element diffusion if dt < this limit (in seconds)
-    ! diffusion_T_full_on = 1d3
-    ! diffusion_T_full_off = 1d3
-    ! diffusion_calculates_ionization = .true.
-    !
-    ! diffusion_num_classes = 5 ! number of classes of species for diffusion calculations
-    ! diffusion_class_representative(1) = 'h1'
-    ! diffusion_class_representative(2) = 'he3'
-    ! diffusion_class_representative(3) = 'he4'
-    ! diffusion_class_representative(4) = 'o16'
-    ! diffusion_class_representative(5) = 'fe56'
-    !
-    ! diffusion_class_A_max(1) = 2
-    ! diffusion_class_A_max(2) = 3
-    ! diffusion_class_A_max(3) = 4
-    ! diffusion_class_A_max(4) = 16
-    ! diffusion_class_A_max(5) = 10000
-    !
-    ! diffusion_use_isolve = .true.
-    ! diffusion_rtol_for_isolve = 1d-4
-    ! diffusion_atol_for_isolve = 1d-5
-    ! diffusion_maxsteps_for_isolve = 1000
-    ! diffusion_isolve_solver = 'ros2_solver'
-
   ! mlt
     mixing_length_alpha = 1.82d0
 
-  ! ~~~~~~~~~ MLT++ ~~~~~~~~~~
+  ! ~~~~~~~~~ Inflation ~~~~~~~~~~
   !okay_to_reduce_gradT_excess = .true.
     use_superad_reduction = .true.
 
+  Pextra_factor = 2                                                           ! Parameter for extra pressure in surface boundary conditions.
 
   ! mixing
 
