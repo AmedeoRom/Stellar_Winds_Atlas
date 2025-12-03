@@ -1,4 +1,4 @@
-! ***********************************************************************
+x_ctrl(3)x_ctrl(5)x_ctrl(6)! ***********************************************************************
 !
 !   Copyright (C) 2011  The MESA Team
 !
@@ -37,6 +37,7 @@
 !  26.0: P25   (Pauli+ 2025)
 !  27.0: V17   (Vink 2017)
 !  28.0: NdJ90 (Nieuwenhuijzen & de Jager 1990)
+!  29.0: K25   (Krticka+ 2025)
 !
 ! Dust/Cool Winds:
 !  30.0: dJ88  (de Jager+ 1988)
@@ -58,7 +59,7 @@
 !  48.0: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
 !
 ! Special Cases:
-!  90.0: LBV   (Belczynski+ 2010 LBV)
+!  90.0: LBV   (Belczynski+ 2010)
 !===================================================================================
 
       module run_star_extras
@@ -160,7 +161,7 @@
        real(dp) :: gmrstar,gmlogg,lteff,xlmdot,logZ_div_Zsun,hehratio,vterm,Mhom,f,Zsolar
        real(dp) :: Z_div_Z_solar,Teff_jump,alfa,log_gamma_edd,gamma_trans,logL_div_Lsun
        real(dp) :: F1,F2,F3,F4,F5,F6,F7,F8,F9,vesc_eff,vesc,vinf_fac,const_k
-       real(dp) :: w1, w2, w_2ndDust
+       real(dp) :: w1, w2
        real(dp) :: divisor,beta,alfa_mid
        logical :: thick_met
 
@@ -178,7 +179,7 @@
        gmrstar=R/Rsun
        lteff=log10(s% Teff/1000)
 
-       Zsolar = s% x_ctrl(6)
+       Zsolar = s% x_ctrl(9)
 
        Z_div_Z_solar = s% kap_rq% Zbase/Zsolar
        logZ_div_Zsun=log10(Z_div_Z_solar)
@@ -240,13 +241,13 @@
 
        end if
 
+       gamma_trans = s% x_ctrl(2)
 
-
-       if ( logZ_div_Zsun >= log10(0.2) ) then
-         gamma_trans = 0.5
-       else
-         gamma_trans = 0.5 - 0.301*logZ_div_Zsun-0.045*logZ_div_Zsun**2
-       end if
+       ! if ( logZ_div_Zsun >= log10(0.2) ) then
+       !   gamma_trans = 0.5
+       ! else
+       !   gamma_trans = 0.5 - 0.301*logZ_div_Zsun-0.045*logZ_div_Zsun**2
+       ! end if
 
        log_gamma_edd = -4.813d0+log10(1+X)+log10(L/Lsun)-log10(M/Msun)
        gamma_edd=10**log_gamma_edd
@@ -343,8 +344,8 @@
          end if
        end if
 
-       if ( (s% x_character_ctrl(10) == "Xsurf" .and. X <=s%  x_ctrl(2)) .or. &
-       (s% x_character_ctrl(10) == "Teff" .and. Tsurf >= s% x_ctrl(2)) ) then
+       if ( (s% x_character_ctrl(10) == "Xsurf" .and. X <=s%  x_ctrl(3)) .or. &
+       (s% x_character_ctrl(10) == "Teff" .and. Tsurf >= s% x_ctrl(3)) ) then
          HPoor_WR_condition = .true.
        else
          HPoor_WR_condition = .false.
@@ -352,24 +353,28 @@
 
        ! -----------------------------------------------------------------------------------------------------------------------
 
-       if(s% x_logical_ctrl(5)) then ! Belczynski+2010 LBV2 winds (eq. 8) with factor 1
+       if(s% x_logical_ctrl(6)) then ! Belczynski+2010 LBV2 winds (eq. 8) with factor 1
           if (s% center_h1 < 1.0d-3) then  ! postMS
-            if (L/Lsun > 6.0d5 .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then ! Humphreys-Davidson limit
-              wind_scheme = 90.0
-              w  = 1.0d-4
-              s% max_years_for_timestep = 1d2
-              write(*,*) "Here are LBV winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+            if (log10(L/Lsun) > s% x_ctrl(5) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then ! Humphreys-Davidson limit
+              if ( s% x_character_ctrl(11) == "Bk10" ) then
+                wind_scheme = 90.0
+                w  = 1.0d-4
+                write(*,*) "Here are Bk10 LBV winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+                s% max_years_for_timestep = 1d2
+
+              end if
+
               return ! This is a way of saying to not check anything below if we reached LBV winds in this phase
             endif
           endif
        endif
 
 
-     if ( Tsurf < s% x_ctrl(5) ) then                                          ! Dust-driven winds
+     if ( Tsurf < s% x_ctrl(7) ) then                                          ! cool supergiant winds
 
          s% max_years_for_timestep = 1d2                                       ! To have more resolution during this phase
 
-         call eval_dust_winds(w)
+         call eval_cool_wind(w)
 
      elseif (.not. thick_met) then                                             ! Thin winds part
          call eval_thin_winds(w)
@@ -377,7 +382,7 @@
      elseif(thick_met) then
          already_thick = 1
 
-         if ((Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2) .and. &               ! Cool WR winds, if requested
+         if ((Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2) .and. &               ! Cool WR winds, if requested
          s% x_character_ctrl(5) /= "V11") .or. (.not. HPoor_WR_condition .and. gamma_edd < 0.4)) then                                 ! If it is V11, we go through Vink/Sabhahit procedure
            call eval_thin_winds(w)
          else
@@ -392,29 +397,29 @@
 
        gamma_condition = ("gamma" == s%x_character_ctrl(1) .or. &
        "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1)) .and. &
-                 gamma_edd > gamma_trans - s%x_ctrl(3) .and. &
-                 gamma_edd < gamma_trans + s%x_ctrl(3) .and. &
-                 .not. ((eta > eta_trans + s%x_ctrl(3) .and. ("eta" == s%x_character_ctrl(1) .or. &
+                 gamma_edd > gamma_trans - s%x_ctrl(4) .and. &
+                 gamma_edd < gamma_trans + s%x_ctrl(4) .and. &
+                 .not. ((eta > eta_trans + s%x_ctrl(4) .and. ("eta" == s%x_character_ctrl(1) .or. &
                  "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
-                 (X < 0.4 - s%x_ctrl(3) .and. ("Xsurf" == s%x_character_ctrl(1) .or. &
+                 (X < 0.4 - s%x_ctrl(4) .and. ("Xsurf" == s%x_character_ctrl(1) .or. &
                  "any" == s%x_character_ctrl(1))))
 
        eta_condition = ("eta" == s%x_character_ctrl(1) .or. &
        "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1)) .and. &
-               eta > eta_trans - s%x_ctrl(3) .and. &
-               eta < eta_trans + s%x_ctrl(3) .and. &
-               .not. ((gamma_edd > gamma_trans + s%x_ctrl(3) .and. ("gamma" == s%x_character_ctrl(1) .or. &
+               eta > eta_trans - s%x_ctrl(4) .and. &
+               eta < eta_trans + s%x_ctrl(4) .and. &
+               .not. ((gamma_edd > gamma_trans + s%x_ctrl(4) .and. ("gamma" == s%x_character_ctrl(1) .or. &
                "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
                (X < 0.4 - s%x_ctrl(1) .and. ("Xsurf" == s%x_character_ctrl(1) .or. &
                "any" == s%x_character_ctrl(1))))
 
        xsurf_condition = ("Xsurf" == s%x_character_ctrl(1) .or. &
        "any" == s%x_character_ctrl(1)) .and. &
-               X > 0.4 - s%x_ctrl(3) .and. &
-               X < 0.4 + s%x_ctrl(3) .and. &
-               .not. ((eta > eta_trans + s%x_ctrl(3) .and. ("eta" == s%x_character_ctrl(1) .or. &
+               X > 0.4 - s%x_ctrl(4) .and. &
+               X < 0.4 + s%x_ctrl(4) .and. &
+               .not. ((eta > eta_trans + s%x_ctrl(4) .and. ("eta" == s%x_character_ctrl(1) .or. &
                "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
-               (gamma_edd > gamma_trans + s%x_ctrl(3) .and. ("gamma" == s%x_character_ctrl(1) .or. &
+               (gamma_edd > gamma_trans + s%x_ctrl(4) .and. ("gamma" == s%x_character_ctrl(1) .or. &
                "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))))
 
        ! These conditions above are a way to say "If I am within this range AND
@@ -424,7 +429,7 @@
        if (s% x_logical_ctrl(4) .and. Tsurf > s% hot_wind_full_on_T .and. &
        (gamma_condition .or. eta_condition .or. xsurf_condition) .and. s% x_character_ctrl(5) /= "V11") then
 
-           if ( Tsurf/1000 < s% x_ctrl(4) .and. ((gmlogg>3.0d0 .and. s% x_character_ctrl(2) == s% x_character_ctrl(4)) .or. &
+           if ( Tsurf/1000 < s% x_ctrl(5) .and. ((gmlogg>3.0d0 .and. s% x_character_ctrl(2) == s% x_character_ctrl(4)) .or. &
            (gmlogg<=3.0d0 .and. s% x_character_ctrl(3) == s% x_character_ctrl(4))) ) then
              write(*,*) "Cool WR winds == Thin winds ; no need for transition"
 
@@ -432,7 +437,7 @@
              write(*,*) "Near optically-thick winds threshold interpolation"
              wind_scheme_interp = wind_scheme
 
-             if (Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2)) then
+             if (Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2)) then
                call eval_thin_winds(w1)
              else
                call eval_thick_winds(w1)
@@ -440,16 +445,16 @@
 
            call eval_thin_winds(w2)
 
-           if(s% x_ctrl(3) == 0) then
+           if(s% x_ctrl(4) == 0) then
               w = 0.5d0*(w1 + w2)
              else
-               divisor = 2*s%x_ctrl(3)
+               divisor = 2*s%x_ctrl(4)
              if (gamma_condition) then
-               beta = min( (0.5+s%x_ctrl(3) - gamma_edd) / divisor, 1d0)
+               beta = min( (0.5+s%x_ctrl(4) - gamma_edd) / divisor, 1d0)
              else if (eta_condition) then
-               beta = min( (eta_trans+s%x_ctrl(3) - eta) / divisor, 1d0)
+               beta = min( (eta_trans+s%x_ctrl(4) - eta) / divisor, 1d0)
              else
-               beta = min( (X+s%x_ctrl(3) - 0.4) / divisor, 1d0)
+               beta = min( (X+s%x_ctrl(4) - 0.4) / divisor, 1d0)
              end if
              alfa_mid = 1d0 - beta
              w = alfa_mid*w1 + beta*w2
@@ -464,20 +469,20 @@
 
 
      if (s% cool_wind_full_on_T<=Tsurf .and. Tsurf<=s% hot_wind_full_on_T .and. &
-     s% x_logical_ctrl(6)) then
+     s% x_logical_ctrl(5)) then
 
-       write(*,*) "Near dust-driven winds threshold interpolation"
+       write(*,*) "Near cool supergiant winds threshold interpolation"
        wind_scheme_interp = wind_scheme
 
-       call eval_dust_winds(w1)
+       call eval_cool_wind(w1)
 
        if (.not. thick_met) then                                               ! No need to combine the two interpolations because
-                                                                               !  if I am close to dust-winds, I get at most cool WR
+                                                                               !  if I am close to cool winds, I get at most cool WR
            call eval_thin_winds(w2)                                            !  winds. So even if I am near to the thick winds
                                                                                !  transition, mass loss rates are not about to super-change
 
       else
-         if (Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2) .and. &
+         if (Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2) .and. &
          s% x_character_ctrl(5) /= "V11") then
            call eval_thin_winds(w2)
          else
@@ -547,6 +552,18 @@
          w=10**xlmdot
 
        end subroutine   eval_Krticka24_wind
+
+       subroutine eval_Krticka25_wind(w)
+         real(dp), intent(inout) :: w
+         real(dp) :: a,b,c,d,e = -7.72,1.49,0.713,1.29,1.10
+
+         wind_scheme = 29.0
+
+         xlmdot = a + b*log10(L/Lsun/1d6) + c*logZ_div_Zsun + d*log10(Tsurf/1d3) + e*(Z_div_Zsun)*np.exp(-(Tsurf-14.4)**2/2.53**2)
+
+         w=10**xlmdot
+
+       end subroutine   eval_Krticka25_wind
 
        subroutine eval_GormazMatamala23_wind(w)
          real(dp), intent(inout) :: w
@@ -765,6 +782,9 @@
            elseif (s%x_character_ctrl(2) =='K24') then
              call eval_Krticka24_wind(w)
              write(*,*) "Here are K24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(2) =='K25') then
+             call eval_Krticka25_wind(w)
+             write(*,*) "Here are K25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif (s%x_character_ctrl(2) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
@@ -786,13 +806,19 @@
            elseif (s%x_character_ctrl(3) =='K24') then
              call eval_Krticka24_wind(w)
              write(*,*) "Here are K24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(3) =='K25') then
+             call eval_Krticka25_wind(w)
+             write(*,*) "Here are K25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif (s%x_character_ctrl(3) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            end if
 
          else
-           if ( s%x_character_ctrl(4) =='V01' ) then
+           if ( s%x_character_ctrl(4) =='NdJ90' ) then
+             call eval_Nieuwenhuijzen_deJager_90_wind(w)
+             write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elif ( s%x_character_ctrl(4) =='V01' ) then
              call eval_Vink01_wind(w)
              write(*,*) "Here are V01 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif (s%x_character_ctrl(4) =='VS21') then
@@ -804,6 +830,9 @@
            elseif (s%x_character_ctrl(4) =='K24') then
              call eval_Krticka24_wind(w)
              write(*,*) "Here are K24 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(4) =='K25') then
+             call eval_Krticka25_wind(w)
+             write(*,*) "Here are K25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif (s%x_character_ctrl(4) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
@@ -818,10 +847,9 @@
            real(dp), intent(inout) :: w
            real(dp) :: xlmdot
 
-           wind_scheme = 40.0
 
            if (gamma_edd >= gamma_edd_switch .and. gamma_edd >= gamma_edd_old ) then
-             wind_scheme = 4.5
+             wind_scheme = 40.0
 
              xlmdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(Mhom_switch*Msun))
              ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "Mhom_switch ", log10(M/(Mhom_switch*Msun))
@@ -894,14 +922,16 @@
 
          ! If I want an universal NL00 for both WN and WC/WO I take this one below
 
-         !xlmdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
+         if ( .not. s% x_logical_ctrl(3) ) then
 
-         ! Addition of the calibrations from Eldridge & Vink (2006), taken from the study of late-type WN and WC
+           xlmdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
+
+          ! Addition of the calibrations from Eldridge & Vink (2006), taken from the study of late-type WN and WC
          !   mass loss predictions of Vink & de Koter (2005). Also this is the GENEC model
-          if (.not. HPoor_WR_condition .or. Z<=0.03d0) then
+        else if (.not. HPoor_WR_condition .or. Z<=0.03d0) then
             ! WN
             xlmdot=-13.60d0+1.63d0*logL_div_Lsun+2.22d0*log10(Y)+0.85d0*logZ_div_Zsun
-          else
+        else
             ! WC + WO
             if (s% kap_rq% Zbase > Zsolar ) then          ! Zinit>Zsolar
               xlmdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.40d0*logZ_div_Zsun
@@ -952,6 +982,7 @@
       real(dp) :: C1,C2,C3,C4,C5
 
       wind_scheme = 46.0
+
       C4 = 1.42
 
      !*** Shenar+ (2019)
@@ -997,18 +1028,19 @@
       fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)
       fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
 
-
+      ! metallicity dependence adopted from fits in Costa et al. (2021)
       if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then
         Zscale = fWN
       else
         Zscale = fWCO
-      endif
+
+      end if
 
       xlmdot = -8.31 + 0.68*log10(L/Lsun)
       ! xlmdot = xlmdot+Zscale                                                  ! I do not use Z-calibrations,
                                                                                 !  I don't get how to implement them
 
-      w = 10**(xlmdot)
+      w = 10**xlmdot
       write(*,*) "Here are S19 winds: log(Mdot [Msun/yr]) =", xlmdot
 
 
@@ -1191,42 +1223,42 @@
           write(*,*) "Here are dJ88 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
        end subroutine eval_de_Jager88_wind
 
-       subroutine eval_dust_winds(w)
+       subroutine eval_cool_wind(w)
          real(dp), intent(inout) :: w
-         integer :: which_dust                                     ! Which dust wind to use (in case of multple initiations)
+         integer :: which_cool                                     ! Which cool supergiant wind to use (in case of multple initiations)
          real(dp) :: logMdot
 
          include 'formats'
 
-         if (s% x_ctrl(5) /= s% x_ctrl(6) .and. Tsurf < s% x_ctrl(6) .and. &   ! Second switch to dust-driven winds. For now these recipes are the only two implemented
+         if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds. For now these recipes are the only two implemented
             log10(L/Lsun) <= 5.8) then
-           which_dust = 7
+           which_cool = 7
          else
-           which_dust = 8
+           which_cool = 8
          end if
 
 
-         if ( s%x_character_ctrl(which_dust)=='dJ88' ) then
+         if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
 
            call eval_de_Jager88_wind(w)
 
-         elseif ( s%x_character_ctrl(which_dust)=='vL05' ) then
+         elseif ( s%x_character_ctrl(which_cool)=='vL05' ) then
 
            call eval_van_Loon05_wind(w)
 
-         elseif ( s%x_character_ctrl(which_dust)=='Be23' ) then
+         elseif ( s%x_character_ctrl(which_cool)=='Be23' ) then
 
            call eval_Beasor23_wind(w)
 
-         elseif ( s%x_character_ctrl(which_dust)=='Ya23' ) then
+         elseif ( s%x_character_ctrl(which_cool)=='Ya23' ) then
 
            call eval_Yang23_wind(w)
 
-         elseif ( s%x_character_ctrl(which_dust)=='A24' ) then
+         elseif ( s%x_character_ctrl(which_cool)=='A24' ) then
 
            call eval_Antoniadis24_wind(w)
 
-         elseif ( s%x_character_ctrl(which_dust)=='D24' ) then
+         elseif ( s%x_character_ctrl(which_cool)=='D24' ) then
 
            call eval_Decin24_wind(w)
 
@@ -1236,7 +1268,7 @@
 
          ! w = w * scaling_factor ! No need for the scaling factor now
 
-       end subroutine eval_dust_winds
+       end subroutine eval_cool_wind
 
 
       end subroutine my_other_wind
