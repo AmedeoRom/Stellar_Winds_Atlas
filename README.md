@@ -27,7 +27,7 @@ This repository contains the default [MESA](https://docs.mesastar.org/en/latest/
 ### What is Argus?
 Configuring stellar winds in MESA involves complex variable mapping in `run_star_extras.f90`. **Argus** is a configuration protocol (powered by a strictly structured JSON schema) that allows Large Language Models (like ChatGPT, Claude, or Gemini) to function as an expert MESA "shipwright."
 
-Instead of manually editing the `&controls` namelist, you provide the **Argus.json** (💡 ".json" like **Jason and the Argonauts**💡) to an LLM, and it builds the `inlist_project` for you based on simple natural language requests.
+Instead of manually editing the `&controls` namelist, you provide the **Argus.json** (".json" like **Jason and the Argonauts**💡) to an LLM, and it builds the `inlist_project` for you based on simple natural language requests.
 
 ### How to Sail with Argus
 
