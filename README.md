@@ -31,7 +31,7 @@ Instead of manually editing the `&controls` namelist, you provide the **Argus.js
 
 ### How to Sail with Argus
 
-To use the **Argus Builder**, you do not need to install packages. You simply need to "boot" the builder in your preferred AI chat interface.
+To use the **Argus Builder**, you do not need to install packages. You simply need to boot the builder in your preferred AI chat interface.
 
 1.  **Download the Context:**
     * Download `Argus.json` from this repository.
