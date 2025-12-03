@@ -105,38 +105,41 @@
 
     super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
                                                                                 !  it is just a way to not make MESA use its super-Eddington prescription
-    !max_T_center_for_any_mass_loss = 2d10                                      ! Otherwise MESA thinks kaboom and not wind loss
-
+    
     x_character_ctrl(1) = 'gamma_eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
+    x_ctrl(2) = 0.5
 
-    x_character_ctrl(2) = 'K24'                                                 ! High log g thin winds: NdJ90/GM23/V01/Bj23/K24/P25
-    x_character_ctrl(3) = 'K24'                                                 ! Low log g thin winds: NdJ90/V01/Bj23/K24/P25
-    x_character_ctrl(4) = 'K24'                                                 ! Cool WR winds: V01/K24/P25 (x_logical_ctrl(1) == .true.)
+    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: NdJ90/GM23/V01/VS21/Bj23/K24/K25/P25
+    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/VS21/Bj23/K24/K25/P25
+    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: NdJ90/V01/VS21/Bj23/K24/K25/P25 (x_logical_ctrl(1) == .true.)
     x_character_ctrl(5) = 'B20'                                                 ! WR winds: Ha95/NL00/Y06/GH08/V11/Sh19/S19/B20
     x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: NL00/Y06/Sh19/S19/SV20
-    x_character_ctrl(7) = 'dJ88'                                                ! 1st Dust-driven winds: dJ88/vL05/Be23/Ya23/A24/D24
+    x_character_ctrl(7) = 'dJ88'                                                ! 1st Cool supergiant winds: dJ88/vL05/Be23/Ya23/A24/D24
     x_character_ctrl(8) = 'A24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Ya23/A24/D24
-    x_character_ctrl(9) = 'V17'                                                 ! NON-WR He star winds: V17/P25
+    x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
 
-    x_character_ctrl(10) = 'Xsurf'                                              ! H-poor WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
-    x_ctrl(2) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
+    x_character_ctrl(10) = 'Xsurf'                                              ! Canonical WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
+    x_ctrl(3) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
 
-    x_ctrl(3) = 0.05d0                                                          ! Delta for thick winds interpolation
-    x_ctrl(4) = 30                                                              ! Teff threshold for cool WR winds [kK]
+    x_ctrl(4) = 0.05d0                                                          ! Delta for thick winds interpolation
+    x_ctrl(5) = 30                                                              ! [kK] Teff threshold for cool WR winds
     x_logical_ctrl(2) = .true.                                                  ! Cool WR thin winds: do I use thin (.true.)
                                                                                 !    or thick (.false.) winds for Mdot?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
     x_logical_ctrl(4) = .false.                                                 ! Interpolate thick winds: yes/no   -------- Need to debug
-    x_logical_ctrl(5) = .false.                                                 ! LBV winds beyond the HD limit
-    x_logical_ctrl(6) = .true.                                                  ! Dust-driven winds interpolation
+    x_logical_ctrl(5) = .true.                                                  ! Cool supergiant winds interpolation
+
+    x_logical_ctrl(6) = .false.                                                 ! LBV winds beyond the HD limit
+    x_ctrl(6) = 5.5                                                             ! [log (L/Lsun)] HD minimum luminosity
+    x_character_ctrl(11) = 'Bk10'                                               ! LBV winds: Bk10 -- For now only this one
 
 
-    cool_wind_full_on_T = 0.9d4                                                 ! [K] --- Dust-driven winds interpolation minimum
-    hot_wind_full_on_T = 1.1d4                                                  ! [K] --- Dust-driven winds interpolation maximum
-    x_ctrl(5) = 1.0d4                                                           ! [K] --- The actual threshold for dust-driven winds
-    x_ctrl(6) = 0.45d4                                                          ! [K] --- In case we have a second dust-driven winds switch
-    x_ctrl(7) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
+    cool_wind_full_on_T = 0.9d4                                                 ! [K] --- Cool supergiant winds interpolation minimum
+    hot_wind_full_on_T = 1.1d4                                                  ! [K] --- Cool supergiant winds interpolation maximum
+    x_ctrl(7) = 1.0d4                                                           ! [K] --- The actual threshold for cool supergiant winds
+    x_ctrl(8) = 0.45d4                                                          ! [K] --- In case we have a second cool supergiant winds switch
+    x_ctrl(9) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
 
     ! ~~~~~~~~~ ADJUST MASS LOSS ~~~~~~~~~
 
