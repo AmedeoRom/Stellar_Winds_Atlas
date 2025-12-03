@@ -1,0 +1,617 @@
+{
+  "meta_info": {
+    "description": "Configuration reference for MESA stellar wind prescriptions based on Romagnolo et al. Wind Atlas I & II and provided run_star_extras.f90.",
+    "version": "2.4",
+    "usage": "Use this data to generate 'inlist_project' modifications for the '&controls' namelist."
+  },
+  "repository_info": {
+    "description": "Instructions for generating the inlist based on the provided template.",
+    "url": "https://github.com/AmedeoRom/Stellar_Winds_Atlas",
+    "instruction": "To fully replicate the Atlas models, use the provided 'inlist_project' file content as the BASE template. CRITICAL: Do not browse external repositories. Use the file content provided in the chat context. The MLL MUST preserve ALL existing settings in the provided 'inlist_project' (including star_job, eos, kap, and non-wind controls) EXACTLY as they appear. The MLL should ONLY modify or add the specific wind control variables defined in this JSON configuration based on the user's request."
+  },
+  "overview": {
+    "role": "Atlas Winds Builder",
+    "disclaimer": "I am here to help you configure stellar winds following the Atlas structure. I am by no means a substitute for human-based modelling. Every other initial condition for MESA simulation is a duty of the user. Do not treat the whole stellar simulation setup as a blackbox.",
+    "description": "A concise summary of the available wind options and their corresponding control variables.",
+    "summary": [
+      "1. Set the initial metallicity [initial_z] and opacity metallicity [Zbase]. These should generally be kept equal.",
+      "2. Set the mass-loss recipe for optically thin winds in the high surface gravity regime (log g > 3.0) [x_character_ctrl(2)].",
+      "3. Set the mass-loss recipe for optically thin winds in the low surface gravity regime (log g <= 3.0) [x_character_ctrl(3)]. Defaults to the high gravity model if not specified.",
+      "4. Define the condition for transitioning from optically thin to thick (Wolf-Rayet) winds [x_character_ctrl(1)]. Options include 'gamma' (Eddington factor), 'eta' (wind efficiency), or 'Xsurf' (surface hydrogen).",
+      "5. Choose the wind prescription for Cool Wolf-Rayet stars (Teff < 30 kK) [x_character_ctrl(4)]. Defaults to the low gravity thin wind model if not specified.",
+      "6. Select the mass-loss model for Hydrogen-rich / Warm Wolf-Rayet stars [x_character_ctrl(5)].",
+      "7. Select the mass-loss model for Hydrogen-poor Wolf-Rayet stars [x_character_ctrl(6)].",
+      "8. Determine the condition to trigger the specific H-poor WR wind model [x_character_ctrl(10)].",
+      "9. Specify the wind model for non-Wolf-Rayet Helium stars [x_character_ctrl(9)].",
+      "10. Define the primary prescription for Cool Supergiant / Dust-driven winds (e.g., RSG/YSG) [x_character_ctrl(7)].",
+      "11. Optionally, set a secondary Cool Supergiant wind model for a different temperature range [x_character_ctrl(8)]. Defaults to the primary model if not specified.",
+      "12. Choose an LBV wind scheme if applicable [x_character_ctrl(11)]."
+    ]
+  },
+  "general_logic": {
+    "description": "Rules for interpreting user requests and generating valid inlists.",
+    "defaults": {
+      "thin_winds": "If a specific thin wind model is not provided for low gravity (ctrl 3) or cool WR (ctrl 4), set them equal to the high gravity model (ctrl 2). Logic: x_character_ctrl(4) = x_character_ctrl(3) = x_character_ctrl(2).",
+      "cool_supergiant_winds": "If a secondary cool wind switch (ctrl 8) is not specified, set it equal to the primary cool wind model (ctrl 7). Logic: x_character_ctrl(8) = x_character_ctrl(7).",
+      "he stars": "if no model is provided for he stars (ctrl 9), set it by default to P25"
+      "initial_metallicity": "If initial metallicity [initial_z] and metallicity [Zbase] are not explicitly requested to be different, then set the same value for both"
+    },
+    "warnings": {
+      "low_metallicity": {
+        "condition": "If initial_z <= 0.1 * Zsolar OR Zbase <= 0.1 * Zsolar",
+        "message": "WARNING: You have chosen a metallicity <= 0.1 Zsolar. Many mass-loss formulations are past their physical regime of validity here. For higher metallicities, iron is the driver of winds, and models were calibrated accordingly. Below this threshold, CNO becomes the major driver (see Krticka et al. 2025: https://arxiv.org/pdf/2508.21702)."
+      }
+    }
+  },
+  "mesa_controls_definitions": {
+    "description": "Mapping of physical wind regimes to MESA control variables defined in run_star_extras.f90",
+    "controls": {
+      "use_other_wind": {
+        "type": "logical",
+        "description": "Must be set to .true. to activate the run_star_extras.f90 wind module."
+      },
+      "initial_z": {
+        "description": "Initial metallicity of the star. Standard MESA control in &controls."
+      },
+      "Zbase": {
+        "description": "Metallicity used for opacity tables. Standard MESA control in &kap."
+      },
+      "x_character_ctrl(1)": {
+        "description": "Transition condition to optically thick (Wolf-Rayet) winds.",
+        "options": [
+          "gamma",
+          "eta",
+          "Xsurf",
+          "gamma_eta",
+          "any"
+        ]
+      },
+      "x_character_ctrl(2)": {
+        "description": "Optically thin winds for high surface gravity (log g > 3.0)."
+      },
+      "x_character_ctrl(3)": {
+        "description": "Optically thin winds for low surface gravity (log g <= 3.0). Defaults to x_character_ctrl(2) if not specified."
+      },
+      "x_character_ctrl(4)": {
+        "description": "Winds for Cool Wolf-Rayet stars (Teff < x_ctrl(5) kK). Defaults to x_character_ctrl(3) (and thus ctrl(2)) if not specified."
+      },
+      "x_character_ctrl(5)": {
+        "description": "Winds for H-rich / Warm Wolf-Rayet stars."
+      },
+      "x_character_ctrl(6)": {
+        "description": "Winds for H-poor Wolf-Rayet stars."
+      },
+      "x_character_ctrl(7)": {
+        "description": "Primary Cool Supergiant / Dust-driven winds."
+      },
+      "x_character_ctrl(8)": {
+        "description": "Secondary Cool Supergiant winds (optional). Defaults to x_character_ctrl(7) if not specified."
+      },
+      "x_character_ctrl(9)": {
+        "description": "Winds for non-WR Helium stars."
+      },
+      "x_character_ctrl(10)": {
+        "description": "Condition to trigger H-poor WR winds.",
+        "options": [
+          "Xsurf",
+          "Teff"
+        ]
+      },
+      "x_character_ctrl(11)": {
+        "description": "LBV wind scheme (e.g., 'Bk10'). Active if x_logical_ctrl(6) is true."
+      },
+      "x_logical_ctrl(1)": {
+        "description": "If true, stop simulation when center Oxygen mass fraction drops below x_ctrl(1)."
+      },
+      "x_logical_ctrl(2)": {
+        "description": "If true, use thin winds (ctrl 4) for Cool WR stars. If false, use thick winds (ctrl 5)."
+      },
+      "x_logical_ctrl(3)": {
+        "description": "If true, use dedicated H-poor WR winds model (ctrl 6). If false, use H-rich model (ctrl 5)."
+      },
+      "x_logical_ctrl(4)": {
+        "description": "Enable interpolation for optically thick wind transition. Highlight with a warning that this was not tested"
+      },
+      "x_logical_ctrl(5)": {
+        "description": "Enable interpolation for cool supergiant wind transition."
+      },
+      "x_logical_ctrl(6)": {
+        "description": "Enable LBV winds beyond the Humphreys-Davidson limit."
+      },
+      "x_ctrl(1)": {
+        "description": "Center Oxygen mass fraction limit for stopping simulation (usually 1d-4)."
+      },
+      "x_ctrl(2)": {
+        "description": "Gamma_e transition threshold for optically thick winds (usually 0.5)."
+      },
+      "x_ctrl(3)": {
+        "description": "Threshold value for H-poor WR transition (usually 1d-7 for Xsurf or 1d5 for Teff)."
+      },
+      "x_ctrl(4)": {
+        "description": "Delta window for thick winds interpolation (e.g., 0.05)."
+      },
+      "x_ctrl(5)": {
+        "description": "Temperature threshold [kK] for Cool WR winds (usually 30)."
+      },
+      "x_ctrl(6)": {
+        "description": "Humphreys-Davidson minimum luminosity [log L/Lsun] (currently 5.5)."
+      },
+      "x_ctrl(7)": {
+        "description": "Temperature threshold [K] to initiate Cool Supergiant winds. Standard values: < 8000 K for Yellow Supergiants (YSG), < 4000 K for Red Supergiants (RSG)."
+      },
+      "x_ctrl(8)": {
+        "description": "Temperature threshold [K] for secondary Cool Supergiant wind switch."
+      },
+      "x_ctrl(9)": {
+        "description": "Zsolar scaling factor for mass loss rates. See 'solar_metallicity_options' for canonical values."
+      }
+    }
+  },
+  "solar_metallicity_options": {
+    "description": "Canonical options for the Solar metallicity reference value (Zsolar) to be used in x_ctrl(9).",
+    "options": [
+      {
+        "id": "AG89",
+        "value": 0.019,
+        "ref": "Anders & Grevesse 1989",
+        "url": "https://doi.org/10.1016/0016-7037(89)90286-X"
+      },
+      {
+        "id": "GS98",
+        "value": 0.017,
+        "ref": "Grevesse & Sauval 1998",
+        "url": "https://doi.org/10.1023/A:1005161325181"
+      },
+      {
+        "id": "A09",
+        "value": 0.0142,
+        "ref": "Asplund et al. 2009",
+        "url": "https://doi.org/10.1146/annurev.astro.46.060407.145222"
+      }
+    ]
+  },
+  "wr_classifications": {
+    "description": "Classification of Wolf-Rayet stars based on surface composition as defined in Wind Atlas I (Section 3.2).",
+    "types": [
+      {
+        "type": "WNL/WNh",
+        "description": "Hydrogen-rich Wolf-Rayet stars.",
+        "criteria": "X_surf > 0 (variable threshold, typically > 10^-7)"
+      },
+      {
+        "type": "WNE",
+        "description": "Surface Hydrogen-poor (X_surf < 0.05) and C/O-poor (12C + 16O <= 0.03 4He) stars."
+      },
+      {
+        "type": "WC/WO",
+        "description": "Hydrogen-free (X_surf < 10^-7) and C/O rich stars. So-called canonical WR"
+      }
+    ],
+    "references": [
+      {
+        "ref": "Yusof et al. 2013",
+        "url": "https://doi.org/10.1093/mnras/stt794"
+      },
+      {
+        "ref": "Aadland et al. 2022",
+        "url": "https://ui.adsabs.harvard.edu/abs/2022ApJ...931..157A"
+      },
+      {
+        "ref": "Martinet et al. 2023",
+        "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...679A.137M"
+      }
+    ]
+  },
+  "available_mass_loss_options": {
+    "description": "Valid string values for wind recipes based on run_star_extras.f90.",
+    "optically_thin_winds": [
+      {
+        "id": "GM23",
+        "ref": "Gormaz-Matamala et al. 2023",
+        "note": "Theoretical, high log g",
+        "warning": "It is a CAK-derived mass loss, and should only be used at high surface gravity levels",
+        "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...673A.109G"
+      },
+      {
+        "id": "Bj23",
+        "ref": "Bjorklund et al. 2023",
+        "note": "Theoretical",
+        "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A.109B"
+      },
+      {
+        "id": "V01",
+        "ref": "Vink et al. 2001",
+        "note": "Theoretical, includes bistability jump",
+        "warning": "Existence and effective temperature initiation of bistability jump were not observationally verified",
+        "url": "http://adsabs.harvard.edu/abs/2001A%26A...369..574V"
+      },
+      {
+        "id": "V17",
+        "ref": "Vink 2017",
+        "note": "He stars",
+        "url": "https://ui.adsabs.harvard.edu/abs/2017A&A...607L...8V"
+      },
+      {
+        "id": "K24",
+        "ref": "Krticka et al. 2024",
+        "note": "Theoretical: warn that this should be used only above roughly 0.2Zsun, includes bistability jump",
+        "warning": "This should be used only above roughly 0.2Zsun",
+        "warning_2": "Existence and effective temperature initiation of bistability jump were not observationally verified",
+        "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..29K"
+      },
+      {
+        "id": "K25",
+        "ref": "Krticka et al. 2025",
+        "note": "Theoretical: warn that this should be used only below roughly 0.2Zsun",
+        "warning": "This should be used only below roughly 0.2Zsun",
+        "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K"
+      },
+      {
+        "id": "VS21",
+        "ref": "Vink & Sander 2021",
+        "note": "Includes second bistability jump",
+        "warning": "Existence and effective temperature initiation of both bistability jumps were not observationally verified",
+        "url": "https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.2051V"
+      },
+      {
+        "id": "P25",
+        "ref": "Pauli et al. 2025",
+        "note": "Empirical. Function of Gamma_e",
+        "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
+      },
+      {
+        "id": "NdJ90",
+        "ref": "Nieuwenhuijzen & de Jager 1990",
+        "note": "Empirical",
+        "url": "https://ui.adsabs.harvard.edu/abs/1990A&A...231..134N"
+      }
+    ],
+    "cool_supergiant_winds": [
+      {
+        "id": "dJ88",
+        "ref": "de Jager et al. 1988",
+        "note": "Canonical empirical",
+        "url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D"
+      },
+      {
+        "id": "vL05",
+        "ref": "van Loon et al. 2005",
+        "note": "Dusty winds",
+        "url": "https://doi.org/10.1051/0004-6361:20042555"
+      },
+      {
+        "id": "Be23",
+        "ref": "Beasor et al. 2023",
+        "note": "Mass dependent",
+        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I)",
+        "url": "https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.2460B"
+      },
+      {
+        "id": "Ya23",
+        "ref": "Yang et al. 2023",
+        "note": " RSG/YSG",
+        "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A..84Y"
+      },
+      {
+        "id": "A24",
+        "ref": "Antoniadis et al. 2024",
+        "note": "Empirical",
+        "warning": "Extrapolations to YSG (Teff > 4 kK) may lead to severe underestimations (see Atlas I)"
+        "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...686A..88A",
+        "url_corrigendum": "https://ui.adsabs.harvard.edu/abs/2025A%26A...695C...2A/abstract"
+      },
+      {
+        "id": "D24",
+        "ref": "Decin et al. 2024",
+        "note": "Mass dependent",
+        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I)",
+        "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..17D"
+      }
+    ],
+    "optically_thick_WR_winds": [
+      {
+        "id": "V11",
+        "ref": "Vink et al. 2011",
+        "note": "Theoretical. Requires 'eta' transition",
+        "url": "https://ui.adsabs.harvard.edu/abs/2011A&A...531A.132V"
+      },
+      {
+        "id": "B20",
+        "ref": "Bestenlehner 2020",
+        "note": "Theoretical. Function of Gamma_e",
+        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.3938B"
+      },
+      {
+        "id": "GH08",
+        "ref": "Grafener & Hamann 2008",
+        "note": "Function of Gamma_e",
+        "url": "https://ui.adsabs.harvard.edu/abs/2008A&A...482..945G"
+      },
+      {
+        "id": "NL00",
+        "ref": "Nugis & Lamers 2000",
+        "note": "Canonical empirical",
+        "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
+      },
+      {
+        "id": "SV20",
+        "ref": "Sander & Vink 2020",
+        "note": "Theoretical. WC/WO stars"
+        "warning": "For metallicities below 1%Zsun because it could overestimate mass loss by orders of magnitude (from personal tests)",
+        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S"
+      },
+      {
+        "id": "Sh19",
+        "ref": "Shenar et al. 2019",
+        "note": "Empirical",
+        "url": "https://api.semanticscholar.org/CorpusID:162183986",
+        "url_corrigendum": "https://ui.adsabs.harvard.edu/abs/2020A%26A...641C...2S/abstract"
+      },
+      {
+        "id": "S19",
+        "ref": "Sander et al. 2019",
+        "note": "Theoretical. WC/WO stars",
+        "url": "https://ui.adsabs.harvard.edu/abs/2019A&A...621A..92S"
+      },
+      {
+        "id": "Ha98",
+        "ref": "Hamann & Koesterke 1998",
+        "note": "With Vink 2005 Z-dep",
+        "url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H"
+      },
+      {
+        "id": "Y06",
+        "ref": "Yoon et al. 2006",
+        "note": "Empirical",
+        "url": "https://ui.adsabs.harvard.edu/abs/2006A&A...460..199Y"
+      }
+    ],
+    "lbv_winds": [
+      {
+        "id": "Bk10",
+        "ref": "Belczynski et al. 2010",
+        "note": "Standard fixed LBV rate",
+        "url": "http://dx.doi.org/10.1088/2041-8205/715/2/L138"
+      }
+    ],
+    "low_mass_winds": [
+      {
+        "id": "R75",
+        "ref": "Reimers 1975",
+        "note": "RGB winds",
+        "url": "https://ui.adsabs.harvard.edu/abs/1975MSRSL...8..369R"
+      },
+      {
+        "id": "B95",
+        "ref": "Bloecker 1995",
+        "note": "AGB winds"
+      }
+    ]
+  },
+  "atlas_recipes": {
+    "description": "Prescriptions to replicate models from Wind Atlas I & II. Apply these settings to the &controls namelist.",
+    "WTW": {
+      "description": "Weak Thin Winds (WTW) model from Atlas I. Combines GM23 for high gravity and V01 for low gravity.",
+      "user_warning": "WARNING: the eta_trans value is calculated dynamically at each timestep, not like they did in the original formulation at ZAMS.",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'eta'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'V11'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(7)": "0.4d4",
+        "x_logical_ctrl(2)": ".false.",
+        "x_logical_ctrl(3)": ".true."
+      }
+    },
+    "Dutch": {
+      "description": "The canonical Dutch wind scheme.",
+      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'Xsurf'",
+        "x_character_ctrl(2)": "'V01'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'NL00'",
+        "x_character_ctrl(6)": "'NL00'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(2)": ".false.",
+        "x_logical_ctrl(3)": ".false.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "Dutch_ish": {
+      "description": "Modified Dutch scheme with GM23 for high gravity and EV06/NL00 for H-poor.",
+      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'Xsurf'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'NL00'",
+        "x_character_ctrl(6)": "'NL00'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(2)": ".false.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "Slavic": {
+      "description": "Based on Krticka et al. (2024). Clumped thin winds with bistability jump and combination of multiple transition conditions to thick winds",
+      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma_eta'",
+        "x_character_ctrl(2)": "'K24'",
+        "x_character_ctrl(3)": "'K24'",
+        "x_character_ctrl(4)": "'K24'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'A24'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "1.0d4",
+        "x_ctrl(8)": "0.4d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".true.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "FESc": {
+      "description": "Free-Electron Scattering transition model (Gamma_e)",
+      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "FESc_RSG": {
+      "description": "FESc model but restricts dust-driven winds to RSG phase (T < 4kK).",
+      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "0.4d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "MSc": {
+      "description": "Multiple-Scattering (eta) transition model.",
+      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'eta'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "German_gamma": {
+      "description": "Uses Pauli et al. (2025) for thin winds. No bistability jump detected. Called this way because everything is dependent on Gamma_e and most formulations come from papers that are German-led",
+      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(2)": "'P25'",
+        "x_character_ctrl(3)": "'P25'",
+        "x_character_ctrl(4)": "'P25'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'A24'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "1.0d4",
+        "x_ctrl(8)": "0.4d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(4)": ".false.",
+        "x_logical_ctrl(5)": ".false.",
+        "x_logical_ctrl(6)": ".false."
+      }
+    },
+    "SWG": {
+      "description": "Strong Winds Gamma (SWG) model from Atlas I.",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(2)": "'V01'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(5)": "30",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(3)": ".true."
+      }
+    },
+    "MS23": {
+      "description": "Approximation of Sabhahit et al. (2023) using V11 and Eta transition. MS23 from Atlas I",
+      "user_warning": "WARNING: the eta_trans value is calculated dynamically at each timestep, not like they did in the original formulation at ZAMS.",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'eta'",
+        "x_character_ctrl(2)": "'V01'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(5)": "'V11'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(7)": "0.4d4",
+        "x_logical_ctrl(2)": ".false.",
+        "x_logical_ctrl(3)": ".true."
+      }
+    },
+    "Xsurf": {
+      "description": "Standard Xsurf transition model using GM23/V01 thin winds.",
+      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'Xsurf'",
+        "x_character_ctrl(2)": "'GM23'",
+        "x_character_ctrl(3)": "'V01'",
+        "x_character_ctrl(4)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_character_ctrl(8)": "'dJ88'",
+        "x_ctrl(7)": "1.0d4",
+        "x_logical_ctrl(2)": ".true.",
+        "x_logical_ctrl(3)": ".true."
+      }
+    }
+  }
+}
