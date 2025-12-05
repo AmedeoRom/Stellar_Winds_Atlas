@@ -158,9 +158,9 @@
        integer, intent(in) :: id
        real(dp), intent(in) :: L, M, R, Tsurf, X, Y, Z ! surface values (cgs)
        real(dp), intent(out) :: w !wind in units of Msun/year (value is >= 0)
-       real(dp) :: gmrstar,gmlogg,lteff,xlmdot,logZ_div_Zsun,hehratio,vterm,Mhom,f,Zsolar
+       real(dp) :: gmrstar,gmlogg,lteff,xlmdot,logZ_div_Zsun,hehratio,vterm,Zsolar
        real(dp) :: Z_div_Z_solar,Teff_jump,alfa,log_gamma_edd,gamma_trans,logL_div_Lsun
-       real(dp) :: F1,F2,F3,F4,F5,F6,F7,F8,F9,vesc_eff,vesc,vinf_fac,const_k
+       real(dp) :: vesc_eff,vesc,vinf_fac,const_k
        real(dp) :: w1, w2
        real(dp) :: divisor,beta,alfa_mid
        logical :: thick_met
@@ -253,51 +253,9 @@
        gamma_edd=10**log_gamma_edd
        ! gamma_edd = L/s% prev_Ledd
 
-       if ( (12 < M/Msun .and. M/Msun < 250) .and. log10(L/Lsun)<6.5 ) then
-
-         F1 = 4.026
-         F2 = 4.277
-         F3 = -1.0
-         F4 = 25.48
-         F5 = 36.93
-         F6 = -2.792
-         F7 = -3.226
-         F8 = -5.317
-         F9 = 1.648
-
-       elseif ( M/Msun <= 12 .and. log10(L/Lsun)<6.5 ) then
-
-         F1 = 2.582
-         F2 = 0.829
-         F3 = -1.0
-         F4 = 9.375
-         F5 = 0.333
-         F6 = 0.543
-         F7 = -1.376
-         F8 = -0.049
-         F9 = 0.036
-
-       elseif ( M/Msun <= 4000 .or. log10(L/Lsun)>=6.5) then
-         F1 = 10.05
-         F2 = 8.204
-         F3 = -1.0
-         F4 = 151.7
-         F5 = 254.5
-         F6 = -11.46
-         F7 = -13.16
-         F8 = -31.68
-         F9 = 2.408
-
-       end if
-
-       const_k = (clight*Msun*1d5)/(Lsun*secyer)
-
-       f = F4 + F5*X + F6*X**2 + (F7+F8*X)*log10(L/Lsun)
-       Mhom=10**((F1+F2*X+F3*sqrt(f))/(1+F9*X))
-
 
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
-       vterm = 2.6 * sqrt(2d0*standard_cgrav*(Mhom*Msun)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M*Msun)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
 
        eta_trans = 0.75/(1+(vesc**2)/(vterm**2))
        ! eta = (ABS(s% mstar_dot /Msun)*secyer * vterm)/(L/(clight))
