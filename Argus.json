@@ -1,7 +1,7 @@
 {
   "meta_info": {
     "description": "Configuration reference for MESA stellar wind prescriptions based on Romagnolo et al. Wind Atlas I & II and provided run_star_extras.f90.",
-    "version": "2.4",
+    "version": "3.6",
     "usage": "Use this data to generate 'inlist_project' modifications for the '&controls' namelist."
   },
   "repository_info": {
@@ -33,13 +33,25 @@
     "defaults": {
       "thin_winds": "If a specific thin wind model is not provided for low gravity (ctrl 3) or cool WR (ctrl 4), set them equal to the high gravity model (ctrl 2). Logic: x_character_ctrl(4) = x_character_ctrl(3) = x_character_ctrl(2).",
       "cool_supergiant_winds": "If a secondary cool wind switch (ctrl 8) is not specified, set it equal to the primary cool wind model (ctrl 7). Logic: x_character_ctrl(8) = x_character_ctrl(7).",
-      "he stars": "if no model is provided for he stars (ctrl 9), set it by default to P25"
-      "initial_metallicity": "If initial metallicity [initial_z] and metallicity [Zbase] are not explicitly requested to be different, then set the same value for both"
+      "initial_metallicity": "If initial metallicity [initial_z] and metallicity [Zbase] are not explicitly requested to be different, then set the same value for both",
+      "he_stars": "if no model is provided for he stars (ctrl 9), set it by default to P25"
     },
     "warnings": {
       "low_metallicity": {
         "condition": "If initial_z <= 0.1 * Zsolar OR Zbase <= 0.1 * Zsolar",
         "message": "WARNING: You have chosen a metallicity <= 0.1 Zsolar. Many mass-loss formulations are past their physical regime of validity here. For higher metallicities, iron is the driver of winds, and models were calibrated accordingly. Below this threshold, CNO becomes the major driver (see Krticka et al. 2025: https://arxiv.org/pdf/2508.21702)."
+      },
+      "xshootu_mixing": {
+        "condition": "General note on mixing",
+        "message": "NOTE: XShootU V (Martins et al. 2024) confirms that rotational mixing appears more efficient at lower metallicities, with nitrogen enrichment occurring at higher surface gravities in the SMC compared to the Galaxy."
+      },
+      "xshootu_vinf": {
+         "condition": "General note on wind velocity",
+         "message": "NOTE: XShootU III (Hawcroft et al. 2024) finds an empirical scaling of terminal wind speed v_inf ~ Z^0.22, which is steeper than the canonical theoretical prediction of Z^0.13 (Leitherer et al. 1992)."
+      },
+      "xshootu_bistability": {
+        "condition": "General note on bi-stability",
+        "message": "NOTE: XShootU IX (Verhamme et al. 2024) and XIII (Alkousa et al. 2025) find no evidence for a bi-stability jump in mass-loss rates for LMC B supergiants, contradicting Vink et al. (2001) predictions in this regime."
       }
     }
   },
@@ -176,7 +188,7 @@
       {
         "type": "WNL/WNh",
         "description": "Hydrogen-rich Wolf-Rayet stars.",
-        "criteria": "X_surf > 0 (variable threshold, typically > 10^-7)"
+        "criteria": "X_surf > 0 (variable threshold)"
       },
       {
         "type": "WNE",
@@ -184,7 +196,7 @@
       },
       {
         "type": "WC/WO",
-        "description": "Hydrogen-free (X_surf < 10^-7) and C/O rich stars. So-called canonical WR"
+        "description": "Hydrogen-free (In the Atlas, as well as in Romagnolo et al. (2024) and Gormaz-Matamala et al. (2025) we set Xsurf < 10^-7) and C/O rich stars. So-called 'canonical WR'"
       }
     ],
     "references": [
@@ -208,7 +220,9 @@
       {
         "id": "GM23",
         "ref": "Gormaz-Matamala et al. 2023",
-        "note": "Theoretical, high log g",
+        "note": "Theoretical, high log g.",
+        "parameter_space": "Metallicity: Solar (0.014) and LMC (0.006). Mass: 9-200 Msun. Hydrodynamic, includes rotation. Suitable for MS and WNh.",
+        "z_solar_calibration": 0.014,
         "warning": "It is a CAK-derived mass loss, and should only be used at high surface gravity levels",
         "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...673A.109G"
       },
@@ -216,25 +230,37 @@
         "id": "Bj23",
         "ref": "Bjorklund et al. 2023",
         "note": "Theoretical",
+        "parameter_space": "Metallicity: Solar, LMC (0.5 Zsol), SMC (0.2 Zsol). Teff: 15-50 kK. Lum: 4.5-6.0 logL. Dynamically consistent. No bi-stability jump found.",
+        "z_solar_calibration": 0.014,
+        "warning": "XShootU VI (Backs et al. 2024) finds SMC O-giants have rates lower than V01, aligning with Bj23. However, XShootU IV (Sander et al. 2024) suggests Bj23 rates may be too low for LMC O-supergiants unless very strong clumping is assumed.",
         "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A.109B"
       },
       {
         "id": "V01",
         "ref": "Vink et al. 2001",
         "note": "Theoretical, includes bistability jump",
-        "warning": "Existence and effective temperature initiation of bistability jump were not observationally verified",
+        "parameter_space": "1/30, 1/10, 1/3, 1, 3, 10 Zsolar. Mass: 20, 40, 60 Msun grid. No clumping.",
+        "z_solar_calibration": 0.019,
+        "warning": "XShootU XIII (Alkousa et al. 2025) and IX (Verhamme et al. 2024) find NO evidence for a bi-stability jump in mass-loss rates for LMC B supergiants. XShootU VII (Bernini-Peron et al. 2024) confirms a jump in v_inf but not Mdot for SMC B supergiants.",
+        "warning_2": "The Vink & Graefener (2012) model-independent study supporting this mass loss at the transition between optically thin and thick winds was based on a small sample (~20 stars in Arches cluster) and only checked the mass loss for their current features (i.e. a snapshot), not the evolutionary history. Pauli et al. (2025) find significantly lower empirical rates for transition stars.",
+        "note_2": "XShootU IV (Sander et al. 2024) finds empirical rates for LMC O-supergiants consistent with V01 ONLY if clumping is moderate (f_cl < 5). Stronger clumping implies lower rates.",
         "url": "http://adsabs.harvard.edu/abs/2001A%26A...369..574V"
       },
       {
         "id": "V17",
         "ref": "Vink 2017",
         "note": "He stars",
+        "parameter_space": "Metallicity: 10^-2 to 1 Zsolar. Mass: 2-60 Msun stripped He stars. Fixed Teff=50kK. No clumping.",
+        "z_solar_calibration": 0.019,
+        "note_2": "XShootU VIII (Ramachandran et al. 2024) confirms the existence of stripped stars (quasi-WR) that do not look like classical WRs, supporting the need for specific He-star recipes.",
         "url": "https://ui.adsabs.harvard.edu/abs/2017A&A...607L...8V"
       },
       {
         "id": "K24",
         "ref": "Krticka et al. 2024",
-        "note": "Theoretical: warn that this should be used only above roughly 0.2Zsun, includes bistability jump. Recommended for models that want to include the bistability jump",
+        "note": "Theoretical: warn that this should be used only above roughly 0.2Zsun, includes bistability jump",
+        "parameter_space": "Metallicity: LMC, SMC. B-supergiants (10-28 kK). Global wind models. Finds smooth bi-stability transition (not sharp jump).",
+        "z_solar_calibration": 0.014,
         "warning": "This should be used only above roughly 0.2Zsun",
         "warning_2": "Existence and effective temperature initiation of bistability jump were not observationally verified",
         "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..29K"
@@ -243,6 +269,8 @@
         "id": "K25",
         "ref": "Krticka et al. 2025",
         "note": "Theoretical: warn that this should be used only below roughly 0.2Zsun",
+        "parameter_space": "Metallicity: Down to 0.01 Zsolar. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
+        "z_solar_calibration": 0.014,
         "warning": "This should be used only below roughly 0.2Zsun",
         "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K"
       },
@@ -250,20 +278,26 @@
         "id": "VS21",
         "ref": "Vink & Sander 2021",
         "note": "Includes second bistability jump",
+        "parameter_space": "Solar metallicity. Mass: 20, 30, 60 Msun O-stars. No clumping.",
+        "z_solar_calibration": 0.019,
         "warning": "Existence and effective temperature initiation of both bistability jumps were not observationally verified",
         "url": "https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.2051V"
       },
       {
         "id": "P25",
         "ref": "Pauli et al. 2025",
-        "note": "Empirical. Function of Gamma_e. Works for thin, non-Wolf-Rayet helium star and thick winds. Recommended for models that do not want to include the bistability jump",
-        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased",
+        "note": "Empirical. Function of Gamma_e",
+        "parameter_space": "Metallicity: Galaxy, LMC, SMC. Mass: 15-150 Msun. Accounts for microclumping (D=10).",
+        "z_solar_calibration": "Iron based (Z_Fe_sun approx 0.0013).",
+        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased. This recipe scales with Iron abundance, not total Z.",
         "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
       },
       {
         "id": "NdJ90",
         "ref": "Nieuwenhuijzen & de Jager 1990",
         "note": "Empirical",
+        "parameter_space": "Implicitly Galactic (Solar). Wide mass/luminosity range. No clumping (pre-dates major clumping consensus).",
+        "z_solar_calibration": "No Zsolar dependency, but it usually given a metallicity dependency from Vink & de Koeter (2005) with Zsolar = 0.019",
         "url": "https://ui.adsabs.harvard.edu/abs/1990A&A...231..134N"
       }
     ],
@@ -272,32 +306,37 @@
         "id": "dJ88",
         "ref": "de Jager et al. 1988",
         "note": "Canonical empirical",
+        "parameter_space": "Galactic (Solar). T_eff 3000-4000 K for cool stars. Based on sample of 271 stars.",
         "url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D"
       },
       {
         "id": "vL05",
         "ref": "van Loon et al. 2005",
         "note": "Dusty winds",
+        "parameter_space": "LMC (0.5 Zsolar). Dust-enshrouded AGBs and RSGs. Teff < 3500 K (down to ~2500 K).",
         "url": "https://doi.org/10.1051/0004-6361:20042555"
       },
       {
         "id": "Be23",
         "ref": "Beasor et al. 2023",
         "note": "Mass dependent",
-        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I)",
+        "parameter_space": "Galactic & LMC. M_ini 9-25 Msun. Luminosity: logL=4.2-5.6. Steady-state wind. Correction to Beasor+2020.",
+        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I). Authors claim quiescent winds cannot strip envelopes.",
         "url": "https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.2460B"
       },
       {
         "id": "Ya23",
         "ref": "Yang et al. 2023",
         "note": " RSG/YSG",
+        "parameter_space": "SMC (0.2 Zsolar). Teff ~3300-4400 K. Luminosity: logL=4.0-5.5. SED fitting.",
         "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A..84Y"
       },
       {
         "id": "A24",
         "ref": "Antoniadis et al. 2024",
         "note": "Empirical",
-        "warning": "Extrapolations to YSG (Teff > 4 kK) may lead to severe underestimations (see Atlas I)"
+        "parameter_space": "LMC. Teff ~3400-4500 K. Luminosity: logL=4.0-5.5. M_ini ~8-30 Msun. SED fitting with DUSTY.",
+        "warning": "Extrapolations to YSG (Teff > 4 kK) may lead to severe underestimations (see Atlas I). Antoniadis et al. (2025) further find NO clear metallicity dependence in the mass-loss rates between MW, LMC, SMC and NGC 6822.",
         "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...686A..88A",
         "url_corrigendum": "https://ui.adsabs.harvard.edu/abs/2025A%26A...695C...2A/abstract"
       },
@@ -305,7 +344,8 @@
         "id": "D24",
         "ref": "Decin et al. 2024",
         "note": "Mass dependent",
-        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I)",
+        "parameter_space": "Galactic, LMC, SMC. Teff ~3200-3800 K. Luminosity: logL=4.5-5.8. M_ini ~25 Msun. Gas mass-loss rates from CO lines.",
+        "warning": "Extrapolations above 25 solar masses for initial mass leads to severe underestimations (see Atlas I). Suggests eruptive mass loss is needed for stripping.",
         "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..17D"
       }
     ],
@@ -313,38 +353,52 @@
       {
         "id": "V11",
         "ref": "Vink et al. 2011",
-        "note": "Theoretical. Requires 'eta' transition",
+        "note": "Theoretical. Requires 'eta' transition. Sabhahit et al. (2023) recommends to use V01 without the temperature-dependent terms as the baseline for the transition check.",
+        "z_solar_calibration": 0.019,
+        "warning": "Most used formulation from Sabhahit et al. (2023) (as well as the Atlas one) scales with Luminosity (L) and Mass (M), but the physics is Gamma-driven. It essentially multiplies the transition mass-loss rate by scaling factors (Gamma/Gamma_trans)^p. This makes the rate extremely sensitive to the star's previous mass-loss history, as the current Gamma (and thus the scaling factor) depends on the current L/M ratio. Additionally, it is model-dependent because it relies on the V01 recipe to define the transition point.",
+        "warning": "Pauli et al. (2025) do NOT find evidence for the predicted 'kink' (sudden mass-loss increase) at this transition.",
+        "parameter_space": "Very Massive Stars (up to 300 Msun). Transition WNh stars. Monte Carlo radiative transfer.",
         "url": "https://ui.adsabs.harvard.edu/abs/2011A&A...531A.132V"
       },
       {
         "id": "B20",
         "ref": "Bestenlehner 2020",
         "note": "Theoretical. Function of Gamma_e",
+        "parameter_space": "WNh (hydrogen-rich WR stars). Very massive stars (> 100 Msun). LMC metallicity (0.5 Zsolar). No explicit Z-dependence in B20, but Brands et al. (2022) suggest scaling with Z^0.85 (with Asplund Zsolar).",
         "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.3938B"
       },
       {
         "id": "GH08",
         "ref": "Grafener & Hamann 2008",
         "note": "Function of Gamma_e",
+        "parameter_space": "WNL stars (Late-type N-rich). Grid covers range of masses. Metallicities: Galaxy, LMC, SMC. Finds M ~ Z^0.86. Includes clumping.",
+        "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/2008A&A...482..945G"
       },
       {
         "id": "NL00",
         "ref": "Nugis & Lamers 2000",
-        "note": "Canonical empirical",
+        "note": "Canonical empirical. Provides generic WR formula, plus specific WN and WC formulae. Depends on surface Y and Z directly (not just scaled to solar). Z_solar calibrated with Z/X=0.0244 (Grevesse et al. 1996).",
+        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration"
+        "parameter_space": "Galactic WN and WC stars. Often used with Eldridge & Vink (2006) recalibration for WC/WO metallicity scaling. Nugis & Lamers (2002) support the high rates, arguing for deep-seated critical points.",
+        "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
       },
       {
         "id": "SV20",
         "ref": "Sander & Vink 2020",
-        "note": "Theoretical. WC/WO stars"
-        "warning": "For metallicities below 1%Zsun because it could overestimate mass loss by orders of magnitude (from personal tests)",
+        "note": "Theoretical. WC/WO stars. T-dependent correction from Sander et al. (2023) commented in the Atlas run_star_extras file and therefore not included by default, but it can be activated manually!",
+        "parameter_space": "WC/WO stars. Metallicity down to 10^-4 Zsolar. Luminosity: 4.8-6.5 logL. Finds breakdown of simple Z-scaling at very low Z. Sander et al. (2023) introduced a T-dependent correction (T* at tau=20, not Teff) for these rates.",
+        "z_solar_calibration": 0.014,
+        "warning": "Pauli et al. (2025) showed that SV20 mass-loss rates were too high compared to empirical findings. For metallicities below 0.1%Zsun it could overestimate mass loss by orders of magnitude (from personal tests).",
         "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S"
       },
       {
         "id": "Sh19",
         "ref": "Shenar et al. 2019",
         "note": "Empirical",
+        "parameter_space": "LMC single WN stars. Comprehensive empirical analysis.",
+        "z_solar_calibration": 0.014,
         "url": "https://api.semanticscholar.org/CorpusID:162183986",
         "url_corrigendum": "https://ui.adsabs.harvard.edu/abs/2020A%26A...641C...2S/abstract"
       },
@@ -352,18 +406,24 @@
         "id": "S19",
         "ref": "Sander et al. 2019",
         "note": "Theoretical. WC/WO stars",
+        "parameter_space": "Galactic WC/WO stars. Hydrodynamically consistent grid.",
+        "z_solar_calibration": 0.014,
         "url": "https://ui.adsabs.harvard.edu/abs/2019A&A...621A..92S"
       },
       {
         "id": "Ha98",
         "ref": "Hamann & Koesterke 1998",
         "note": "With Vink 2005 Z-dep",
+        "parameter_space": "Galactic WN stars. Includes clumping corrections. Standard empirical recipe.",
+        "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H"
       },
       {
         "id": "Y06",
         "ref": "Yoon et al. 2006",
         "note": "Empirical",
+        "parameter_space": "WN and WC stars. Theoretical/Empirical compilation.",
+        "z_solar_calibration": 0.020,
         "url": "https://ui.adsabs.harvard.edu/abs/2006A&A...460..199Y"
       }
     ],
@@ -372,6 +432,7 @@
         "id": "Bk10",
         "ref": "Belczynski et al. 2010",
         "note": "Standard fixed LBV rate",
+        "z_solar_calibration": 0.019,
         "url": "http://dx.doi.org/10.1088/2041-8205/715/2/L138"
       }
     ],
@@ -380,12 +441,14 @@
         "id": "R75",
         "ref": "Reimers 1975",
         "note": "RGB winds",
+        "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/1975MSRSL...8..369R"
       },
       {
         "id": "B95",
         "ref": "Bloecker 1995",
-        "note": "AGB winds"
+        "note": "AGB winds",
+        "z_solar_calibration": 0.019
       }
     ]
   },
@@ -399,7 +462,6 @@
         "x_character_ctrl(1)": "'eta'",
         "x_character_ctrl(2)": "'GM23'",
         "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
         "x_character_ctrl(5)": "'V11'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
@@ -430,15 +492,14 @@
         "x_logical_ctrl(6)": ".false."
       }
     },
-    "Dutch_ish": {
-      "description": "Modified Dutch scheme with GM23 for high gravity and EV06/NL00 for H-poor.",
+    "Dutch-ish": {
+      "description": "Modified Dutch scheme with GM23 for high surface gravity and EV06/NL00 for H-poor.",
       "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
       "settings": {
         "use_other_wind": ".true.",
         "x_character_ctrl(1)": "'Xsurf'",
         "x_character_ctrl(2)": "'GM23'",
         "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
         "x_character_ctrl(5)": "'NL00'",
         "x_character_ctrl(6)": "'NL00'",
         "x_character_ctrl(7)": "'dJ88'",
@@ -485,7 +546,6 @@
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
         "x_ctrl(5)": "30",
         "x_ctrl(7)": "1.0d4",
         "x_logical_ctrl(2)": ".true.",
@@ -507,7 +567,6 @@
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
         "x_ctrl(5)": "30",
         "x_ctrl(7)": "0.4d4",
         "x_logical_ctrl(2)": ".true.",
@@ -529,7 +588,6 @@
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
         "x_ctrl(5)": "30",
         "x_ctrl(7)": "1.0d4",
         "x_logical_ctrl(2)": ".true.",
@@ -573,7 +631,6 @@
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
         "x_ctrl(5)": "30",
         "x_ctrl(7)": "1.0d4",
         "x_logical_ctrl(3)": ".true."
@@ -608,7 +665,6 @@
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
         "x_ctrl(7)": "1.0d4",
         "x_logical_ctrl(2)": ".true.",
         "x_logical_ctrl(3)": ".true."
