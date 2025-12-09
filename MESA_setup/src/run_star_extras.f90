@@ -119,39 +119,7 @@
 
          max_years_dt_old = s% max_years_for_timestep
 
-         if (s% kap_rq% Zbase/0.0142d0 > 0.5) then
-           s% use_superad_reduction = .true.
-         else
-           s% use_superad_reduction = .true.
-         end if
-
-         s% overshoot_f(1) = f_ov_fcn_of_mass(s% initial_mass)
-         s% overshoot_f0(1) = s% overshoot_f(1)/100
-
-         s% overshoot_f(2) = f_ov_fcn_of_mass(s% initial_mass)/10
-         s% overshoot_f0(2) = s% overshoot_f0(2)/100
-
       end subroutine extras_startup
-
-     function f_ov_fcn_of_mass(m) result(f_ov)
-       real(dp), intent(in) :: m
-       real(dp) :: f_ov, frac
-       real(dp), parameter :: f1 = 1.6d-2, f2=4.15d-2
-       if(m < 4.0d0) then
-         frac = 0.0d0
-       else if(m > 8.0d0) then
-         frac = 1.0d0
-       else
-         frac = 0.5d0 * (1.0d0 - cos(0.25d0 * (m - 4.0d0) *  3.1415927))
-       endif
-
-       f_ov = f1 + (f2-f1)*frac
-
-       if (m>=20) then
-         f_ov = 5.0d-2
-       end if
-
-     end function f_ov_fcn_of_mass
 
 
      subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
@@ -243,19 +211,13 @@
 
        gamma_trans = s% x_ctrl(2)
 
-       ! if ( logZ_div_Zsun >= log10(0.2) ) then
-       !   gamma_trans = 0.5
-       ! else
-       !   gamma_trans = 0.5 - 0.301*logZ_div_Zsun-0.045*logZ_div_Zsun**2
-       ! end if
-
        log_gamma_edd = -4.813d0+log10(1+X)+log10(L/Lsun)-log10(M/Msun)
        gamma_edd=10**log_gamma_edd
        ! gamma_edd = L/s% prev_Ledd
 
 
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
-       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M*Msun)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
 
        eta_trans = 0.75/(1+(vesc**2)/(vterm**2))
        ! eta = (ABS(s% mstar_dot /Msun)*secyer * vterm)/(L/(clight))
