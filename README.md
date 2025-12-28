@@ -54,7 +54,7 @@ To use the **Argus Builder**, you do not need to install packages. You simply ne
 
 ### Why use Argus?
 * **Safety:** It follows strict constraints defined in `Argus.json`, warning you if parameters (like metallicity) leave the physical regime of validity (e.g., $Z < 0.1 Z_{\odot}$).
-* **Citations:** It automatically appends the correct BibTeX references for the wind prescriptions you choose.
+* **Citations:** It automatically appends the correct references for the wind prescriptions you choose.
 * **Consistency:** It ensures the `x_character_ctrl` flags map correctly to the `run_star_extras.f90` logic.
 
 <!--Code for the Stellar winds atlas paper for black hole formation. **It includes the adopted MESA setup and the setup for creating the OB/WR galactic population**
