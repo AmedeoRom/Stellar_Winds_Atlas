@@ -95,9 +95,9 @@
     x_character_ctrl(1) = 'gamma_eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
     x_ctrl(2) = 0.5
 
-    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: NdJ90/GM23/V01/VS21/Bj23/K24/K25/P25
-    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/VS21/Bj23/K24/K25/P25
-    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: NdJ90/V01/VS21/Bj23/K24/K25/P25 (x_logical_ctrl(1) == .true.)
+    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: NdJ90/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: NdJ90/V01/VS21/Bj23/K24/K25/P25/Sa25 (x_logical_ctrl(1) == .true.)
     x_character_ctrl(5) = 'B20'                                                 ! WR winds: Ha95/NL00/Y06/GH08/V11/Sh19/S19/B20
     x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: NL00/Y06/Sh19/S19/SV20
     x_character_ctrl(7) = 'dJ88'                                                ! 1st Cool supergiant winds: dJ88/vL05/Be23/Ya23/A24/D24
