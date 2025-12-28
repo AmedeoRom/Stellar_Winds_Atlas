@@ -34,10 +34,11 @@
 !  23.0: V17   (Vink 2017)
 !  24.0: K24   (Krticka+ 2024)
 !  25.0: VS21  (Vink & Sander 2021)
-!  26.0: P25   (Pauli+ 2025)
+!  26.0: P25   (Pauli+ 2025) --> Also for WR and He stars!
 !  27.0: V17   (Vink 2017)
 !  28.0: NdJ90 (Nieuwenhuijzen & de Jager 1990)
 !  29.0: K25   (Krticka+ 2025)
+!  29.5: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
 !
 ! Dust/Cool Winds:
 !  30.0: dJ88  (de Jager+ 1988)
@@ -76,7 +77,7 @@
       implicit none
 
       integer :: already_thick = 0                                              ! 0/1/2:    not yet thick/thick with eta/thick with gamma
-      real(dp) :: Mdot_switch,L_switch,Mhom_switch,gamma_edd_switch
+      real(dp) :: Mdot_switch,L_switch,M_switch,gamma_edd_switch
       real(dp) :: eta,eta_trans,gamma_edd,gamma_edd_old                         ! gamma_edd_old is to check the previous timestep
       real(dp) :: wind_scheme,wind_scheme_interp                                ! To know which winds model I am using at each timestep
 
@@ -119,14 +120,46 @@
 
          max_years_dt_old = s% max_years_for_timestep
 
+         if (s% kap_rq% Zbase/0.0142d0 > 0.5) then
+           s% use_superad_reduction = .true.
+         else
+           s% use_superad_reduction = .true.
+         end if
+
+         s% overshoot_f(1) = f_ov_fcn_of_mass(s% initial_mass)
+         s% overshoot_f0(1) = s% overshoot_f(1)/100
+
+         s% overshoot_f(2) = f_ov_fcn_of_mass(s% initial_mass)/10
+         s% overshoot_f0(2) = s% overshoot_f0(2)/100
+
       end subroutine extras_startup
+
+     function f_ov_fcn_of_mass(m) result(f_ov)
+       real(dp), intent(in) :: m
+       real(dp) :: f_ov, frac
+       real(dp), parameter :: f1 = 1.6d-2, f2=4.15d-2
+       if(m < 4.0d0) then
+         frac = 0.0d0
+       else if(m > 8.0d0) then
+         frac = 1.0d0
+       else
+         frac = 0.5d0 * (1.0d0 - cos(0.25d0 * (m - 4.0d0) *  3.1415927))
+       endif
+
+       f_ov = f1 + (f2-f1)*frac
+
+       if (m>=20) then
+         f_ov = 5.0d-2
+       end if
+
+     end function f_ov_fcn_of_mass
 
 
      subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
        integer, intent(in) :: id
        real(dp), intent(in) :: L, M, R, Tsurf, X, Y, Z ! surface values (cgs)
        real(dp), intent(out) :: w !wind in units of Msun/year (value is >= 0)
-       real(dp) :: gmrstar,gmlogg,lteff,xlmdot,logZ_div_Zsun,hehratio,vterm,Zsolar
+       real(dp) :: gmrstar,gmlogg,lteff,logMdot,logZ_div_Zsun,hehratio,vterm,Zsolar
        real(dp) :: Z_div_Z_solar,Teff_jump,alfa,log_gamma_edd,gamma_trans,logL_div_Lsun
        real(dp) :: vesc_eff,vesc,vinf_fac,const_k
        real(dp) :: w1, w2
@@ -211,13 +244,19 @@
 
        gamma_trans = s% x_ctrl(2)
 
+       ! if ( logZ_div_Zsun >= log10(0.2) ) then
+       !   gamma_trans = 0.5
+       ! else
+       !   gamma_trans = 0.5 - 0.301*logZ_div_Zsun-0.045*logZ_div_Zsun**2
+       ! end if
+
        log_gamma_edd = -4.813d0+log10(1+X)+log10(L/Lsun)-log10(M/Msun)
        gamma_edd=10**log_gamma_edd
        ! gamma_edd = L/s% prev_Ledd
 
 
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
-       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M*Msun)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
 
        eta_trans = 0.75/(1+(vesc**2)/(vterm**2))
        ! eta = (ABS(s% mstar_dot /Msun)*secyer * vterm)/(L/(clight))
@@ -230,7 +269,6 @@
        write(*,*) "vterm:", vterm, " km/s    vs        vesc:", vesc, " km/s"
        write(*,*) "eta factor:", eta , "vs        eta trans:", eta_trans
        write(*,*) "log(g):", gmlogg
-       write(*,*) "Mhom:", Mhom, " Msun"
        write(*,*)
 
        ! --------------------------------------------- Check for thick winds ---------------------------------------------------
@@ -246,7 +284,7 @@
              gamma_edd_switch = gamma_edd
              Mdot_switch = ABS(s% mstar_dot/Msun*secyer)
              L_switch = L
-             Mhom_switch = Mhom
+             M_switch = M
            end if
            thick_met = .true.
          end if
@@ -465,23 +503,28 @@
 
          wind_scheme = 24.0
 
-         xlmdot=-13.82d0+0.358*logZ_div_Zsun+(1.52d0-0.11*logZ_div_Zsun)*(log10(L/Lsun)-6.d0) &
+         logMdot=-13.82d0+0.358*logZ_div_Zsun+(1.52d0-0.11*logZ_div_Zsun)*(log10(L/Lsun)-6.d0) &
         + 13.82d0*log10((1.0+0.73*logZ_div_Zsun)*exp(-((Tsurf/1000.0d0-14.16d0)/3.58d0)**2.d0) &
         + 3.84d0*exp(-((Tsurf/1000.0d0-37.9d0)/56.5d0)**2.d0))
 
-         w=10**xlmdot
+         w=10**logMdot
 
        end subroutine   eval_Krticka24_wind
 
        subroutine eval_Krticka25_wind(w)
          real(dp), intent(inout) :: w
-         real(dp) :: a,b,c,d,e = -7.72,1.49,0.713,1.29,1.10
+         real(dp) :: a,b,c,d,e
 
          wind_scheme = 29.0
 
-         xlmdot = a + b*log10(L/Lsun/1d6) + c*logZ_div_Zsun + d*log10(Tsurf/1d3) + e*(Z_div_Zsun)*np.exp(-(Tsurf-14.4)**2/2.53**2)
+         a = -7.72
+         b = 1.49
+         c = 0.713
+         d = 1.29
+         e = 1.10
+         logMdot = a + b*log10(L/Lsun/1d6) + c*logZ_div_Zsun + d*log10(Tsurf/1d3) + e*(Z_div_Z_solar)*exp(-(Tsurf-14.4)**2/2.53**2)
 
-         w=10**xlmdot
+         w=10**logMdot
 
        end subroutine   eval_Krticka25_wind
 
@@ -491,14 +534,14 @@
 
          wind_scheme = 20.0
 
-         xlmdot=-40.314+15.438*lteff+45.838/gmlogg-8.284*lteff/gmlogg+1.0564*gmrstar
-         xlmdot=xlmdot-lteff*gmrstar/2.36-1.1967*gmrstar/gmlogg+11.6*logZ_div_Zsun
-         xlmdot=xlmdot-4.223*lteff*logZ_div_Zsun-16.377*logZ_div_Zsun/gmlogg+(gmrstar*logZ_div_Zsun)/81.735
+         logMdot=-40.314+15.438*lteff+45.838/gmlogg-8.284*lteff/gmlogg+1.0564*gmrstar
+         logMdot=logMdot-lteff*gmrstar/2.36-1.1967*gmrstar/gmlogg+11.6*logZ_div_Zsun
+         logMdot=logMdot-4.223*lteff*logZ_div_Zsun-16.377*logZ_div_Zsun/gmlogg+(gmrstar*logZ_div_Zsun)/81.735
          !hehratio=0.25*(Y/X)    !Alex said it doesn't change much
          hehratio=0.085
-         xlmdot=xlmdot+0.0475-0.559*hehratio
+         logMdot=logMdot+0.0475-0.559*hehratio
 
-         w=10**xlmdot
+         w=10**logMdot
 
        end subroutine   eval_GormazMatamala23_wind
 
@@ -624,19 +667,19 @@
 
        subroutine eval_Pauli25_wind(w)
           real(dp), intent(inout) :: w
-          real(dp) :: xlmdot, Meff
+          real(dp) :: logMdot, Meff
 
           wind_scheme = 26.0
 
           ! eq 5 from Pauli et al, 2025, A&A, 697 (2025) A114
-          xlmdot = -3.92 + 4.27*log_gamma_edd + 0.86*logZ_div_Zsun
-          w = exp10(xlmdot)
+          logMdot = -3.92 + 4.27*log_gamma_edd + 0.86*logZ_div_Zsun
+          w = 10**logMdot
 
        end subroutine eval_Pauli25_wind
 
        subroutine eval_Bjorklund23_wind(w)
           real(dp), intent(inout) :: w
-          real(dp) :: xlmdot, Meff
+          real(dp) :: logMdot, Meff
 
           wind_scheme = 21.0
 
@@ -647,29 +690,58 @@
           Meff = M*(1d0 - 0.34d0*L/(pi4*clight*s% cgrav(1)*M))  ! effective mass
 
           ! eq 7 from Björklund et al, 2023, A&A, Volume 676, id.A109, 14 pp.
-          xlmdot = - 5.52d0 &
+          logMdot = - 5.52d0 &
                  + 2.39d0 * log10(L/(1d6*Lsun)) &
                  - 1.48d0 * log10(M/(4.5d1*Msun)) &
                  + 2.12d0 * log10(Tsurf/4.5d4) &
                  + (0.75d0 - 1.87d0 * log10(Tsurf/4.5d4)) * logZ_div_Zsun
-          w = exp10(xlmdot)
+          w = 10**logMdot
 
        end subroutine eval_Bjorklund23_wind
 
        subroutine eval_Vink17_wind(w)
           real(dp), intent(inout) :: w
-          real(dp) :: xlmdot
+          real(dp) :: logMdot
 
           wind_scheme = 27.0
 
-          xlmdot = - 13.3d0 &
+          logMdot = - 13.3d0 &
                  + 1.36d0 * log10(L/Lsun) &
                  + 0.61 * logZ_div_Zsun
-          w = exp10(xlmdot)
+          w = 10**logMdot
 
           write(*,*) "Here are V17 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
 
        end subroutine eval_Vink17_wind
+
+       subroutine eval_Sabhahit25_wind(w)
+          real(dp), intent(inout) :: w
+          real(dp) :: logMdot
+          real(dp) :: a,b,c,T1,T2,G1,G2,Tref,Mref,f_low,f_high,sigmaT
+
+          wind_scheme = 29.5
+
+          a = -5.527
+          Tref = 38
+          Mref = 60 - 0.521*(Tsurf/1000-Tref)
+          f_low = -1.864*log10(M/Msun/Mref)
+          f_high = -9.865*log10(M/Msun/Mref)
+          b = -2.062 + 5.671*log10(M/Msun/Mref)
+          c = 3.974
+          G1 = 0.178*exp(9.611*log10(M/Msun/Mref))
+          G2 = 0.291*exp(8.658*log10(M/Msun/Mref))
+          T2 = 16.941-7.274*log10(M/Msun/Mref)
+          T1 = 25
+          sigmaT = 2
+
+          logMdot = a + log10(10**f_low + 10**f_high) &
+          + b * log10((Tsurf/1000)/Tref) + c * log10((Tsurf/1000)/Tref)**2 &
+          -G1 * exp(-((Tsurf/1000-T1)/sigmaT)**2) &
+          -G2 * exp(-((Tsurf/1000-T2)/sigmaT)**2)
+
+          w = 10**logMdot
+
+       end subroutine eval_Sabhahit25_wind
 
        subroutine eval_thin_winds(w)
          real(dp), intent(inout) :: w
@@ -708,6 +780,9 @@
            elseif (s%x_character_ctrl(2) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(2) =='Sa25') then
+             call eval_Sabhahit25_wind(w)
+             write(*,*) "Here are Sa25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            end if
 
          else if (gmlogg<=3.0d0 .and. .not. thick_met) then
@@ -732,13 +807,16 @@
            elseif (s%x_character_ctrl(3) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(3) =='Sa25') then
+             call eval_Sabhahit25_wind(w)
+             write(*,*) "Here are Sa25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            end if
 
          else
            if ( s%x_character_ctrl(4) =='NdJ90' ) then
              call eval_Nieuwenhuijzen_deJager_90_wind(w)
              write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elif ( s%x_character_ctrl(4) =='V01' ) then
+           elseif ( s%x_character_ctrl(4) =='V01' ) then
              call eval_Vink01_wind(w)
              write(*,*) "Here are V01 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif (s%x_character_ctrl(4) =='VS21') then
@@ -756,6 +834,9 @@
            elseif (s%x_character_ctrl(4) =='P25') then
              call eval_Pauli25_wind(w)
              write(*,*) "Here are P25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif (s%x_character_ctrl(4) =='Sa25') then
+             call eval_Sabhahit25_wind(w)
+             write(*,*) "Here are Sa25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            end if
 
          end if
@@ -765,15 +846,15 @@
 
        subroutine eval_Vink11_wind(w)
            real(dp), intent(inout) :: w
-           real(dp) :: xlmdot
+           real(dp) :: logMdot
 
 
            if (gamma_edd >= gamma_edd_switch .and. gamma_edd >= gamma_edd_old ) then
              wind_scheme = 40.0
 
-             xlmdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(Mhom_switch*Msun))
-             ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "Mhom_switch ", log10(M/(Mhom_switch*Msun))
-             w = 10**(xlmdot)
+             logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(M_switch*Msun))
+             ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "M_switch ", log10(M/(M_switch*Msun))
+             w = 10**(logMdot)
              write(*,*) "Here are V11 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            else
              call eval_thin_winds(w)
@@ -784,59 +865,59 @@
 
         subroutine eval_Bestenlehner20_wind(w)
          real(dp), intent(inout) :: w
-         real(dp) :: xlmdot
+         real(dp) :: logMdot
 
          wind_scheme = 41.0
 
 
         !*** Bestenlehner (2020) prescription for hot stars
         !*** with fitting parameters from Brands et al. (2022)
-         xlmdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
-         xlmdot = xlmdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
+         logMdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
+         logMdot = logMdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
 
-         write(*,*) "Here are B20 winds: log(Mdot [Msun/yr]) =", xlmdot
+         write(*,*) "Here are B20 winds: log(Mdot [Msun/yr]) =", logMdot
 
-         w = 10**(xlmdot)
+         w = 10**(logMdot)
 
 
        end subroutine eval_Bestenlehner20_wind
 
        subroutine eval_GrafenerHamann08_wind(w)
         real(dp), intent(inout) :: w
-        real(dp) :: xlmdot
+        real(dp) :: logMdot
         ! Grafener, G. & Hamann, W.-R. 2008, A&A 482, 945
 
         wind_scheme = 42.0
 
-        xlmdot = 10.046 + 1.727*log10(gamma_edd-0.326) - 3.5*log10(Tsurf) + 0.42*log10(L/Lsun) - 0.45*X
+        logMdot = 10.046 + 1.727*log10(gamma_edd-0.326) - 3.5*log10(Tsurf) + 0.42*log10(L/Lsun) - 0.45*X
 
-        write(*,*) "Here are GH08 winds: log(Mdot [Msun/yr]) =", xlmdot
+        write(*,*) "Here are GH08 winds: log(Mdot [Msun/yr]) =", logMdot
 
-        w = 10**(xlmdot)
+        w = 10**(logMdot)
 
       end subroutine eval_GrafenerHamann08_wind
 
        subroutine eval_Yoon06_wind(w)
         real(dp), intent(inout) :: w
-        real(dp) :: xlmdot
+        real(dp) :: logMdot
 
         wind_scheme = 43.0
 
         if ( log10(L/Lsun) <= 4.5 ) then
-          xlmdot = -36.8 + 6.8*log10(L/Lsun)-2.85*X + 0.85*logZ_div_Zsun
+          logMdot = -36.8 + 6.8*log10(L/Lsun)-2.85*X + 0.85*logZ_div_Zsun
         else
-          xlmdot = -12.95 + 1.5*log10(L/Lsun) - 2.85*X + 0.85*logZ_div_Zsun
+          logMdot = -12.95 + 1.5*log10(L/Lsun) - 2.85*X + 0.85*logZ_div_Zsun
         end if
 
-        write(*,*) "Here are Y06 winds: log(Mdot [Msun/yr]) =", xlmdot
+        write(*,*) "Here are Y06 winds: log(Mdot [Msun/yr]) =", logMdot
 
-        w = 10**(xlmdot)
+        w = 10**(logMdot)
 
       end subroutine eval_Yoon06_wind
 
        subroutine eval_NugisLamers_wind(w)
         real(dp), intent(inout) :: w
-        real(dp) :: xlmdot
+        real(dp) :: logMdot
 
         wind_scheme = 44.0
 
@@ -844,61 +925,61 @@
 
          if ( .not. s% x_logical_ctrl(3) ) then
 
-           xlmdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
+           logMdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
 
           ! Addition of the calibrations from Eldridge & Vink (2006), taken from the study of late-type WN and WC
          !   mass loss predictions of Vink & de Koter (2005). Also this is the GENEC model
         else if (.not. HPoor_WR_condition .or. Z<=0.03d0) then
             ! WN
-            xlmdot=-13.60d0+1.63d0*logL_div_Lsun+2.22d0*log10(Y)+0.85d0*logZ_div_Zsun
+            logMdot=-13.60d0+1.63d0*logL_div_Lsun+2.22d0*log10(Y)+0.85d0*logZ_div_Zsun
         else
             ! WC + WO
             if (s% kap_rq% Zbase > Zsolar ) then          ! Zinit>Zsolar
-              xlmdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.40d0*logZ_div_Zsun
+              logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.40d0*logZ_div_Zsun
             else if (s% kap_rq% Zbase  >  0.002d0) then
-              xlmdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*logZ_div_Zsun
+              logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*logZ_div_Zsun
             else
               if (s% kap_rq% Zbase  <  0.00000001d0) then
-                   xlmdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
+                   logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
                            0.35d0*log10(Z/0.002d0)
 
              else
 
-              xlmdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
+              logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
                           0.35d0*log10(s% kap_rq% Zbase/0.002d0)
 
             end if
           end if
         end if
 
-        write(*,*) "Here are NL00 winds: log(Mdot [Msun/yr]) =", xlmdot
+        write(*,*) "Here are NL00 winds: log(Mdot [Msun/yr]) =", logMdot
 
 
-      w = 10**(xlmdot)
+      w = 10**(logMdot)
 
 
      end subroutine eval_NugisLamers_wind
 
      subroutine eval_Hamann98_wind(w)
       real(dp), intent(inout) :: w
-      real(dp) :: xlmdot
+      real(dp) :: logMdot
 
       wind_scheme = 47.0
 
      !*** + metallicity dependence from Vink & de Koeter (2005)
 
-      xlmdot = 1.5*log10(L/Lsun) + 0.85*logZ_div_Zsun - 13.0
+      logMdot = 1.5*log10(L/Lsun) + 0.85*logZ_div_Zsun - 13.0
 
-      write(*,*) "Here are Ha98 winds: log(Mdot [Msun/yr]) =", xlmdot
+      write(*,*) "Here are Ha98 winds: log(Mdot [Msun/yr]) =", logMdot
 
-      w = 10**(xlmdot)
+      w = 10**(logMdot)
 
 
     end subroutine eval_Hamann98_wind
 
      subroutine eval_Shenar19_wind(w)
       real(dp), intent(inout) :: w
-      real(dp) :: xlmdot
+      real(dp) :: logMdot
       real(dp) :: C1,C2,C3,C4,C5
 
       wind_scheme = 46.0
@@ -930,18 +1011,18 @@
        C5 = 0.95
      end if
 
-      xlmdot = C1 + C2 * log10(L/Lsun) + C3 * log10(Tsurf) + C4* log10(Y) + C5*log10(Z)
+      logMdot = C1 + C2 * log10(L/Lsun) + C3 * log10(Tsurf) + C4* log10(Y) + C5*log10(Z)
 
-      write(*,*) "Here are Sh19 winds: log(Mdot [Msun/yr]) =", xlmdot
+      write(*,*) "Here are Sh19 winds: log(Mdot [Msun/yr]) =", logMdot
 
-      w = 10**(xlmdot)
+      w = 10**(logMdot)
 
 
     end subroutine eval_Shenar19_wind
 
     subroutine eval_Sander19_wind(w)
       real(dp), intent(inout) :: w
-      real(dp) :: xlmdot,fWN,fWCO,Zscale
+      real(dp) :: logMdot,fWN,fWCO,Zscale
 
       wind_scheme = 48.0
 
@@ -956,12 +1037,12 @@
 
       end if
 
-      xlmdot = -8.31 + 0.68*log10(L/Lsun)
-      ! xlmdot = xlmdot+Zscale                                                  ! I do not use Z-calibrations,
+      logMdot = -8.31 + 0.68*log10(L/Lsun)
+      ! logMdot = logMdot+Zscale                                                  ! I do not use Z-calibrations,
                                                                                 !  I don't get how to implement them
 
-      w = 10**xlmdot
-      write(*,*) "Here are S19 winds: log(Mdot [Msun/yr]) =", xlmdot
+      w = 10**logMdot
+      write(*,*) "Here are S19 winds: log(Mdot [Msun/yr]) =", logMdot
 
 
     end subroutine eval_Sander19_wind
@@ -970,7 +1051,7 @@
     subroutine eval_SanderVink20_wind(w)
        real(dp), intent(inout) :: w
        real(dp) :: mdg_a,mdg_cbd,mdg_geddb,mdg_logMdotOff,logMdot_breakdown,logMdot_pureWR
-       real(dp) :: xlmdot
+       real(dp) :: logMdot
 
        wind_scheme = 45.0
 
@@ -981,12 +1062,12 @@
        mdg_logMdotOff = 0.23*logZ_div_Zsun-2.61
        logMdot_pureWR = mdg_a*(log10(-log10(1.0-gamma_edd))) + mdg_logMdotOff
        logMdot_breakdown = log10(2.0) * (mdg_geddb/gamma_edd)**(mdg_cbd)
-       xlmdot = logMdot_pureWR - logMdot_breakdown
-       !    xlmdot = xlmdot - 6.0d0*log10(teff/141000.0d0) ! Sander et al. 2023
+       logMdot = logMdot_pureWR - logMdot_breakdown
+       !    logMdot = logMdot - 6.0d0*log10(teff/141000.0d0) ! Sander et al. 2023
 
-       write(*,*) "Here are SV20 winds: log(Mdot [Msun/yr]) =", xlmdot
+       write(*,*) "Here are SV20 winds: log(Mdot [Msun/yr]) =", logMdot
 
-       w = 10**(xlmdot)
+       w = 10**(logMdot)
        wind_scheme = 5.0
 
 
