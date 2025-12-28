@@ -293,6 +293,17 @@
         "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
       },
       {
+        "id": "Sa25",
+        "ref": "Sabhahit et al. 2025",
+        "note": "Theoretical. Function of Teff and Mass (not Luminosity). Only valid for Very Massive Stars. Predicts two bistability jumps. This formulation is only Teff and mass dependent, and not luminosity dependent.",
+        "note_2": "Predicts two bistability jumps (Fe IV -> Fe III ~25kK, Fe III -> Fe II ~15kK).",
+        "parameter_space": "Metallicity: Solar (Z=0.02). Mass: 40-135 Msun. Luminosity: fixed at logL=6.0. Teff: 12-50 kK.",
+        "z_solar_calibration": 0.02,
+        "warning": "Limited parameter space with no luminosity and metallicity variations.",
+        "warning_2": "Existence and effective temperature initiation of both bistability jumps were not observationally verified",
+        "url": "https://arxiv.org/abs/2512.13782"
+      },
+      {
         "id": "NdJ90",
         "ref": "Nieuwenhuijzen & de Jager 1990",
         "note": "Empirical",
