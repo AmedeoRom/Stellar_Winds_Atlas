@@ -256,7 +256,8 @@
 
 
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
-       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M*Msun)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+       const_k = (clight*Msun*1d5)/(Lsun*3600d0*24d0*365d0)           ! constant to evaluate eta
 
        eta_trans = 0.75/(1+(vesc**2)/(vterm**2))
        ! eta = (ABS(s% mstar_dot /Msun)*secyer * vterm)/(L/(clight))
