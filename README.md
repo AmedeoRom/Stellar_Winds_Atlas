@@ -22,6 +22,9 @@ This repository contains the default [MESA](https://docs.mesastar.org/en/latest/
 > **The Tool:** Argus is an AI-assisted companion that constructs the MESA inlist_project files for the user based on the guidelines of the Atlas papers.
 
 > [!CAUTION]
+> LLMs represent a huge environmental cost during training and usage, in terms of greenhouse gas emissions, energy consumption, and water usage for their cooling. [Companies may greenwash their operational emissions, while not being fully transparent about total lifecyle impacts](https://www.societybyte.swiss/en/2025/07/15/environmental-impact-of-large-language-models-green-or-polluting/). LLMs are very high cost-inefficient tools that use a lot of power to "guess" the right answer. Your brain uses orders of magnitude less power to reach to the same answer. Try to study the inlists on your own first, please!
+
+> [!CAUTION]
 > Please, always scrutinize the physical validity of your models. LLMs can produce wrong results! Also, this protocol is strictly a navigational tool for selecting initial metallicity and stellar wind configurations, issuing warnings where appropriate. It does not govern the full spectrum of initial conditions required for your simulations. Argus facilitates model construction but is by no means a substitute for human-based modelling and analysis. Do not treat your stellar model as a blackbox, please.
 
 ### What is Argus?
