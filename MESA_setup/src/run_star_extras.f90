@@ -28,39 +28,40 @@
 !  11.0: B95   (Bloecker 1995)
 !
 ! Thin Winds (Hot Stars):
-!  20.0: GM23  (Gormaz-Matamala+ 2023)
-!  21.0: Bj23   (Bjorklund+ 2023)
-!  22.0: V01   (Vink+ 2001)
-!  23.0: V17   (Vink 2017)
-!  24.0: K24   (Krticka+ 2024)
-!  25.0: VS21  (Vink & Sander 2021)
+!  20.0: NdJ90 (Nieuwenhuijzen & de Jager 1990) --> Also for cool supergiants!
+!  21.0: V01   (Vink+ 2001)
+!  21.5: VS21  (Vink & Sander 2021)
+!  22.0: V17   (Vink 2017)
+!  23.0: Bj23  (Bjorklund+ 2023)
+!  24.0: GM23  (Gormaz-Matamala+ 2023)
+!  25.0: K24   (Krticka+ 2024)
+!  25.5: K25   (Krticka+ 2025) --> Only for Z < 0.2 Zsun!
 !  26.0: P25   (Pauli+ 2025) --> Also for WR and He stars!
-!  27.0: V17   (Vink 2017)
-!  28.0: NdJ90 (Nieuwenhuijzen & de Jager 1990)
-!  29.0: K25   (Krticka+ 2025)
-!  29.5: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
+!  27.0: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
 !
 ! Dust/Cool Winds:
 !  30.0: dJ88  (de Jager+ 1988)
 !  31.0: vL05  (van Loon+ 2005)
-!  32.0: Be23   (Beasor+ 2023)
+!  32.0: Be23  (Beasor+ 2023)
 !  33.0: Ya23  (Yang+ 2023)
 !  34.0: A24   (Antoniadis+ 2024)
 !  35.0: D24   (Decin+ 2024)
 !
 ! Thick/WR Winds:
-!  40.0: V11   (Vink+ 2011)
-!  41.0: B20   (Bestenlehner 2020)
-!  42.0: GH08  (Grafener & Hamann 2008)
+!  40.0: L89   (Langer 1989  + Vink, de Koter 2005)
+!  41.0: Ha98  (Hamann & Koesterke 1998 + Vink, de Koter 2005)
+!  42.0: NL00  (Nugis & Lamers 2000)
 !  43.0: Y06   (Yoon+ 2006)
-!  44.0: NL00  (Nugis & Lamers 2000)
-!  45.0: SV20  (Sander & Vink 2020)
+!  44.0: GH08  (Grafener & Hamann 2008)
+!  45.0: V11   (Vink+ 2011)
 !  46.0: Sh19  (Shenar+ 2019 plus 2020 erratum)
-!  47.0: Ha98  (Hamann & Koesterke 1998 + Vink, de Koter 2005)
-!  48.0: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
+!  47.0: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
+!  48.0: B20   (Bestenlehner 2020)
+!  49.0: SV20  (Sander & Vink 2020)
 !
 ! Special Cases:
-!  90.0: LBV   (Belczynski+ 2010)
+!  90.0: Bk10   (Belczynski+ 2010; LBV)
+!  91.0: Vb98   (Vanbeveren+ 1998 + Vink, de Koter 2005 for WR/OB; three different formulae for OB, WR, and cool supergiants)
 !===================================================================================
 
       module run_star_extras
@@ -502,7 +503,7 @@
          real(dp), intent(inout) :: w
          real(dp) :: hehratio
 
-         wind_scheme = 24.0
+         wind_scheme = 25.0
 
          logMdot=-13.82d0+0.358*logZ_div_Zsun+(1.52d0-0.11*logZ_div_Zsun)*(log10(L/Lsun)-6.d0) &
         + 13.82d0*log10((1.0+0.73*logZ_div_Zsun)*exp(-((Tsurf/1000.0d0-14.16d0)/3.58d0)**2.d0) &
@@ -516,7 +517,7 @@
          real(dp), intent(inout) :: w
          real(dp) :: a,b,c,d,e
 
-         wind_scheme = 29.0
+         wind_scheme = 25.5
 
          a = -7.72
          b = 1.49
@@ -533,7 +534,7 @@
          real(dp), intent(inout) :: w
          real(dp) :: hehratio
 
-         wind_scheme = 20.0
+         wind_scheme = 24.0
 
          logMdot=-40.314+15.438*lteff+45.838/gmlogg-8.284*lteff/gmlogg+1.0564*gmrstar
          logMdot=logMdot-lteff*gmrstar/2.36-1.1967*gmrstar/gmlogg+11.6*logZ_div_Zsun
@@ -546,21 +547,41 @@
 
        end subroutine   eval_GormazMatamala23_wind
 
-       subroutine eval_Nieuwenhuijzen_deJager_90_wind(w)
+       subroutine eval_Nieuwenhuijzen_deJager90_wind(w)
          real(dp), intent(inout) :: w
 
-         wind_scheme = 28.0
+         wind_scheme = 20.0
 
          w = 9.6d-15*(R/Rsun)**0.81*(L/Lsun)**1.24*(M/Msun)**0.16*Z_div_Z_solar**0.5
 
-       end subroutine   eval_Nieuwenhuijzen_deJager_90_wind
+       end subroutine   eval_Nieuwenhuijzen_deJager90_wind
+
+       subroutine eval_Vanbeveren98_wind(w,which)
+         real(dp), intent(inout) :: w
+         character(len=*), intent(in) :: which
+
+         wind_scheme = 92.0
+
+         !*** + metallicity dependence from Vink & de Koeter (2005)
+
+         if ( which == "OB" ) then
+           logMdot = 1.67*log10(L/Lsun) -1.55*log10(Tsurf) + 0.85*logZ_div_Zsun -8.29
+         elseif ( which == "cool" ) then
+           logMdot = 0.8*log10(L/Lsun) -8.7
+         elseif ( which == "WR" ) then
+           logMdot = log10(L/Lsun) + 0.85*logZ_div_Zsun -10
+         end if
+
+         w=10**logMdot
+
+       end subroutine   eval_Vanbeveren98_wind
 
 
        subroutine eval_Vink01_wind(w)
          real(dp), intent(inout) :: w
          real(dp) :: alfa, w1, w2, logMdot, dT, vinf_div_vesc
 
-         wind_scheme = 22.0
+         wind_scheme = 21.0
 
          ! alfa = 1 for hot side, = 0 for cool side
          if (Tsurf > 27500d0) then
@@ -623,7 +644,7 @@
          real(dp), intent(inout) :: w
          real(dp) :: logMdot, vinf_div_vesc
 
-         wind_scheme = 25.0
+         wind_scheme = 21.5
 
          if (Tsurf > 2.5d4) then ! eval hot side wind (eqn 24)
            vinf_div_vesc = 2.6d0 ! this is the hot side galactic value
@@ -682,7 +703,7 @@
           real(dp), intent(inout) :: w
           real(dp) :: logMdot, Meff
 
-          wind_scheme = 21.0
+          wind_scheme = 23.0
 
           ! "This recipe is valid within the ranges 4.5 <= log L/LSun <= 6.0,
           !    15 <= M/LSun <= 80, 15 000K <= Teff <= 50 000 K, and 0.2 <= Z/ZSun <= 1.0"
@@ -704,7 +725,7 @@
           real(dp), intent(inout) :: w
           real(dp) :: logMdot
 
-          wind_scheme = 27.0
+          wind_scheme = 22.0
 
           logMdot = - 13.3d0 &
                  + 1.36d0 * log10(L/Lsun) &
@@ -720,7 +741,7 @@
           real(dp) :: logMdot
           real(dp) :: a,b,c,T1,T2,G1,G2,Tref,Mref,f_low,f_high,sigmaT
 
-          wind_scheme = 29.5
+          wind_scheme = 27.0
 
           a = -5.527
           Tref = 38
@@ -758,8 +779,11 @@
 
          elseif (gmlogg>3.0d0 .and. .not. thick_met) then
            if ( s%x_character_ctrl(2) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager_90_wind(w)
+             call eval_Nieuwenhuijzen_deJager90_wind(w)
              write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif ( s%x_character_ctrl(2) =='Vb98' ) then
+             call eval_Vanbeveren98_wind(w,"OB")
+             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif ( s%x_character_ctrl(2) =='V01' ) then
              call eval_Vink01_wind(w)
              write(*,*) "Here are V01 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
@@ -786,10 +810,14 @@
              write(*,*) "Here are Sa25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            end if
 
+
          else if (gmlogg<=3.0d0 .and. .not. thick_met) then
            if ( s%x_character_ctrl(3) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager_90_wind(w)
+             call eval_Nieuwenhuijzen_deJager90_wind(w)
              write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif ( s%x_character_ctrl(3) =='Vb98' ) then
+             call eval_Vanbeveren98_wind(w,"OB")
+             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif ( s%x_character_ctrl(3) =='V01' ) then
              call eval_Vink01_wind(w)
              write(*,*) "Here are V01 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
@@ -815,8 +843,11 @@
 
          else
            if ( s%x_character_ctrl(4) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager_90_wind(w)
+             call eval_Nieuwenhuijzen_deJager90_wind(w)
              write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+           elseif ( s%x_character_ctrl(4) =='Vb98' ) then
+             call eval_Vanbeveren98_wind(w,"OB")
+             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
            elseif ( s%x_character_ctrl(4) =='V01' ) then
              call eval_Vink01_wind(w)
              write(*,*) "Here are V01 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
@@ -851,7 +882,7 @@
 
 
            if (gamma_edd >= gamma_edd_switch .and. gamma_edd >= gamma_edd_old ) then
-             wind_scheme = 40.0
+             wind_scheme = 45.0
 
              logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(M_switch*Msun))
              ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "M_switch ", log10(M/(M_switch*Msun))
@@ -868,7 +899,7 @@
          real(dp), intent(inout) :: w
          real(dp) :: logMdot
 
-         wind_scheme = 41.0
+         wind_scheme = 48.0
 
 
         !*** Bestenlehner (2020) prescription for hot stars
@@ -888,7 +919,7 @@
         real(dp) :: logMdot
         ! Grafener, G. & Hamann, W.-R. 2008, A&A 482, 945
 
-        wind_scheme = 42.0
+        wind_scheme = 44.0
 
         logMdot = 10.046 + 1.727*log10(gamma_edd-0.326) - 3.5*log10(Tsurf) + 0.42*log10(L/Lsun) - 0.45*X
 
@@ -920,7 +951,7 @@
         real(dp), intent(inout) :: w
         real(dp) :: logMdot
 
-        wind_scheme = 44.0
+        wind_scheme = 42.0
 
          ! If I want an universal NL00 for both WN and WC/WO I take this one below
 
@@ -961,11 +992,27 @@
 
      end subroutine eval_NugisLamers_wind
 
+     subroutine eval_Langer89_wind(w)
+      real(dp), intent(inout) :: w
+      real(dp) :: logMdot
+
+      wind_scheme = 40.0
+
+     !*** + metallicity dependence from Vink & de Koeter (2005)
+
+      logMdot = 2.5*log10(M/Msun) + 0.85*logZ_div_Zsun - 7.1
+
+      write(*,*) "Here are L89 winds: log(Mdot [Msun/yr]) =", logMdot
+
+      w = 10**(logMdot)
+
+    end subroutine eval_Langer89_wind
+
      subroutine eval_Hamann98_wind(w)
       real(dp), intent(inout) :: w
       real(dp) :: logMdot
 
-      wind_scheme = 47.0
+      wind_scheme = 41.0
 
      !*** + metallicity dependence from Vink & de Koeter (2005)
 
@@ -1025,7 +1072,7 @@
       real(dp), intent(inout) :: w
       real(dp) :: logMdot,fWN,fWCO,Zscale
 
-      wind_scheme = 48.0
+      wind_scheme = 47.0
 
       fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)
       fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
@@ -1054,7 +1101,7 @@
        real(dp) :: mdg_a,mdg_cbd,mdg_geddb,mdg_logMdotOff,logMdot_breakdown,logMdot_pureWR
        real(dp) :: logMdot
 
-       wind_scheme = 45.0
+       wind_scheme = 49.0
 
        !*** Sander & Vink formula for WR winds as a function of Gamma_e
        mdg_a = 2.932
@@ -1111,10 +1158,18 @@
 
               call eval_NugisLamers_wind(w)
 
-            elseif ( s%x_character_ctrl(5)=='Ha95' ) then
+            elseif ( s%x_character_ctrl(5)=='Vb98' ) then
+
+              call eval_Vanbeveren98_wind(w,"WR")
+              write(*,*) "Here are Vb98 WR winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+
+            elseif ( s%x_character_ctrl(5)=='L89' ) then
+
+              call eval_Langer89_wind(w)
+
+            elseif ( s%x_character_ctrl(5)=='Ha98' ) then
 
               call eval_Hamann98_wind(w)
-
             end if
 
 
@@ -1139,6 +1194,15 @@
            elseif( s%x_character_ctrl(6)=='NL00') then
 
              call eval_NugisLamers_wind(w)
+
+           elseif ( s%x_character_ctrl(6)=='Vb98' ) then
+
+             call eval_Vanbeveren98_wind(w,"WR")
+             write(*,*) "Here are Vb98 WR winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+
+           elseif ( s%x_character_ctrl(6)=='L89' ) then
+
+             call eval_Langer89_wind(w)
 
             end if
 
@@ -1239,10 +1303,14 @@
            which_cool = 8
          end if
 
-
          if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
 
            call eval_de_Jager88_wind(w)
+
+         elseif ( s%x_character_ctrl(which_cool)=='Vb98' ) then
+
+           call eval_Vanbeveren98_wind(w,"cool")
+           write(*,*) "Here are Vb98 RSG winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
 
          elseif ( s%x_character_ctrl(which_cool)=='vL05' ) then
 
