@@ -29,7 +29,7 @@
      !new_surface_rotation_v = 350
      !set_surface_rotation_v = .true.
      !relax_surface_rotation_v = .true.
-     new_omega_div_omega_crit = 0.4
+     new_omega_div_omega_crit = 0.0
      !set_omega_div_omega_crit = .true.
      set_initial_omega_div_omega_crit = .true.
      relax_omega_div_omega_crit = .true.
@@ -92,16 +92,16 @@
     super_eddington_wind_Ledd_factor = 1d99                                     ! L > 10^99 Lnucl to have MESA super-Eddington winds.
                                                                                 !  it is just a way to not make MESA use its super-Eddington prescription
 
-    x_character_ctrl(1) = 'gamma_eta'                                           ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
+    x_character_ctrl(1) = 'gamma_eta'                                                 ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
     x_ctrl(2) = 0.5
 
-    x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: NdJ90/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
-    x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/V01/VS21/Bj23/K24/K25/P25/Sa25
-    x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: NdJ90/V01/VS21/Bj23/K24/K25/P25/Sa25 (x_logical_ctrl(1) == .true.)
-    x_character_ctrl(5) = 'B20'                                                 ! WR winds: Ha95/NL00/Y06/GH08/V11/Sh19/S19/B20
-    x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: NL00/Y06/Sh19/S19/SV20
-    x_character_ctrl(7) = 'dJ88'                                                ! 1st Cool supergiant winds: dJ88/vL05/Be23/Ya23/A24/D24
-    x_character_ctrl(8) = 'A24'                                                 ! 2nd (optional) WR-poor winds: dJ88/vL05/B23/Ya23/A24/D24
+    x_character_ctrl(2) = 'P25'                                                ! High log g thin winds: NdJ90/Vb98/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(3) = 'P25'                                                ! Low log g thin winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(4) = 'P25'                                                ! Cool WR winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25 (x_logical_ctrl(2) == .true.)
+    x_character_ctrl(5) = 'B20'                                                ! WR winds: L89/Ha98/Vb98/NL00/Y06/GH08/V11/Sh19/S19/B20
+    x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: L89/Vb98/NL00/Y06/Sh19/S19/SV20
+    x_character_ctrl(7) = 'dJ88'                                                ! 1st Cool supergiant winds: dJ88/Vb98/vL05/Be23/Ya23/A24/D24
+    x_character_ctrl(8) = 'A24'                                                ! 2nd (optional) WR-poor winds: dJ88/Vb98/vL05/B23/Ya23/A24/D24
     x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
 
     x_character_ctrl(10) = 'Xsurf'                                              ! Canonical WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
@@ -109,7 +109,7 @@
 
     x_ctrl(4) = 0.05d0                                                          ! Delta for thick winds interpolation
     x_ctrl(5) = 30                                                              ! [kK] Teff threshold for cool WR winds
-    x_logical_ctrl(2) = .true.                                                  ! Cool WR thin winds: do I use thin (.true.)
+    x_logical_ctrl(2) = .false.                                                  ! Cool WR thin winds: do I use thin (.true.)
                                                                                 !    or thick (.false.) winds for Mdot?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
@@ -202,9 +202,9 @@
 
 
   ! timesteps
-    max_years_for_timestep = 1d3
+    ! max_years_for_timestep = 1d3
 
-    varcontrol_target = 0.3d-3
+    ! varcontrol_target = 0.3d-3
     convective_bdy_weight = 0.5d0
     !
     mesh_delta_coeff = 0.75d0
@@ -248,7 +248,7 @@
 
   ! mesh
      mesh_Pgas_div_P_exponent = 0.35d0
-     max_dq = 1d-4 ! 1d-2
+     ! max_dq = 1d-4 ! 1d-2
      ! min_dq_for_xa = 1d-5 ! default 1d-14
      max_allowed_nz = 250000
 
