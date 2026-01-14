@@ -236,6 +236,13 @@
         "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A.109B"
       },
       {
+        "id": "Vb98",
+        "ref": "Vanbeveren et al. 1998",
+        "note": "Standard OB mass loss (Eq. 1.1 in paper). Includes metallicity scaling (+0.85 logZ) adapted from Vink & de Koter (2005).",
+        "parameter_space": "CHB stars prior to LBV phase. Formula: log Mdot = 1.67 log L - 1.55 log Teff - 8.29 .",
+        "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
+      },
+      {
         "id": "V01",
         "ref": "Vink et al. 2001",
         "note": "Theoretical, includes bistability jump",
@@ -328,6 +335,14 @@
         "url": "https://doi.org/10.1051/0004-6361:20042555"
       },
       {
+        "id": "Vb98",
+        "ref": "Vanbeveren et al. 1998",
+        "note": "RSG mass loss based on Jura (1987) / Reid (1990) for LMC RSGs (Eq. 1.2 in paper).",
+        "parameter_space": "Derived for LMC RSGs with M_bol < -7. Implementation uses: log Mdot = 0.8 log L - 8.7.",
+        "warning": "Implementation does NOT scale with metallicity. The paper suggests Galactic rates might be ~1.6x higher than this LMC-based formula. However, recent papers like Antoniadis et al. (2025) disagree",
+        "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
+      },
+      {
         "id": "Be23",
         "ref": "Beasor et al. 2023",
         "note": "Mass dependent",
@@ -362,6 +377,22 @@
     ],
     "optically_thick_WR_winds": [
       {
+        "id": "L89",
+        "ref": "Langer 1989",
+        "note": "Mass-dependent WR mass loss (derived from Eq. 11/14 in paper). Includes metallicity scaling (+0.85 logZ).",
+        "parameter_space": "Wolf-Rayet stars (WNE, WC, WO). Formula: log Mdot = 2.5 log M - 7.1.",
+        "warning": "The original paper derives the exponent alpha=2.5.",
+        "url": "https://ui.adsabs.harvard.edu/abs/1989A%26A...220..135L"
+      },
+      {
+        "id": "Vb98",
+        "ref": "Vanbeveren et al. 1998",
+        "note": "Generic WR mass loss (Eq. 1.3 in paper). Includes metallicity scaling (+0.85 logZ) from Vink & de Koeter (2005).",
+        "parameter_space": "Defined for Hydrogen-deficient CHeB stars with log L >= 4.5 and Teff >= 30 kK. Formula: log Mdot = log L - 10.",
+        "warning": "Simple relation dependent primarily on Luminosity. Does not distinguish between WN/WC types dynamically.",
+        "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
+      },
+      {
         "id": "V11",
         "ref": "Vink et al. 2011",
         "note": "Theoretical. Requires 'eta' transition. Sabhahit et al. (2023) recommends to use V01 without the temperature-dependent terms as the baseline for the transition check.",
@@ -390,7 +421,7 @@
         "id": "NL00",
         "ref": "Nugis & Lamers 2000",
         "note": "Canonical empirical. Provides generic WR formula, plus specific WN and WC formulae. Depends on surface Y and Z directly (not just scaled to solar). Z_solar calibrated with Z/X=0.0244 (Grevesse et al. 1996).",
-        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration"
+        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration",
         "parameter_space": "Galactic WN and WC stars. Often used with Eldridge & Vink (2006) recalibration for WC/WO metallicity scaling. Nugis & Lamers (2002) support the high rates, arguing for deep-seated critical points.",
         "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
