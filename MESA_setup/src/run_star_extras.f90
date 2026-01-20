@@ -1340,6 +1340,14 @@
 
        end subroutine eval_cool_wind
 
+       ! ------ STOP WINDS WHEN WE REACH THE END OF CORE-C BURNING -------------
+       if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
+
+         w = 0
+         write(*,*) "We are past core-C burning. Winds are turned off"
+
+
+       end if
 
       end subroutine my_other_wind
 
@@ -1468,7 +1476,7 @@
          if (ierr /= 0) return
          extras_finish_step = keep_going
 
-         if (s% center_c12<=1d-4 .and. s% center_h1<=1d-4) then
+         if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
 
 
            ! ---------- From Schenider 2024 -----------------------------
