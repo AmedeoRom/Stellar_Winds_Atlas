@@ -49,19 +49,24 @@
 !
 ! Thick/WR Winds:
 !  40.0: L89   (Langer 1989  + Vink, de Koter 2005)
-!  41.0: Ha98  (Hamann & Koesterke 1998 + Vink, de Koter 2005)
-!  42.0: NL00  (Nugis & Lamers 2000)
-!  43.0: Y06   (Yoon+ 2006)
-!  44.0: GH08  (Grafener & Hamann 2008)
-!  45.0: V11   (Vink+ 2011)
-!  46.0: Sh19  (Shenar+ 2019 plus 2020 erratum)
-!  47.0: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
-!  48.0: B20   (Bestenlehner 2020)
-!  49.0: SV20  (Sander & Vink 2020)
+!  40.5: Ha98  (Hamann & Koesterke 1998 + Vink, de Koter 2005)
+!  41.0: NL00  (Nugis & Lamers 2000)
+!  41.5: Y06   (Yoon+ 2006)
+!  42.0: GH08  (Grafener & Hamann 2008)
+!  42.5: V11   (Vink+ 2011)
+!  43.0: TSK16 (Tramper, Sana & de Koter 2016)
+!  43.5: Y17   (Yoon 2017)
+!  44.0: Sh19  (Shenar+ 2019 plus 2020 erratum)
+!  44.5: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
+!  45.0: B20   (Bestenlehner 2020)
+!  45.5: SV20  (Sander & Vink 2020)
 !
 ! Special Cases:
-!  90.0: Bk10   (Belczynski+ 2010; LBV)
-!  91.0: Vb98   (Vanbeveren+ 1998 + Vink, de Koter 2005 for WR/OB; three different formulae for OB, WR, and cool supergiants)
+!  90.0: Vb98   (Vanbeveren+ 1998 + Vink, de Koter 2005 for WR/OB; three different formulae for OB, WR, and cool supergiants)
+!  90.5: H00    (Hurley+ 2000; LBV)
+!  91.0: Bk10   (Belczynski+ 2010; LBV)
+!  91.5: Ch24   (Cheng+ 2024; LBV)
+!  92.0: P26    (Pauli+ 2026; LBV)
 !===================================================================================
 
       module run_star_extras
@@ -81,6 +86,9 @@
       real(dp) :: Mdot_switch,L_switch,M_switch,gamma_edd_switch
       real(dp) :: eta,eta_trans,gamma_edd,gamma_edd_old                         ! gamma_edd_old is to check the previous timestep
       real(dp) :: wind_scheme,wind_scheme_interp                                ! To know which winds model I am using at each timestep
+
+      ! this is used to soften too large changes in wind mass loss rates
+      real(dp) :: old_wind = 0
 
       real(dp) :: max_years_dt_old
       ! these routines are called by the standard run_star check_model
@@ -313,23 +321,6 @@
 
        ! -----------------------------------------------------------------------------------------------------------------------
 
-       if(s% x_logical_ctrl(6)) then ! Belczynski+2010 LBV2 winds (eq. 8) with factor 1
-          if (s% center_h1 < 1.0d-3) then  ! postMS
-            if (log10(L/Lsun) > s% x_ctrl(5) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then ! Humphreys-Davidson limit
-              if ( s% x_character_ctrl(11) == "Bk10" ) then
-                wind_scheme = 90.0
-                w  = 1.0d-4
-                write(*,*) "Here are Bk10 LBV winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-                s% max_years_for_timestep = 1d2
-
-              end if
-
-              return ! This is a way of saying to not check anything below if we reached LBV winds in this phase
-            endif
-          endif
-       endif
-
-
      if ( Tsurf < s% x_ctrl(7) ) then                                          ! cool supergiant winds
 
          s% max_years_for_timestep = 1d2                                       ! To have more resolution during this phase
@@ -464,890 +455,1312 @@
 
      gamma_edd_old = gamma_edd
 
+     !  -----------------------------LBV Winds---------------------------------
+
+    if ( s% x_logical_ctrl(6) ) then
+
+      call eval_LBV_winds(w)
+
+    end if
+
      !  -----------------------------------------------------------------------
+
+     ! ------ STOP WINDS WHEN WE REACH THE END OF CORE-C BURNING -------------
+     if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
+
+       w = 0
+       write(*,*) "We are past core-C burning. Winds are turned off"
+
+
+     end if
+
+     old_wind = w
 
    contains
 
-     subroutine eval_Reimers_wind(w)
-        real(dp), intent(out) :: w
-        include 'formats'
+     ! ====================================================================
+     !  SMOOTHING ROUTINE
+     ! ====================================================================
+     subroutine smooth_wind_log(w, scheme_name)
+       real(dp), intent(inout) :: w
+       character(len=*), intent(in) :: scheme_name
+       logical :: is_smoothed
 
-        if ( s% center_h1 > 0.001 ) then                                       ! GENEC calibrations
-          s% Reimers_scaling_factor = 0.85d0
-        elseif (L/s% prev_Ledd > 1) then
-          s% Reimers_scaling_factor = 3.0d0
+       is_smoothed = .false.
+
+       ! Pauli26-like logic: prevent the wind from dropping too fast.
+       ! This avoids numerical noise and "crazy jumps" downwards.
+       ! We allow rapid increases (no check for w > old_wind).
+       if (old_wind /= 0d0) then
+         if (abs(w) < abs(old_wind) * 0.5d0 .and. s% x_logical_ctrl(7)) then
+           w = old_wind * 0.5d0
+           is_smoothed = .true.
+         end if
+       end if
+
+       if (is_smoothed) then
+         write(*,*) "Here are ", trim(scheme_name), " winds (smoothed): log(Mdot [Msun/yr]) =", log10(ABS(w))
+       else
+         write(*,*) "Here are ", trim(scheme_name), " winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+       end if
+
+     end subroutine smooth_wind_log
+! ====================================================================
+
+subroutine eval_Reimers_wind(w)
+   real(dp), intent(out) :: w
+   include 'formats'
+
+   if ( s% center_h1 > 0.001 ) then                                       ! GENEC calibrations
+     s% Reimers_scaling_factor = 0.85d0
+   elseif (L/s% prev_Ledd > 1) then
+     s% Reimers_scaling_factor = 3.0d0
+   else
+     s% Reimers_scaling_factor = 1.0d0
+   end if
+
+   wind_scheme = 10.0
+
+   w = 4d-13*(L*R/M)/(Lsun*Rsun/Msun)
+   w = w*s% Reimers_scaling_factor
+
+   call smooth_wind_log(w, "Reimers RGB cool")
+
+end subroutine eval_Reimers_wind
+
+subroutine eval_Blocker_wind(w)
+  ! Bloecker, T. 1995, A&A, 297, 727
+   real(dp), intent(out) :: w
+   include 'formats'
+   s% Blocker_scaling_factor = 0.1
+   w = 4.83d-9*(M/Msun)**(-2.1)*(L/Lsun)**2.7*4d-13*(L/Lsun)*(R/Rsun)/(M/Msun)
+   w = w*s% Blocker_scaling_factor
+
+   wind_scheme = 11.0
+   call smooth_wind_log(w, "Blocker AGB cool")
+
+end subroutine eval_Blocker_wind
+
+  subroutine eval_Krticka24_wind(w)
+    real(dp), intent(inout) :: w
+    real(dp) :: hehratio
+
+    wind_scheme = 25.0
+
+    logMdot=-13.82d0+0.358*logZ_div_Zsun+(1.52d0-0.11*logZ_div_Zsun)*(log10(L/Lsun)-6.d0) &
+   + 13.82d0*log10((1.0+0.73*logZ_div_Zsun)*exp(-((Tsurf/1000.0d0-14.16d0)/3.58d0)**2.d0) &
+   + 3.84d0*exp(-((Tsurf/1000.0d0-37.9d0)/56.5d0)**2.d0))
+
+    w=10**logMdot
+    call smooth_wind_log(w, "K24")
+
+  end subroutine   eval_Krticka24_wind
+
+  subroutine eval_Krticka25_wind(w)
+    real(dp), intent(inout) :: w
+
+    ! Local variables for Legendre polynomial implementation
+    real(dp) :: a_param, b_param, T0, dT
+    real(dp) :: log_L_norm, log_Z_norm, T_eff_kK, x_param
+    real(dp) :: sum_term, Cn
+    real(dp) :: P_curr, P_prev, P_prev2
+    real(dp) :: l_coeffs(7,4)
+    integer :: n
+
+    wind_scheme = 25.5
+
+    ! --------------------------------------------------------------------
+    ! Krticka et al. (2025) - Equation 3 & Table 4
+    ! Implemented using Legendre Polynomials
+    ! --------------------------------------------------------------------
+
+    ! Global Parameters
+    a_param = -7.0d0
+    b_param = 1.619d0
+    T0 = 10.0d0   ! kK
+    dT = 35.0d0   ! kK
+
+    ! Legendre Polynomial Coefficients (l_n0, l_n1, l_n2, l_n3)
+    ! n=1
+    l_coeffs(1,1) = -31.333d0
+    l_coeffs(1,2) = -46.3518d0
+    l_coeffs(1,3) = -19.0704d0
+    l_coeffs(1,4) = 0.372222d0
+    ! n=2
+    l_coeffs(2,1) = 119.62d0
+    l_coeffs(2,2) = 70.4817d0
+    l_coeffs(2,3) = 170.353d0
+    l_coeffs(2,4) = 0.119759d0
+    ! n=3
+    l_coeffs(3,1) = -201.713d0
+    l_coeffs(3,2) = -284.575d0
+    l_coeffs(3,3) = -115.793d0
+    l_coeffs(3,4) = 0.0d0
+    ! n=4
+    l_coeffs(4,1) = 208.466d0
+    l_coeffs(4,2) = 117.131d0
+    l_coeffs(4,3) = 292.063d0
+    l_coeffs(4,4) = 0.0d0
+    ! n=5
+    l_coeffs(5,1) = -140.704d0
+    l_coeffs(5,2) = -195.337d0
+    l_coeffs(5,3) = -77.1403d0
+    l_coeffs(5,4) = 0.0d0
+    ! n=6
+    l_coeffs(6,1) = 58.7226d0
+    l_coeffs(6,2) = 31.2397d0
+    l_coeffs(6,3) = 80.3569d0
+    l_coeffs(6,4) = 0.0d0
+    ! n=7
+    l_coeffs(7,1) = -11.7687d0
+    l_coeffs(7,2) = -15.3933d0
+    l_coeffs(7,3) = -5.729d0
+    l_coeffs(7,4) = 0.0d0
+
+    ! Normalize inputs
+    ! logL_div_Lsun is available from parent scope
+    log_L_norm = logL_div_Lsun - 6.0d0
+
+    ! logZ_div_Zsun is available from parent scope
+    log_Z_norm = logZ_div_Zsun
+
+    ! Normalized Temperature
+    T_eff_kK = Tsurf / 1000.0d0
+    x_param = (T_eff_kK - T0) / dT
+
+    ! --- Summation Term Calculation ---
+    sum_term = 0.0d0
+
+    ! Initialize Legendre Polynomials for recurrence
+    ! P_0(x) = 1
+    ! P_1(x) = x
+    P_prev2 = 1.0d0
+    P_prev  = x_param
+
+    do n = 1, 7
+        if (n == 1) then
+            P_curr = P_prev
         else
-          s% Reimers_scaling_factor = 1.0d0
+            ! Recurrence: P_n = [ (2n-1)x P_{n-1} - (n-1) P_{n-2} ] / n
+            P_curr = ( (2.0d0*dble(n) - 1.0d0)*x_param*P_prev - (dble(n) - 1.0d0)*P_prev2 ) / dble(n)
+
+            ! Shift history for next step
+            P_prev2 = P_prev
+            P_prev  = P_curr
         end if
 
-        wind_scheme = 10.0
+        ! Calculate C_n(Z) = l_n0 + l_n1*logZ + l_n2*logZ^2 + l_n3*logZ^3
+        Cn = l_coeffs(n,1) + &
+             l_coeffs(n,2) * log_Z_norm + &
+             l_coeffs(n,3) * log_Z_norm**2 + &
+             l_coeffs(n,4) * log_Z_norm**3
 
-        w = 4d-13*(L*R/M)/(Lsun*Rsun/Msun)
-        w = w*s% Reimers_scaling_factor
+        sum_term = sum_term + Cn * P_curr
+    end do
 
-     end subroutine eval_Reimers_wind
+    ! Final Calculation
+    logMdot = a_param + b_param * log_L_norm + sum_term
 
-     subroutine eval_Blocker_wind(w)
-       ! Bloecker, T. 1995, A&A, 297, 727
-        real(dp), intent(out) :: w
-        include 'formats'
-        s% Blocker_scaling_factor = 0.1
-        w = 4.83d-9*(M/Msun)**(-2.1)*(L/Lsun)**2.7*4d-13*(L/Lsun)*(R/Rsun)/(M/Msun)
-        w = w*s% Blocker_scaling_factor
+    w = 10**logMdot
+    call smooth_wind_log(w, "K25")
 
-        wind_scheme = 11.0
+  end subroutine   eval_Krticka25_wind
 
-     end subroutine eval_Blocker_wind
+  subroutine eval_GormazMatamala23_wind(w)
+    real(dp), intent(inout) :: w
+    real(dp) :: hehratio
 
-       subroutine eval_Krticka24_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: hehratio
+    wind_scheme = 24.0
 
-         wind_scheme = 25.0
+    logMdot=-40.314+15.438*lteff+45.838/gmlogg-8.284*lteff/gmlogg+1.0564*gmrstar
+    logMdot=logMdot-lteff*gmrstar/2.36-1.1967*gmrstar/gmlogg+11.6*logZ_div_Zsun
+    logMdot=logMdot-4.223*lteff*logZ_div_Zsun-16.377*logZ_div_Zsun/gmlogg+(gmrstar*logZ_div_Zsun)/81.735
+    !hehratio=0.25*(Y/X)    !Alex said it doesn't change much
+    hehratio=0.085
+    logMdot=logMdot+0.0475-0.559*hehratio
 
-         logMdot=-13.82d0+0.358*logZ_div_Zsun+(1.52d0-0.11*logZ_div_Zsun)*(log10(L/Lsun)-6.d0) &
-        + 13.82d0*log10((1.0+0.73*logZ_div_Zsun)*exp(-((Tsurf/1000.0d0-14.16d0)/3.58d0)**2.d0) &
-        + 3.84d0*exp(-((Tsurf/1000.0d0-37.9d0)/56.5d0)**2.d0))
+    w=10**logMdot
+    call smooth_wind_log(w, "GM23")
 
-         w=10**logMdot
+  end subroutine   eval_GormazMatamala23_wind
 
-       end subroutine   eval_Krticka24_wind
+  subroutine eval_Nieuwenhuijzen_deJager90_wind(w)
+    real(dp), intent(inout) :: w
 
-       subroutine eval_Krticka25_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: a,b,c,d,e
+    wind_scheme = 20.0
 
-         wind_scheme = 25.5
+    w = 9.6d-15*(R/Rsun)**0.81*(L/Lsun)**1.24*(M/Msun)**0.16*Z_div_Z_solar**0.5
+    call smooth_wind_log(w, "NdJ90")
 
-         a = -7.72
-         b = 1.49
-         c = 0.713
-         d = 1.29
-         e = 1.10
-         logMdot = a + b*log10(L/Lsun/1d6) + c*logZ_div_Zsun + d*log10(Tsurf/1d3) + e*(Z_div_Z_solar)*exp(-(Tsurf-14.4)**2/2.53**2)
+  end subroutine   eval_Nieuwenhuijzen_deJager90_wind
 
-         w=10**logMdot
+  subroutine eval_Vanbeveren98_wind(w,which)
+    real(dp), intent(inout) :: w
+    character(len=*), intent(in) :: which
 
-       end subroutine   eval_Krticka25_wind
+    wind_scheme = 90.0
 
-       subroutine eval_GormazMatamala23_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: hehratio
+    !*** + metallicity dependence from Vink & de Koeter (2005)
 
-         wind_scheme = 24.0
+    if ( which == "OB" ) then
+      logMdot = 1.67*log10(L/Lsun) -1.55*log10(Tsurf) + 0.85*logZ_div_Zsun -8.29
+    elseif ( which == "cool" ) then
+      logMdot = 0.8*log10(L/Lsun) -8.7
+    elseif ( which == "WR" ) then
+      logMdot = log10(L/Lsun) + 0.85*logZ_div_Zsun -10
+    end if
 
-         logMdot=-40.314+15.438*lteff+45.838/gmlogg-8.284*lteff/gmlogg+1.0564*gmrstar
-         logMdot=logMdot-lteff*gmrstar/2.36-1.1967*gmrstar/gmlogg+11.6*logZ_div_Zsun
-         logMdot=logMdot-4.223*lteff*logZ_div_Zsun-16.377*logZ_div_Zsun/gmlogg+(gmrstar*logZ_div_Zsun)/81.735
-         !hehratio=0.25*(Y/X)    !Alex said it doesn't change much
-         hehratio=0.085
-         logMdot=logMdot+0.0475-0.559*hehratio
+    w=10**logMdot
+    call smooth_wind_log(w, "Vb98 (" // trim(which) // ")")
 
-         w=10**logMdot
+  end subroutine   eval_Vanbeveren98_wind
 
-       end subroutine   eval_GormazMatamala23_wind
 
-       subroutine eval_Nieuwenhuijzen_deJager90_wind(w)
-         real(dp), intent(inout) :: w
+  subroutine eval_Vink01_wind(w)
+    real(dp), intent(inout) :: w
+    real(dp) :: alfa, w1, w2, logMdot, dT, vinf_div_vesc
 
-         wind_scheme = 20.0
+    wind_scheme = 21.0
 
-         w = 9.6d-15*(R/Rsun)**0.81*(L/Lsun)**1.24*(M/Msun)**0.16*Z_div_Z_solar**0.5
-
-       end subroutine   eval_Nieuwenhuijzen_deJager90_wind
-
-       subroutine eval_Vanbeveren98_wind(w,which)
-         real(dp), intent(inout) :: w
-         character(len=*), intent(in) :: which
-
-         wind_scheme = 92.0
-
-         !*** + metallicity dependence from Vink & de Koeter (2005)
-
-         if ( which == "OB" ) then
-           logMdot = 1.67*log10(L/Lsun) -1.55*log10(Tsurf) + 0.85*logZ_div_Zsun -8.29
-         elseif ( which == "cool" ) then
-           logMdot = 0.8*log10(L/Lsun) -8.7
-         elseif ( which == "WR" ) then
-           logMdot = log10(L/Lsun) + 0.85*logZ_div_Zsun -10
-         end if
-
-         w=10**logMdot
-
-       end subroutine   eval_Vanbeveren98_wind
-
-
-       subroutine eval_Vink01_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: alfa, w1, w2, logMdot, dT, vinf_div_vesc
-
-         wind_scheme = 21.0
-
-         ! alfa = 1 for hot side, = 0 for cool side
-         if (Tsurf > 27500d0) then
-           alfa = 1
-         else if (Tsurf < 22500d0) then
-           alfa = 0
-         else
-           ! use Vink et al 2001, eqns 14 and 15 to set "jump" temperature
-           Teff_jump = 1d3*(61.2d0 + 2.59d0*(-13.636d0 + 0.889d0*logZ_div_Zsun))
-           dT = 2000d0!100d0
-           if (Tsurf > Teff_jump + dT) then
-             alfa = 1
-             ! wind_scheme = 1.1
-           else if (Tsurf < Teff_jump - dT) then
-             alfa = 0
-             ! wind_scheme = 1.3
-           else
-             alfa = 0.5d0*(Tsurf - (Teff_jump - dT)) / dT
-           end if
-           ! wind_scheme = 1.2
-         end if
-
-         if (alfa > 0) then ! eval hot side wind (eqn 24)
-           vinf_div_vesc = 2.6d0 ! this is the hot side galactic value
-           vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z; previously **0.13d0
-           logMdot = &
-           - 6.697d0 &
-           + 2.194d0*log10(L/Lsun/1d5) &
-           - 1.313d0*log10(M/Msun/30d0) &
-           - 1.226d0*log10(vinf_div_vesc/2d0) &
-           + 0.933d0*log10(Tsurf/4d4) &
-           - 10.92d0*(log10(Tsurf/4d4))**2 &
-           + 0.85d0*logZ_div_Zsun
-           w1 = 10**(logMdot)
-         else
-           w1 = 0
-         end if
-
-
-         if (alfa < 1) then ! eval cool side wind (eqn 25)
-           vinf_div_vesc = 1.3d0 ! this is the cool side galactic value
-           vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z; previously **0.13d0
-           logMdot = &
-           - 6.688d0 &
-           + 2.210d0*log10(L/Lsun/1d5) &
-           - 1.339d0*log10(M/Msun/30d0) &
-           - 1.601d0*log10(vinf_div_vesc/2d0) &
-           + 1.07d0*log10(Tsurf/2d4) &
-           + 0.85d0*logZ_div_Zsun
-           w2 = 10**(logMdot)
-         else
-           w2 = 0
-         end if
-
-         w = alfa*w1 + (1 - alfa)*w2
-
-       end subroutine eval_Vink01_wind
-
-       subroutine eval_VinkSander21_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: logMdot, vinf_div_vesc
-
-         wind_scheme = 21.5
-
-         if (Tsurf > 2.5d4) then ! eval hot side wind (eqn 24)
-           vinf_div_vesc = 2.6d0 ! this is the hot side galactic value
-           vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z
-           logMdot = &
-           - 6.697d0 &
-           + 2.194d0*log10(L/Lsun/1d5) &
-           - 1.313d0*log10(M/Msun/30d0) &
-           - 1.226d0*log10(vinf_div_vesc/2d0) &
-           + 0.933d0*log10(Tsurf/4d4) &
-           - 10.92d0*(log10(Tsurf/4d4))**2 &
-           + 0.85d0*logZ_div_Zsun
-
-         elseif (Tsurf > 2.0d4) then
-           vinf_div_vesc = 0.7d0
-           vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0
-
-           logMdot = &
-           - 5.99d0 &
-           + 2.21d0*log10(L/Lsun/1d5) &
-           - 1.339d0*log10(M/Msun/30d0) &
-           - 1.601d0*log10(vinf_div_vesc/2d0) &
-           + 1.07d0*log10(Tsurf/2d4) &
-           + 0.85d0*logZ_div_Zsun
-
-
-         else  ! eval cool side wind
-           vinf_div_vesc = 1.3d0 ! this is the cool side galactic value
-           vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z
-           logMdot = &
-           - 6.688d0 &
-           + 2.210d0*log10(L/Lsun/1d5) &
-           - 1.339d0*log10(M/Msun/30d0) &
-           - 1.601d0*log10(vinf_div_vesc/2d0) &
-           + 1.07d0*log10(Tsurf/2d4) &
-           + 0.85d0*logZ_div_Zsun
-         end if
-
-         w = 10**(logMdot)
-
-       end subroutine eval_VinkSander21_wind
-
-       subroutine eval_Pauli25_wind(w)
-          real(dp), intent(inout) :: w
-          real(dp) :: logMdot, Meff
-
-          wind_scheme = 26.0
-
-          ! eq 5 from Pauli et al, 2025, A&A, 697 (2025) A114
-          logMdot = -3.92 + 4.27*log_gamma_edd + 0.86*logZ_div_Zsun
-          w = 10**logMdot
-
-       end subroutine eval_Pauli25_wind
-
-       subroutine eval_Bjorklund23_wind(w)
-          real(dp), intent(inout) :: w
-          real(dp) :: logMdot, Meff
-
-          wind_scheme = 23.0
-
-          ! "This recipe is valid within the ranges 4.5 <= log L/LSun <= 6.0,
-          !    15 <= M/LSun <= 80, 15 000K <= Teff <= 50 000 K, and 0.2 <= Z/ZSun <= 1.0"
-
-          ! electron opacity is constant 0.34 in their models (Eq. 6)
-          Meff = M*(1d0 - 0.34d0*L/(pi4*clight*s% cgrav(1)*M))  ! effective mass
-
-          ! eq 7 from Björklund et al, 2023, A&A, Volume 676, id.A109, 14 pp.
-          logMdot = - 5.52d0 &
-                 + 2.39d0 * log10(L/(1d6*Lsun)) &
-                 - 1.48d0 * log10(M/(4.5d1*Msun)) &
-                 + 2.12d0 * log10(Tsurf/4.5d4) &
-                 + (0.75d0 - 1.87d0 * log10(Tsurf/4.5d4)) * logZ_div_Zsun
-          w = 10**logMdot
-
-       end subroutine eval_Bjorklund23_wind
-
-       subroutine eval_Vink17_wind(w)
-          real(dp), intent(inout) :: w
-          real(dp) :: logMdot
-
-          wind_scheme = 22.0
-
-          logMdot = - 13.3d0 &
-                 + 1.36d0 * log10(L/Lsun) &
-                 + 0.61 * logZ_div_Zsun
-          w = 10**logMdot
-
-          write(*,*) "Here are V17 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-       end subroutine eval_Vink17_wind
-
-       subroutine eval_Sabhahit25_wind(w)
-          real(dp), intent(inout) :: w
-          real(dp) :: logMdot
-          real(dp) :: a,b,c,T1,T2,G1,G2,Tref,Mref,f_low,f_high,sigmaT
-
-          wind_scheme = 27.0
-
-          a = -5.527
-          Tref = 38
-          Mref = 60 - 0.521*(Tsurf/1000-Tref)
-          f_low = -1.864*log10(M/Msun/Mref)
-          f_high = -9.865*log10(M/Msun/Mref)
-          b = -2.062 + 5.671*log10(M/Msun/Mref)
-          c = 3.974
-          G1 = 0.178*exp(9.611*log10(M/Msun/Mref))
-          G2 = 0.291*exp(8.658*log10(M/Msun/Mref))
-          T2 = 16.941-7.274*log10(M/Msun/Mref)
-          T1 = 25
-          sigmaT = 2
-
-          logMdot = a + log10(10**f_low + 10**f_high) &
-          + b * log10((Tsurf/1000)/Tref) + c * log10((Tsurf/1000)/Tref)**2 &
-          -G1 * exp(-((Tsurf/1000-T1)/sigmaT)**2) &
-          -G2 * exp(-((Tsurf/1000-T2)/sigmaT)**2)
-
-          w = 10**logMdot
-
-       end subroutine eval_Sabhahit25_wind
-
-       subroutine eval_thin_winds(w)
-         real(dp), intent(inout) :: w
-
-         if ( X < 0.4 .and. .not. thick_met) then
-           if ( s% x_character_ctrl(9) == "V17" ) then
-             call eval_Vink17_wind(w)
-
-           elseif ( s% x_character_ctrl(9) == "P25" ) then
-             call eval_Pauli25_wind(w)
-           end if
-
-
-         elseif (gmlogg>3.0d0 .and. .not. thick_met) then
-           if ( s%x_character_ctrl(2) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager90_wind(w)
-             write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(2) =='Vb98' ) then
-             call eval_Vanbeveren98_wind(w,"OB")
-             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(2) =='V01' ) then
-             call eval_Vink01_wind(w)
-             write(*,*) "Here are V01 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='VS21') then
-             call eval_VinkSander21_wind(w)
-             write(*,*) "Here are VS21 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='GM23') then
-             call eval_GormazMatamala23_wind(w)
-             write(*,*) "Here are GM23 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='Bj23') then
-             call eval_Bjorklund23_wind(w)
-             write(*,*) "Here are Bj23 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='K24') then
-             call eval_Krticka24_wind(w)
-             write(*,*) "Here are K24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='K25') then
-             call eval_Krticka25_wind(w)
-             write(*,*) "Here are K25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='P25') then
-             call eval_Pauli25_wind(w)
-             write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(2) =='Sa25') then
-             call eval_Sabhahit25_wind(w)
-             write(*,*) "Here are Sa25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           end if
-
-
-         else if (gmlogg<=3.0d0 .and. .not. thick_met) then
-           if ( s%x_character_ctrl(3) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager90_wind(w)
-             write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(3) =='Vb98' ) then
-             call eval_Vanbeveren98_wind(w,"OB")
-             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(3) =='V01' ) then
-             call eval_Vink01_wind(w)
-             write(*,*) "Here are V01 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='VS21') then
-             call eval_VinkSander21_wind(w)
-             write(*,*) "Here are VS21 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='Bj23') then
-             call eval_Bjorklund23_wind(w)
-             write(*,*) "Here are Bj23 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='K24') then
-             call eval_Krticka24_wind(w)
-             write(*,*) "Here are K24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='K25') then
-             call eval_Krticka25_wind(w)
-             write(*,*) "Here are K25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='P25') then
-             call eval_Pauli25_wind(w)
-             write(*,*) "Here are P25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(3) =='Sa25') then
-             call eval_Sabhahit25_wind(w)
-             write(*,*) "Here are Sa25 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           end if
-
-         else
-           if ( s%x_character_ctrl(4) =='NdJ90' ) then
-             call eval_Nieuwenhuijzen_deJager90_wind(w)
-             write(*,*) "Here are NdJ90 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(4) =='Vb98' ) then
-             call eval_Vanbeveren98_wind(w,"OB")
-             write(*,*) "Here are Vb98 OB winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif ( s%x_character_ctrl(4) =='V01' ) then
-             call eval_Vink01_wind(w)
-             write(*,*) "Here are V01 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='VS21') then
-             call eval_VinkSander21_wind(w)
-             write(*,*) "Here are VS21 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='Bj23') then
-             call eval_Bjorklund23_wind(w)
-             write(*,*) "Here are Bj23 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='K24') then
-             call eval_Krticka24_wind(w)
-             write(*,*) "Here are K24 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='K25') then
-             call eval_Krticka25_wind(w)
-             write(*,*) "Here are K25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='P25') then
-             call eval_Pauli25_wind(w)
-             write(*,*) "Here are P25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           elseif (s%x_character_ctrl(4) =='Sa25') then
-             call eval_Sabhahit25_wind(w)
-             write(*,*) "Here are Sa25 (thick) winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           end if
-
-         end if
-
-       end subroutine eval_thin_winds
-
-
-       subroutine eval_Vink11_wind(w)
-           real(dp), intent(inout) :: w
-           real(dp) :: logMdot
-
-
-           if (gamma_edd >= gamma_edd_switch .and. gamma_edd >= gamma_edd_old ) then
-             wind_scheme = 45.0
-
-             logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(M_switch*Msun))
-             ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "M_switch ", log10(M/(M_switch*Msun))
-             w = 10**(logMdot)
-             write(*,*) "Here are V11 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-           else
-             call eval_thin_winds(w)
-
-           end if
-
-        end subroutine eval_Vink11_wind
-
-        subroutine eval_Bestenlehner20_wind(w)
-         real(dp), intent(inout) :: w
-         real(dp) :: logMdot
-
-         wind_scheme = 48.0
-
-
-        !*** Bestenlehner (2020) prescription for hot stars
-        !*** with fitting parameters from Brands et al. (2022)
-         logMdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
-         logMdot = logMdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
-
-         write(*,*) "Here are B20 winds: log(Mdot [Msun/yr]) =", logMdot
-
-         w = 10**(logMdot)
-
-
-       end subroutine eval_Bestenlehner20_wind
-
-       subroutine eval_GrafenerHamann08_wind(w)
-        real(dp), intent(inout) :: w
-        real(dp) :: logMdot
-        ! Grafener, G. & Hamann, W.-R. 2008, A&A 482, 945
-
-        wind_scheme = 44.0
-
-        logMdot = 10.046 + 1.727*log10(gamma_edd-0.326) - 3.5*log10(Tsurf) + 0.42*log10(L/Lsun) - 0.45*X
-
-        write(*,*) "Here are GH08 winds: log(Mdot [Msun/yr]) =", logMdot
-
-        w = 10**(logMdot)
-
-      end subroutine eval_GrafenerHamann08_wind
-
-       subroutine eval_Yoon06_wind(w)
-        real(dp), intent(inout) :: w
-        real(dp) :: logMdot
-
-        wind_scheme = 43.0
-
-        if ( log10(L/Lsun) <= 4.5 ) then
-          logMdot = -36.8 + 6.8*log10(L/Lsun)-2.85*X + 0.85*logZ_div_Zsun
-        else
-          logMdot = -12.95 + 1.5*log10(L/Lsun) - 2.85*X + 0.85*logZ_div_Zsun
-        end if
-
-        write(*,*) "Here are Y06 winds: log(Mdot [Msun/yr]) =", logMdot
-
-        w = 10**(logMdot)
-
-      end subroutine eval_Yoon06_wind
-
-       subroutine eval_NugisLamers_wind(w)
-        real(dp), intent(inout) :: w
-        real(dp) :: logMdot
-
-        wind_scheme = 42.0
-
-         ! If I want an universal NL00 for both WN and WC/WO I take this one below
-
-         if ( .not. s% x_logical_ctrl(3) ) then
-
-           logMdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
-
-          ! Addition of the calibrations from Eldridge & Vink (2006), taken from the study of late-type WN and WC
-         !   mass loss predictions of Vink & de Koter (2005). Also this is the GENEC model
-        else if (.not. HPoor_WR_condition .or. Z<=0.03d0) then
-            ! WN
-            logMdot=-13.60d0+1.63d0*logL_div_Lsun+2.22d0*log10(Y)+0.85d0*logZ_div_Zsun
-        else
-            ! WC + WO
-            if (s% kap_rq% Zbase > Zsolar ) then          ! Zinit>Zsolar
-              logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.40d0*logZ_div_Zsun
-            else if (s% kap_rq% Zbase  >  0.002d0) then
-              logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*logZ_div_Zsun
-            else
-              if (s% kap_rq% Zbase  <  0.00000001d0) then
-                   logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
-                           0.35d0*log10(Z/0.002d0)
-
-             else
-
-              logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
-                          0.35d0*log10(s% kap_rq% Zbase/0.002d0)
-
-            end if
-          end if
-        end if
-
-        write(*,*) "Here are NL00 winds: log(Mdot [Msun/yr]) =", logMdot
-
-
-      w = 10**(logMdot)
-
-
-     end subroutine eval_NugisLamers_wind
-
-     subroutine eval_Langer89_wind(w)
-      real(dp), intent(inout) :: w
-      real(dp) :: logMdot
-
-      wind_scheme = 40.0
-
-     !*** + metallicity dependence from Vink & de Koeter (2005)
-
-      logMdot = 2.5*log10(M/Msun) + 0.85*logZ_div_Zsun - 7.1
-
-      write(*,*) "Here are L89 winds: log(Mdot [Msun/yr]) =", logMdot
-
-      w = 10**(logMdot)
-
-    end subroutine eval_Langer89_wind
-
-     subroutine eval_Hamann98_wind(w)
-      real(dp), intent(inout) :: w
-      real(dp) :: logMdot
-
-      wind_scheme = 41.0
-
-     !*** + metallicity dependence from Vink & de Koeter (2005)
-
-      logMdot = 1.5*log10(L/Lsun) + 0.85*logZ_div_Zsun - 13.0
-
-      write(*,*) "Here are Ha98 winds: log(Mdot [Msun/yr]) =", logMdot
-
-      w = 10**(logMdot)
-
-
-    end subroutine eval_Hamann98_wind
-
-     subroutine eval_Shenar19_wind(w)
-      real(dp), intent(inout) :: w
-      real(dp) :: logMdot
-      real(dp) :: C1,C2,C3,C4,C5
-
-      wind_scheme = 46.0
-
-      C4 = 1.42
-
-     !*** Shenar+ (2019)
-     !*** erratum from 2020
-
-     if ( X >= 0.4 ) then
-       C1 = -6.50
-       C2 = 0.79
-       C3 = -0.37
-       C5 = 0.68
-     elseif ( X > 0.2 ) then
-       C1 = -4.02
-       C2 = 0.60
-       C3 = -0.74
-       C5 = 0.43
-     elseif ( X > 0.05 ) then
-       C1 = -3.84
-       C2 = 0.76
-       C3 = -0.78
-       C5 = 0.81
-     else
-       C1 = -8.13
-       C2 = 1.01
-       C3 = -0.06
-       C5 = 0.95
-     end if
-
-      logMdot = C1 + C2 * log10(L/Lsun) + C3 * log10(Tsurf) + C4* log10(Y) + C5*log10(Z)
-
-      write(*,*) "Here are Sh19 winds: log(Mdot [Msun/yr]) =", logMdot
-
-      w = 10**(logMdot)
-
-
-    end subroutine eval_Shenar19_wind
-
-    subroutine eval_Sander19_wind(w)
-      real(dp), intent(inout) :: w
-      real(dp) :: logMdot,fWN,fWCO,Zscale
-
-      wind_scheme = 47.0
-
-      fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)
-      fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
-
-      ! metallicity dependence adopted from fits in Costa et al. (2021)
-      if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then
-        Zscale = fWN
+    ! alfa = 1 for hot side, = 0 for cool side
+    if (Tsurf > 27500d0) then
+      alfa = 1
+    else if (Tsurf < 22500d0) then
+      alfa = 0
+    else
+      ! use Vink et al 2001, eqns 14 and 15 to set "jump" temperature
+      Teff_jump = 1d3*(61.2d0 + 2.59d0*(-13.636d0 + 0.889d0*logZ_div_Zsun))
+      dT = 2000d0!100d0
+      if (Tsurf > Teff_jump + dT) then
+        alfa = 1
+        ! wind_scheme = 1.1
+      else if (Tsurf < Teff_jump - dT) then
+        alfa = 0
+        ! wind_scheme = 1.3
       else
-        Zscale = fWCO
+        alfa = 0.5d0*(Tsurf - (Teff_jump - dT)) / dT
+      end if
+      ! wind_scheme = 1.2
+    end if
+
+    if (alfa > 0) then ! eval hot side wind (eqn 24)
+      vinf_div_vesc = 2.6d0 ! this is the hot side galactic value
+      vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z; previously **0.13d0
+      logMdot = &
+      - 6.697d0 &
+      + 2.194d0*log10(L/Lsun/1d5) &
+      - 1.313d0*log10(M/Msun/30d0) &
+      - 1.226d0*log10(vinf_div_vesc/2d0) &
+      + 0.933d0*log10(Tsurf/4d4) &
+      - 10.92d0*(log10(Tsurf/4d4))**2 &
+      + 0.85d0*logZ_div_Zsun
+      w1 = 10**(logMdot)
+    else
+      w1 = 0
+    end if
+
+
+    if (alfa < 1) then ! eval cool side wind (eqn 25)
+      vinf_div_vesc = 1.3d0 ! this is the cool side galactic value
+      vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z; previously **0.13d0
+      logMdot = &
+      - 6.688d0 &
+      + 2.210d0*log10(L/Lsun/1d5) &
+      - 1.339d0*log10(M/Msun/30d0) &
+      - 1.601d0*log10(vinf_div_vesc/2d0) &
+      + 1.07d0*log10(Tsurf/2d4) &
+      + 0.85d0*logZ_div_Zsun
+      w2 = 10**(logMdot)
+    else
+      w2 = 0
+    end if
+
+    w = alfa*w1 + (1 - alfa)*w2
+
+    call smooth_wind_log(w, "V01")
+
+  end subroutine eval_Vink01_wind
+
+  subroutine eval_VinkSander21_wind(w)
+    real(dp), intent(inout) :: w
+    real(dp) :: logMdot, vinf_div_vesc
+
+    wind_scheme = 21.5
+
+    if (Tsurf > 2.5d4) then ! eval hot side wind (eqn 24)
+      vinf_div_vesc = 2.6d0 ! this is the hot side galactic value
+      vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z
+      logMdot = &
+      - 6.697d0 &
+      + 2.194d0*log10(L/Lsun/1d5) &
+      - 1.313d0*log10(M/Msun/30d0) &
+      - 1.226d0*log10(vinf_div_vesc/2d0) &
+      + 0.933d0*log10(Tsurf/4d4) &
+      - 10.92d0*(log10(Tsurf/4d4))**2 &
+      + 0.85d0*logZ_div_Zsun
+
+    elseif (Tsurf > 2.0d4) then
+      vinf_div_vesc = 0.7d0
+      vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0
+
+      logMdot = &
+      - 5.99d0 &
+      + 2.21d0*log10(L/Lsun/1d5) &
+      - 1.339d0*log10(M/Msun/30d0) &
+      - 1.601d0*log10(vinf_div_vesc/2d0) &
+      + 1.07d0*log10(Tsurf/2d4) &
+      + 0.85d0*logZ_div_Zsun
+
+
+    else  ! eval cool side wind
+      vinf_div_vesc = 1.3d0 ! this is the cool side galactic value
+      vinf_div_vesc = vinf_div_vesc*Z_div_Z_solar**0.13d0 ! corrected for Z
+      logMdot = &
+      - 6.688d0 &
+      + 2.210d0*log10(L/Lsun/1d5) &
+      - 1.339d0*log10(M/Msun/30d0) &
+      - 1.601d0*log10(vinf_div_vesc/2d0) &
+      + 1.07d0*log10(Tsurf/2d4) &
+      + 0.85d0*logZ_div_Zsun
+    end if
+
+    w = 10**(logMdot)
+    call smooth_wind_log(w, "VS21")
+
+  end subroutine eval_VinkSander21_wind
+
+  subroutine eval_Pauli25_wind(w)
+     real(dp), intent(inout) :: w
+     real(dp) :: logMdot, Meff
+
+     wind_scheme = 26.0
+
+     ! eq 5 from Pauli et al, 2025, A&A, 697 (2025) A114
+     logMdot = -3.92 + 4.27*log_gamma_edd + 0.86*logZ_div_Zsun
+     w = 10**logMdot
+     call smooth_wind_log(w, "P25")
+
+  end subroutine eval_Pauli25_wind
+
+  subroutine eval_Bjorklund23_wind(w)
+     real(dp), intent(inout) :: w
+     real(dp) :: logMdot, Meff
+
+     wind_scheme = 23.0
+
+     ! "This recipe is valid within the ranges 4.5 <= log L/LSun <= 6.0,
+     !    15 <= M/LSun <= 80, 15 000K <= Teff <= 50 000 K, and 0.2 <= Z/ZSun <= 1.0"
+
+     ! electron opacity is constant 0.34 in their models (Eq. 6)
+     Meff = M*(1d0 - 0.34d0*L/(pi4*clight*s% cgrav(1)*M))  ! effective mass
+
+     ! eq 7 from Björklund et al, 2023, A&A, Volume 676, id.A109, 14 pp.
+     logMdot = - 5.52d0 &
+            + 2.39d0 * log10(L/(1d6*Lsun)) &
+            - 1.48d0 * log10(M/(4.5d1*Msun)) &
+            + 2.12d0 * log10(Tsurf/4.5d4) &
+            + (0.75d0 - 1.87d0 * log10(Tsurf/4.5d4)) * logZ_div_Zsun
+     w = 10**logMdot
+     call smooth_wind_log(w, "Bj23")
+
+  end subroutine eval_Bjorklund23_wind
+
+  subroutine eval_Vink17_wind(w)
+     real(dp), intent(inout) :: w
+     real(dp) :: logMdot
+
+     wind_scheme = 22.0
+
+     logMdot = - 13.3d0 &
+            + 1.36d0 * log10(L/Lsun) &
+            + 0.61 * logZ_div_Zsun
+     w = 10**logMdot
+
+     call smooth_wind_log(w, "V17")
+
+  end subroutine eval_Vink17_wind
+
+  subroutine eval_Sabhahit25_wind(w)
+     real(dp), intent(inout) :: w
+     real(dp) :: logMdot
+     real(dp) :: a,b,c,T1,T2,G1,G2,Tref,Mref,f_low,f_high,sigmaT
+
+     wind_scheme = 27.0
+
+     a = -5.527
+     Tref = 38
+     Mref = 60 - 0.521*(Tsurf/1000-Tref)
+     f_low = -1.864*log10(M/Msun/Mref)
+     f_high = -9.865*log10(M/Msun/Mref)
+     b = -2.062 + 5.671*log10(M/Msun/Mref)
+     c = 3.974
+     G1 = 0.178*exp(9.611*log10(M/Msun/Mref))
+     G2 = 0.291*exp(8.658*log10(M/Msun/Mref))
+     T2 = 16.941-7.274*log10(M/Msun/Mref)
+     T1 = 25
+     sigmaT = 2
+
+     logMdot = a + log10(10**f_low + 10**f_high) &
+     + b * log10((Tsurf/1000)/Tref) + c * log10((Tsurf/1000)/Tref)**2 &
+     -G1 * exp(-((Tsurf/1000-T1)/sigmaT)**2) &
+     -G2 * exp(-((Tsurf/1000-T2)/sigmaT)**2)
+
+     w = 10**logMdot
+
+     call smooth_wind_log(w, "Sa25")
+
+  end subroutine eval_Sabhahit25_wind
+
+  subroutine eval_thin_winds(w)
+    real(dp), intent(inout) :: w
+
+    if ( X < 0.4 .and. .not. thick_met) then
+      if ( s% x_character_ctrl(9) == "V17" ) then
+        call eval_Vink17_wind(w)
+
+      elseif ( s% x_character_ctrl(9) == "P25" ) then
+        call eval_Pauli25_wind(w)
+      end if
+
+
+    elseif (gmlogg>3.0d0 .and. .not. thick_met) then
+      if ( s%x_character_ctrl(2) =='NdJ90' ) then
+        call eval_Nieuwenhuijzen_deJager90_wind(w)
+      elseif ( s%x_character_ctrl(2) =='Vb98' ) then
+        call eval_Vanbeveren98_wind(w,"OB")
+      elseif ( s%x_character_ctrl(2) =='V01' ) then
+        call eval_Vink01_wind(w)
+      elseif (s%x_character_ctrl(2) =='VS21') then
+        call eval_VinkSander21_wind(w)
+      elseif (s%x_character_ctrl(2) =='GM23') then
+        call eval_GormazMatamala23_wind(w)
+      elseif (s%x_character_ctrl(2) =='Bj23') then
+        call eval_Bjorklund23_wind(w)
+      elseif (s%x_character_ctrl(2) =='K24') then
+        call eval_Krticka24_wind(w)
+      elseif (s%x_character_ctrl(2) =='K25') then
+        call eval_Krticka25_wind(w)
+      elseif (s%x_character_ctrl(2) =='P25') then
+        call eval_Pauli25_wind(w)
+      elseif (s%x_character_ctrl(2) =='Sa25') then
+        call eval_Sabhahit25_wind(w)
+      end if
+
+
+    else if (gmlogg<=3.0d0 .and. .not. thick_met) then
+      if ( s%x_character_ctrl(3) =='NdJ90' ) then
+        call eval_Nieuwenhuijzen_deJager90_wind(w)
+      elseif ( s%x_character_ctrl(3) =='Vb98' ) then
+        call eval_Vanbeveren98_wind(w,"OB")
+      elseif ( s%x_character_ctrl(3) =='V01' ) then
+        call eval_Vink01_wind(w)
+      elseif (s%x_character_ctrl(3) =='VS21') then
+        call eval_VinkSander21_wind(w)
+      elseif (s%x_character_ctrl(3) =='Bj23') then
+        call eval_Bjorklund23_wind(w)
+      elseif (s%x_character_ctrl(3) =='K24') then
+        call eval_Krticka24_wind(w)
+      elseif (s%x_character_ctrl(3) =='K25') then
+        call eval_Krticka25_wind(w)
+      elseif (s%x_character_ctrl(3) =='P25') then
+        call eval_Pauli25_wind(w)
+      elseif (s%x_character_ctrl(3) =='Sa25') then
+        call eval_Sabhahit25_wind(w)
+      end if
+
+    else
+      if ( s%x_character_ctrl(4) =='NdJ90' ) then
+        call eval_Nieuwenhuijzen_deJager90_wind(w)
+      elseif ( s%x_character_ctrl(4) =='Vb98' ) then
+        call eval_Vanbeveren98_wind(w,"OB")
+      elseif ( s%x_character_ctrl(4) =='V01' ) then
+        call eval_Vink01_wind(w)
+      elseif (s%x_character_ctrl(4) =='VS21') then
+        call eval_VinkSander21_wind(w)
+      elseif (s%x_character_ctrl(4) =='Bj23') then
+        call eval_Bjorklund23_wind(w)
+      elseif (s%x_character_ctrl(4) =='K24') then
+        call eval_Krticka24_wind(w)
+      elseif (s%x_character_ctrl(4) =='K25') then
+        call eval_Krticka25_wind(w)
+      elseif (s%x_character_ctrl(4) =='P25') then
+        call eval_Pauli25_wind(w)
+      elseif (s%x_character_ctrl(4) =='Sa25') then
+        call eval_Sabhahit25_wind(w)
+      end if
+
+    end if
+
+  end subroutine eval_thin_winds
+
+
+  subroutine eval_Vink11_wind(w)
+      real(dp), intent(inout) :: w
+      real(dp) :: logMdot
+
+
+      if (gamma_edd >= gamma_edd_switch) then
+        wind_scheme = 42.5
+
+        logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(M_switch*Msun))
+        ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "M_switch ", log10(M/(M_switch*Msun))
+        w = 10**(logMdot)
+        call smooth_wind_log(w, "V11")
+      else
+        call eval_thin_winds(w)
 
       end if
 
-      logMdot = -8.31 + 0.68*log10(L/Lsun)
-      ! logMdot = logMdot+Zscale                                                  ! I do not use Z-calibrations,
-                                                                                !  I don't get how to implement them
+   end subroutine eval_Vink11_wind
 
-      w = 10**logMdot
-      write(*,*) "Here are S19 winds: log(Mdot [Msun/yr]) =", logMdot
+   subroutine eval_Bestenlehner20_wind(w)
+    real(dp), intent(inout) :: w
+    real(dp) :: logMdot
 
+    wind_scheme = 45.0
 
-    end subroutine eval_Sander19_wind
 
+   !*** Bestenlehner (2020) prescription for hot stars
+   !*** with fitting parameters from Brands et al. (2022)
+    logMdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
+    logMdot = logMdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
 
-    subroutine eval_SanderVink20_wind(w)
-       real(dp), intent(inout) :: w
-       real(dp) :: mdg_a,mdg_cbd,mdg_geddb,mdg_logMdotOff,logMdot_breakdown,logMdot_pureWR
-       real(dp) :: logMdot
+    w = 10**(logMdot)
 
-       wind_scheme = 49.0
+    call smooth_wind_log(w, "B20")
 
-       !*** Sander & Vink formula for WR winds as a function of Gamma_e
-       mdg_a = 2.932
-       mdg_geddb = -0.324*logZ_div_Zsun+0.244
-       mdg_cbd = -0.44*logZ_div_Zsun+9.15
-       mdg_logMdotOff = 0.23*logZ_div_Zsun-2.61
-       logMdot_pureWR = mdg_a*(log10(-log10(1.0-gamma_edd))) + mdg_logMdotOff
-       logMdot_breakdown = log10(2.0) * (mdg_geddb/gamma_edd)**(mdg_cbd)
-       logMdot = logMdot_pureWR - logMdot_breakdown
-       !    logMdot = logMdot - 6.0d0*log10(teff/141000.0d0) ! Sander et al. 2023
+  end subroutine eval_Bestenlehner20_wind
 
-       write(*,*) "Here are SV20 winds: log(Mdot [Msun/yr]) =", logMdot
+  subroutine eval_GrafenerHamann08_wind(w)
+   real(dp), intent(inout) :: w
+   real(dp) :: logMdot
+   ! Grafener, G. & Hamann, W.-R. 2008, A&A 482, 945
 
-       w = 10**(logMdot)
-       wind_scheme = 5.0
+   wind_scheme = 42.0
 
+   logMdot = 10.046 + 1.727*log10(gamma_edd-0.326) - 3.5*log10(Tsurf) + 0.42*log10(L/Lsun) - 0.45*X
 
-    end subroutine eval_SanderVink20_wind
+   w = 10**(logMdot)
+   call smooth_wind_log(w, "GH08")
 
-    subroutine eval_thick_winds(w)
-          real(dp), intent(inout) :: w
-          real(dp) :: logMdot
+ end subroutine eval_GrafenerHamann08_wind
 
-          include 'formats'
-          ! gamma_edd = exp10(-4.813d0)*(1+xsurf)*(L/Lsun)*(Msun/M)
+  subroutine eval_Yoon06_wind(w)
+   real(dp), intent(inout) :: w
+   real(dp) :: logMdot
 
-          if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-rich WR winds
+   wind_scheme = 41.5
 
-            if ( s%x_character_ctrl(5)=='B20' ) then
+   if ( log10(L/Lsun) <= 4.5 ) then
+     logMdot = -36.8 + 6.8*log10(L/Lsun)-2.85*X + 0.85*logZ_div_Zsun
+   else
+     logMdot = -12.95 + 1.5*log10(L/Lsun) - 2.85*X + 0.85*logZ_div_Zsun
+   end if
 
-              call eval_Bestenlehner20_wind(w)
+   w = 10**(logMdot)
+   call smooth_wind_log(w, "Y06")
 
-            elseif ( s%x_character_ctrl(5)=='Sh19' ) then
+ end subroutine eval_Yoon06_wind
 
-              call eval_Shenar19_wind(w)
+  subroutine eval_NugisLamers_wind(w)
+   real(dp), intent(inout) :: w
+   real(dp) :: logMdot
 
-            elseif ( s%x_character_ctrl(5)=='S19' ) then
+   wind_scheme = 41.0
 
-              call eval_Sander19_wind(w)
+    ! If I want an universal NL00 for both WN and WC/WO I take this one below
 
-            elseif ( s%x_character_ctrl(5)=='V11' ) then
+    if ( .not. s% x_logical_ctrl(3) ) then
 
-              call eval_Vink11_wind(w)
+      logMdot = log10(1d-11 * (L/Lsun)**1.29d0 * Y**1.7d0 * sqrt(Z))  ! Default MESA setup for everything
 
-            elseif ( s%x_character_ctrl(5)=='GH08' ) then
+     ! Addition of the calibrations from Eldridge & Vink (2006), taken from the study of late-type WN and WC
+    !   mass loss predictions of Vink & de Koter (2005). Also this is the GENEC model
+   else if (.not. HPoor_WR_condition .or. Z<=0.03d0) then
+       ! WN
+       logMdot=-13.60d0+1.63d0*logL_div_Lsun+2.22d0*log10(Y)+0.85d0*logZ_div_Zsun
+   else
+       ! WC + WO
+       if (s% kap_rq% Zbase > Zsolar ) then          ! Zinit>Zsolar
+         logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.40d0*logZ_div_Zsun
+       else if (s% kap_rq% Zbase  >  0.002d0) then
+         logMdot=-8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*logZ_div_Zsun
+       else
+         if (s% kap_rq% Zbase  <  0.00000001d0) then
+              logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
+                      0.35d0*log10(Z/0.002d0)
 
-              call eval_GrafenerHamann08_wind(w)
+        else
 
-            elseif ( s%x_character_ctrl(5)=='Y06' ) then
-
-              call eval_Yoon06_wind(w)
-
-            elseif ( s%x_character_ctrl(5)=='NL00' ) then
-
-              call eval_NugisLamers_wind(w)
-
-            elseif ( s%x_character_ctrl(5)=='Vb98' ) then
-
-              call eval_Vanbeveren98_wind(w,"WR")
-              write(*,*) "Here are Vb98 WR winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-            elseif ( s%x_character_ctrl(5)=='L89' ) then
-
-              call eval_Langer89_wind(w)
-
-            elseif ( s%x_character_ctrl(5)=='Ha98' ) then
-
-              call eval_Hamann98_wind(w)
-            end if
-
-
-          else
-
-            if (  s%x_character_ctrl(6)=='SV20' ) then
-
-              call eval_SanderVink20_wind(w)
-
-            elseif ( s%x_character_ctrl(6)=='Sh19' ) then
-
-              call eval_Shenar19_wind(w)
-
-            elseif ( s%x_character_ctrl(6)=='S19' ) then
-
-              call eval_Sander19_wind(w)
-
-            elseif( s%x_character_ctrl(6)=='Y06') then
-
-              call eval_Yoon06_wind(w)
-
-           elseif( s%x_character_ctrl(6)=='NL00') then
-
-             call eval_NugisLamers_wind(w)
-
-           elseif ( s%x_character_ctrl(6)=='Vb98' ) then
-
-             call eval_Vanbeveren98_wind(w,"WR")
-             write(*,*) "Here are Vb98 WR winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-           elseif ( s%x_character_ctrl(6)=='L89' ) then
-
-             call eval_Langer89_wind(w)
-
-            end if
-
-
-          end if
-
-          ! w = w * scaling_factor ! No need for the scaling factor now
-
-    end subroutine eval_thick_winds
-
-
-    subroutine eval_Antoniadis24_wind(w)
-          ! Antoniadis, K., et al.: A&A, 686, A88 (2024)
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 34.0
-
-          if ( log(L/Lsun) < 4.4 ) then
-            log10w = 0.26*log10(L/Lsun) - 14.19*log10(Tsurf/4000)-9.17
-          else
-            log10w = 2.49536114*log10(L/Lsun) -33.70573385*log10(Tsurf/4000)-19.10219818
-          end if
-
-          w = exp10(log10w)
-
-          write(*,*) "Here are A24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-       end subroutine eval_Antoniadis24_wind
-
-       subroutine eval_van_Loon05_wind(w)
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 31.0
-
-          log10w = 1.05 * log10(L/Lsun/1d4) - 6.3 * log10(Tsurf/3500) - 5.56
-          w = exp10(log10w)
-          write(*,*) "Here are vL05 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-       end subroutine eval_van_Loon05_wind
-
-       subroutine eval_Beasor23_wind(w)
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 32.0
-
-          log10w = -0.15 * s% initial_mass + 3.6 * log10(L/Lsun) - 21.5
-          w = exp10(log10w)
-          write(*,*) "Here are Be23 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-       end subroutine eval_Beasor23_wind
-
-       subroutine eval_Yang23_wind(w)
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 33.0
-
-          log10w = 0.45 * log10(L/Lsun)**3 - 5.26 * (log10(L/Lsun))**2 + 20.93 * log10(L/Lsun) - 34.56
-          w = exp10(log10w)
-          write(*,*) "Here are Ya23 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-       end subroutine eval_Yang23_wind
-
-       subroutine eval_Decin24_wind(w)
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 35.0
-
-          log10w = 1.71 -1.63 * s% initial_mass/10 + 3.47 * log10(L/Lsun/1d5) - 5
-          w = exp10(log10w)
-          write(*,*) "Here are D24 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-       end subroutine eval_Decin24_wind
-
-       subroutine eval_de_Jager88_wind(w)
-          ! de Jager, C., Nieuwenhuijzen, H., & van der Hucht, K. A. 1988, A&AS, 72, 259.
-          real(dp), intent(out) :: w
-          real(dp) :: log10w
-          include 'formats'
-          wind_scheme = 30.0
-
-          log10w = 1.769d0*log10(L/Lsun) - 1.676d0*log10(Tsurf) - 8.158d0
-          w = exp10(log10w)
-          write(*,*) "Here are dJ88 winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-       end subroutine eval_de_Jager88_wind
-
-       subroutine eval_cool_wind(w)
-         real(dp), intent(inout) :: w
-         integer :: which_cool                                     ! Which cool supergiant wind to use (in case of multple initiations)
-         real(dp) :: logMdot
-
-         include 'formats'
-
-         if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds. For now these recipes are the only two implemented
-            log10(L/Lsun) <= 5.8) then
-           which_cool = 7
-         else
-           which_cool = 8
-         end if
-
-         if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
-
-           call eval_de_Jager88_wind(w)
-
-         elseif ( s%x_character_ctrl(which_cool)=='Vb98' ) then
-
-           call eval_Vanbeveren98_wind(w,"cool")
-           write(*,*) "Here are Vb98 RSG winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-         elseif ( s%x_character_ctrl(which_cool)=='vL05' ) then
-
-           call eval_van_Loon05_wind(w)
-
-         elseif ( s%x_character_ctrl(which_cool)=='Be23' ) then
-
-           call eval_Beasor23_wind(w)
-
-         elseif ( s%x_character_ctrl(which_cool)=='Ya23' ) then
-
-           call eval_Yang23_wind(w)
-
-         elseif ( s%x_character_ctrl(which_cool)=='A24' ) then
-
-           call eval_Antoniadis24_wind(w)
-
-         elseif ( s%x_character_ctrl(which_cool)=='D24' ) then
-
-           call eval_Decin24_wind(w)
-
-
-         end if
-
-
-         ! w = w * scaling_factor ! No need for the scaling factor now
-
-       end subroutine eval_cool_wind
-
-       ! ------ STOP WINDS WHEN WE REACH THE END OF CORE-C BURNING -------------
-       if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
-
-         w = 0
-         write(*,*) "We are past core-C burning. Winds are turned off"
-
+         logMdot = -8.30d0+0.84d0*logL_div_Lsun+2.04d0*log10(Y)+1.04d0*log10(Z)+0.66d0*log10(0.002d0/Zsolar)+ &
+                     0.35d0*log10(s% kap_rq% Zbase/0.002d0)
 
        end if
+     end if
+   end if
+
+
+ w = 10**(logMdot)
+ call smooth_wind_log(w, "NL00")
+
+
+end subroutine eval_NugisLamers_wind
+
+subroutine eval_Langer89_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: logMdot
+
+ wind_scheme = 40.0
+
+!*** + metallicity dependence from Vink & de Koeter (2005)
+
+ logMdot = 2.5*log10(M/Msun) + 0.85*logZ_div_Zsun - 7.1
+
+ w = 10**(logMdot)
+ call smooth_wind_log(w, "L89")
+
+end subroutine eval_Langer89_wind
+
+subroutine eval_Hamann98_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: logMdot
+
+ wind_scheme = 40.5
+
+!*** + metallicity dependence from Vink & de Koeter (2005)
+
+ logMdot = 1.5*log10(L/Lsun) + 0.85*logZ_div_Zsun - 13.0
+
+ w = 10**(logMdot)
+ call smooth_wind_log(w, "Ha98")
+
+
+end subroutine eval_Hamann98_wind
+
+subroutine eval_TSK16_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: logMdot
+
+ wind_scheme = 43.0
+
+
+ logMdot = 0.85*log10(L/Lsun) + 0.44*log10(Y) + 0.25*logZ_div_Zsun - 9.2
+
+ w = 10**(logMdot)
+ call smooth_wind_log(w, "TSK16")
+
+end subroutine eval_TSK16_wind
+
+subroutine eval_Yoon17_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: f_WR
+
+ f_WR = 1                                                                       ! Should be 1 for clumping factor D = 4 and 1.58 for D = 10
+ wind_scheme = 43.5
+
+
+ w = f_WR*((L/Lsun)**1.18)*(Z_div_Z_solar**0.6)*(10**-11.32)
+ call smooth_wind_log(w, "Y17")
+
+end subroutine eval_Yoon17_wind
+
+
+subroutine eval_Shenar19_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: logMdot
+ real(dp) :: C1,C2,C3,C4,C5
+
+ wind_scheme = 44.0
+
+ C4 = 1.42
+
+!*** Shenar+ (2019)
+!*** erratum from 2020
+
+if ( X >= 0.4 ) then
+  C1 = -6.50
+  C2 = 0.79
+  C3 = -0.37
+  C5 = 0.68
+elseif ( X > 0.2 ) then
+  C1 = -4.02
+  C2 = 0.60
+  C3 = -0.74
+  C5 = 0.43
+elseif ( X > 0.05 ) then
+  C1 = -3.84
+  C2 = 0.76
+  C3 = -0.78
+  C5 = 0.81
+else
+  C1 = -8.13
+  C2 = 1.01
+  C3 = -0.06
+  C5 = 0.95
+end if
+
+ logMdot = C1 + C2 * log10(L/Lsun) + C3 * log10(Tsurf) + C4* log10(Y) + C5*log10(Z)
+
+ w = 10**(logMdot)
+ call smooth_wind_log(w, "Sh19")
+
+
+end subroutine eval_Shenar19_wind
+
+subroutine eval_Sander19_wind(w)
+ real(dp), intent(inout) :: w
+ real(dp) :: logMdot,fWN,fWCO,Zscale
+
+ wind_scheme = 44.5
+
+ fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)
+ fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
+
+ ! metallicity dependence adopted from fits in Costa et al. (2021)
+ if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then
+   Zscale = fWN
+ else
+   Zscale = fWCO
+
+ end if
+
+ logMdot = -8.31 + 0.68*log10(L/Lsun)
+ ! logMdot = logMdot+Zscale                                                  ! I do not use Z-calibrations,
+                                                                           !  I don't get how to implement them
+
+ w = 10**logMdot
+ call smooth_wind_log(w, "S19")
+
+
+end subroutine eval_Sander19_wind
+
+
+subroutine eval_SanderVink20_wind(w)
+  real(dp), intent(inout) :: w
+  real(dp) :: mdg_a,mdg_cbd,mdg_geddb,mdg_logMdotOff,logMdot_breakdown,logMdot_pureWR
+  real(dp) :: logMdot
+
+  wind_scheme = 45.5
+
+  !*** Sander & Vink formula for WR winds as a function of Gamma_e
+  mdg_a = 2.932
+  mdg_geddb = -0.324*logZ_div_Zsun+0.244
+  mdg_cbd = -0.44*logZ_div_Zsun+9.15
+  mdg_logMdotOff = 0.23*logZ_div_Zsun-2.61
+  logMdot_pureWR = mdg_a*(log10(-log10(1.0-gamma_edd))) + mdg_logMdotOff
+  logMdot_breakdown = log10(2.0) * (mdg_geddb/gamma_edd)**(mdg_cbd)
+  logMdot = logMdot_pureWR - logMdot_breakdown
+  !    logMdot = logMdot - 6.0d0*log10(teff/141000.0d0) ! Sander et al. 2023
+
+  w = 10**(logMdot)
+  wind_scheme = 5.0
+
+  call smooth_wind_log(w, "SV20")
+
+
+end subroutine eval_SanderVink20_wind
+
+subroutine eval_thick_winds(w)
+     real(dp), intent(inout) :: w
+     real(dp) :: logMdot
+
+     include 'formats'
+     ! gamma_edd = exp10(-4.813d0)*(1+xsurf)*(L/Lsun)*(Msun/M)
+
+     if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-rich WR winds
+
+       if ( s%x_character_ctrl(5)=='B20' ) then
+
+         call eval_Bestenlehner20_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='Sh19' ) then
+
+         call eval_Shenar19_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='S19' ) then
+
+         call eval_Sander19_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='V11' ) then
+
+         call eval_Vink11_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='GH08' ) then
+
+         call eval_GrafenerHamann08_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='Y06' ) then
+
+         call eval_Yoon06_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='NL00' ) then
+
+         call eval_NugisLamers_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='Vb98' ) then
+
+         call eval_Vanbeveren98_wind(w,"WR")
+
+       elseif ( s%x_character_ctrl(5)=='L89' ) then
+
+         call eval_Langer89_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='Ha98' ) then
+
+         call eval_Hamann98_wind(w)
+       end if
+
+
+     else
+
+       if (  s%x_character_ctrl(6)=='SV20' ) then
+
+         call eval_SanderVink20_wind(w)
+
+       elseif ( s%x_character_ctrl(6)=='TSK16' ) then
+
+         call eval_TSK16_wind(w)
+
+       elseif ( s%x_character_ctrl(6)=='Y17' ) then
+
+         call eval_Yoon17_wind(w)
+
+       elseif ( s%x_character_ctrl(6)=='Sh19' ) then
+
+         call eval_Shenar19_wind(w)
+
+       elseif ( s%x_character_ctrl(6)=='S19' ) then
+
+         call eval_Sander19_wind(w)
+
+       elseif( s%x_character_ctrl(6)=='Y06') then
+
+         call eval_Yoon06_wind(w)
+
+      elseif( s%x_character_ctrl(6)=='NL00') then
+
+        call eval_NugisLamers_wind(w)
+
+      elseif ( s%x_character_ctrl(6)=='Vb98' ) then
+
+        call eval_Vanbeveren98_wind(w,"WR")
+
+      elseif ( s%x_character_ctrl(6)=='L89' ) then
+
+        call eval_Langer89_wind(w)
+
+       end if
+
+
+     end if
+
+     ! w = w * scaling_factor ! No need for the scaling factor now
+
+end subroutine eval_thick_winds
+
+
+subroutine eval_Antoniadis24_wind(w)
+     ! Antoniadis, K., et al.: A&A, 686, A88 (2024)
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 34.0
+
+     if ( log(L/Lsun) < 4.4 ) then
+       log10w = 0.26*log10(L/Lsun) - 14.19*log10(Tsurf/4000)-9.17
+     else
+       if ( Tsurf > 4000 ) then
+         log10w = 2.49536114*log10(L/Lsun) -33.70573385*log10(Tsurf/4000)-19.10219818
+       else
+         log10w = 2.49536114*log10(L/Lsun) -19.10219818
+       end if
+     end if
+
+     w = exp10(log10w)
+
+     call smooth_wind_log(w, "A24")
+
+  end subroutine eval_Antoniadis24_wind
+
+  subroutine eval_van_Loon05_wind(w)
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 31.0
+
+     log10w = 1.05 * log10(L/Lsun/1d4) - 6.3 * log10(Tsurf/3500) - 5.56
+     w = exp10(log10w)
+     call smooth_wind_log(w, "vL05")
+  end subroutine eval_van_Loon05_wind
+
+  subroutine eval_Beasor23_wind(w)
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 32.0
+
+     log10w = -0.15 * s% initial_mass + 3.6 * log10(L/Lsun) - 21.5
+     w = exp10(log10w)
+     call smooth_wind_log(w, "Be23")
+  end subroutine eval_Beasor23_wind
+
+  subroutine eval_Yang23_wind(w)
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 33.0
+
+     log10w = 0.45 * log10(L/Lsun)**3 - 5.26 * (log10(L/Lsun))**2 + 20.93 * log10(L/Lsun) - 34.56
+     w = exp10(log10w)
+     call smooth_wind_log(w, "Ya23")
+  end subroutine eval_Yang23_wind
+
+  subroutine eval_Decin24_wind(w)
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 35.0
+
+     log10w = 1.71 -1.63 * s% initial_mass/10 + 3.47 * log10(L/Lsun/1d5) - 5
+     w = exp10(log10w)
+     call smooth_wind_log(w, "D24")
+  end subroutine eval_Decin24_wind
+
+  subroutine eval_de_Jager88_wind(w)
+     ! de Jager, C., Nieuwenhuijzen, H., & van der Hucht, K. A. 1988, A&AS, 72, 259.
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 30.0
+
+     log10w = 1.769d0*log10(L/Lsun) - 1.676d0*log10(Tsurf) - 8.158d0
+     w = exp10(log10w)
+     call smooth_wind_log(w, "dJ88")
+  end subroutine eval_de_Jager88_wind
+
+  subroutine eval_cool_wind(w)
+    real(dp), intent(inout) :: w
+    integer :: which_cool                                     ! Which cool supergiant wind to use (in case of multple initiations)
+    real(dp) :: logMdot
+
+    include 'formats'
+
+    if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds. For now these recipes are the only two implemented
+       log10(L/Lsun) <= 5.8) then
+      which_cool = 7
+    else
+      which_cool = 8
+    end if
+
+    if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
+
+      call eval_de_Jager88_wind(w)
+
+    elseif ( s%x_character_ctrl(which_cool)=='Vb98' ) then
+
+      call eval_Vanbeveren98_wind(w,"cool")
+
+    elseif ( s%x_character_ctrl(which_cool)=='vL05' ) then
+
+      call eval_van_Loon05_wind(w)
+
+    elseif ( s%x_character_ctrl(which_cool)=='Be23' ) then
+
+      call eval_Beasor23_wind(w)
+
+    elseif ( s%x_character_ctrl(which_cool)=='Ya23' ) then
+
+      call eval_Yang23_wind(w)
+
+    elseif ( s%x_character_ctrl(which_cool)=='A24' ) then
+
+      call eval_Antoniadis24_wind(w)
+
+    elseif ( s%x_character_ctrl(which_cool)=='D24' ) then
+
+      call eval_Decin24_wind(w)
+
+
+    end if
+
+
+    ! w = w * scaling_factor ! No need for the scaling factor now
+
+  end subroutine eval_cool_wind
+
+  subroutine eval_Hurley00_wLBV(w_standard, w)
+    real(dp), intent(in) :: w_standard
+    real(dp), intent(out) :: w
+    real(dp) :: Mdot_LBV
+
+    ! H00 Eq: Mdot = 0.1 * (10^-5 * R * L^0.5 - 1.0)^3 * (L/6e5 - 1.0)
+    ! Conditions: L > 6e5 and 10^-5 * R * L^0.5 > 1.0
+    ! Units: R and L are solar units in the formula context (paper says "stellar luminosity, radius... numerical values... in solar units").
+    wind_scheme = 90.5
+    Mdot_LBV = 0.1d0 * (1.0d-5 * (R/Rsun) * sqrt(L/Lsun) - 1.0d0)**3 * &
+               ((L/Lsun)/6.0d5 - 1.0d0)
+    ! Convert to Msun/yr. The paper formula result is in Msun/yr.
+    w = w_standard + Mdot_LBV
+    call smooth_wind_log(w, "H00 LBV")
+
+   return
+ end subroutine eval_Hurley00_wLBV
+
+  subroutine eval_Belczynski10_wLBV(w)
+     ! Belczynski+2010 LBV2 winds (eq. 8) with factor 1.5
+     real(dp), intent(out) :: w
+     real(dp) :: log10w
+     include 'formats'
+     wind_scheme = 91.0
+
+     w  = 1.5d-4
+     call smooth_wind_log(w, "Bk10 LBV")
+     ! s% max_years_for_timestep = 1d2
+  end subroutine eval_Belczynski10_wLBV
+
+
+  subroutine eval_Cheng24_wLBV(w_standard, w)
+    ! Implementation of the Eruptive Mass Loss Model from Cheng et al. (2024)
+    ! Logic: Identifies regions where local super-Eddington luminosity creates
+    ! excess energy greater than the binding energy of the overlying envelope.
+
+    real(dp), intent(in) :: w_standard
+    real(dp), intent(out) :: w
+
+    integer :: k, taucrit_idx, mlost_loc
+    real(dp) :: efficiency_xi
+    real(dp) :: c_sound_local
+    real(dp) :: mlost_final, tdyn_final
+
+    ! Arrays for profile calculations
+    real(dp), allocatable :: t_dyn(:), L_excess(:), E_excess_local(:)
+    real(dp), allocatable :: E_excess_cumulative(:), E_binding_cumulative(:)
+    real(dp), allocatable :: M_above(:), E_diff(:), potential_Mloss(:)
+    real(dp) :: integral_excess, integral_mass_denom
+
+
+    w = 0.0d0
+    wind_scheme = 91.5
+
+    ! -----------------------------------------------------------
+    ! 1. Configuration
+    ! -----------------------------------------------------------
+    ! Efficiency parameter xi (Cheng et al. 2024 uses 0.1 to 1.0)
+    efficiency_xi = 1.0d0
+
+    ! Allocate arrays based on number of zones
+    allocate(t_dyn(s% nz), L_excess(s% nz), E_excess_local(s% nz))
+    allocate(E_excess_cumulative(s% nz), E_binding_cumulative(s% nz))
+    allocate(M_above(s% nz), E_diff(s% nz), potential_Mloss(s% nz))
+
+    ! Initialize
+    E_excess_cumulative = 0d0
+    E_binding_cumulative = 0d0
+    M_above = 0d0
+    E_diff = 0d0
+    potential_Mloss = 0d0
+
+    ! -----------------------------------------------------------
+    ! 2. Identify Critical Optical Depth (tau_crit)
+    ! -----------------------------------------------------------
+    ! Find index where tau < c/cs (Definition of inefficient convection region)
+    ! We search from surface (k=1) inwards.
+    taucrit_idx = 1
+    do k = 1, s% nz
+       c_sound_local = s% csound(k) ! Adiabatic sound speed usually sufficient
+       if (s% tau(k) > (clight / c_sound_local)) then
+          taucrit_idx = k
+          exit
+       end if
+    end do
+
+    ! -----------------------------------------------------------
+    ! 3. Calculate Local Energetics (Eq 1-6 in Cheng+24)
+    ! -----------------------------------------------------------
+    do k = 1, s% nz
+       ! Local dynamical time: t_dyn = sqrt(r^3 / Gm)
+       t_dyn(k) = sqrt(s% r(k)**3 / (standard_cgrav * s% m(k)))
+
+       ! Eddington Luminosity: L_edd = 4*pi*c*G*M / kappa
+       ! Excess Luminosity: L_excess = (L_rad) - L_edd
+       ! Note: L_rad = L_tot - L_conv
+       L_excess(k) = (s% L(k) - s% L_conv(k)) - &
+                     (4.0d0 * pi * clight * s% cgrav(k) * s% m_grav(k) / s% opacity(k))
+
+       ! Excess Energy: E = L_excess * t_dyn
+       E_excess_local(k) = L_excess(k) * t_dyn(k)
+
+       ! Masking:
+       ! 1. Must be super-Eddington (E > 0)
+       ! 2. Must be above tau_crit (k < taucrit_idx)
+       if (E_excess_local(k) < 0.0d0 .or. k >= taucrit_idx) then
+          E_excess_local(k) = 0.0d0
+       end if
+    end do
+
+    ! -----------------------------------------------------------
+    ! 4. Integration (Surface Inwards)
+    ! -----------------------------------------------------------
+    ! We integrate from surface (k=1) down to current depth k
+
+    integral_excess = 0.0d0
+    integral_mass_denom = 0.0d0
+
+    do k = 1, s% nz - 1
+
+       ! Cumulative Binding Energy of envelope above shell k (Eq 8)
+       ! Integrating G*m/r * dm
+       E_binding_cumulative(k) = E_binding_cumulative(max(1, k-1)) + &
+            (standard_cgrav * s% m(k) * s% dm(k) / s% r(k))
+
+       ! Cumulative Excess Energy (Weighted Average) (Eq 7)
+       integral_excess = integral_excess + (E_excess_local(k) * s% dm(k))
+       integral_mass_denom = integral_mass_denom + s% dm(k)
+
+       if (integral_mass_denom > 0.0d0) then
+          E_excess_cumulative(k) = integral_excess / integral_mass_denom
+       else
+          E_excess_cumulative(k) = 0.0d0
+       end if
+
+       ! Mass above current radius (in Solar Masses)
+       M_above(k) = (s% m(1) - s% m(k)) / Msun
+
+       ! Energy Difference (Eq 9)
+       E_diff(k) = E_excess_cumulative(k) - E_binding_cumulative(k)
+
+       ! Filter for Mass Loss
+       ! Logic: If E_diff > 0, this depth *could* be the detachment point.
+       if (E_diff(k) > 0.0d0 .and. k < taucrit_idx) then
+          potential_Mloss(k) = M_above(k)
+       else
+          potential_Mloss(k) = 0.0d0
+       end if
+
+    end do
+
+    ! -----------------------------------------------------------
+    ! 5. Determine Final Mass Loss Rate
+    ! -----------------------------------------------------------
+    ! Find the innermost radius (maximum mass above) where condition is met
+    mlost_final = maxval(potential_Mloss)
+
+    if (mlost_final > 0.0d0) then
+       ! Find location of this maximum
+       do k = 1, s% nz
+          if (potential_Mloss(k) == mlost_final) then
+             mlost_loc = k
+             exit
+          end if
+       end do
+
+       ! Get dynamical time at the detachment point (in years)
+       tdyn_final = t_dyn(mlost_loc) / secyer
+
+       ! Rate Eq (12): M_dot = xi * DeltaM / t_dyn
+       w = efficiency_xi * (mlost_final / tdyn_final)
+
+    else
+       w = 0.0d0
+    end if
+
+    ! Cleanup
+    deallocate(t_dyn, L_excess, E_excess_local)
+    deallocate(E_excess_cumulative, E_binding_cumulative)
+    deallocate(M_above, E_diff, potential_Mloss)
+
+    w = w_standard + w
+    call smooth_wind_log(w, "Ch24 LBV")
+
+ end subroutine eval_Cheng24_wLBV
+
+ subroutine eval_Pauli26_wLBV(w_standard, w)
+    ! Pauli+2026 LBV winds
+    real(dp), intent(in) :: w_standard
+    real(dp), intent(out) :: w
+    real(dp) :: log10w,Mdot_inflation
+    real(dp) :: R_core,Rcrit_scaling,beta, minRho
+    integer :: i ! Explicit declaration for loop variable
+    include 'formats'
+    wind_scheme = 92.0
+
+    ! check if the envelope is not from a RSG (Pgas is dominating in their envelopes)
+    ! Pgas/Ptotal < 0.3 (value arbitrarily chosen from models)
+
+    R_core = s% r(1)
+    do i = 1, s% nz, 1
+      if((s% Pgas(i)/s% Peos(i)) > 0.15) then
+        R_core = s% r(i)
+      end if
+    end do
+
+    ! Minimum envelope density
+
+    minRho = 1e99
+    do i = s % nz, 1, -1
+       if(s% rho(i) .le. minRho) then
+          minRho = s% rho(i)
+       end if
+    end do
+
+    ! Petrovic+2006
+    Mdot_inflation = 4 * pi * R_core * R_core * minRho *sqrt(standard_cgrav * s% star_mass * Msun / R_core) / (Msun / 31536000d0)
+    ! The 31536000d0 part is to convert to years
+
+    ! The model does not apply this mass loss immediately.
+    ! It defines a threshold for how much inflation (R​/Rcore​) is allowed before the wind turns on.
+    ! This threshold is dynamic and depends on the surface Hydrogen abundance (Xs​).
+    Rcrit_scaling = 1d0
+    if (X > 0.2d0) then
+       Rcrit_scaling = 1d0
+    else if (X < 0.2d0 .and. X > 0d0) then
+       Rcrit_scaling = Rcrit_scaling + (1-Rcrit_scaling) * X/0.2
+    endif
+
+    ! Linear interpolation to smooth and avoid numerical issues
+    beta = 0d0
+    if (R / R_core > Rcrit_scaling*2) then
+       beta = 1d0
+    else if (R / R_core > Rcrit_scaling*1.9 .and. R / R_core < Rcrit_scaling*s% x_ctrl(5)) then
+       beta = (R/R_core - Rcrit_scaling*1.9)/(Rcrit_scaling*2-Rcrit_scaling*1.9)
+    endif
+
+    w = w_standard + beta*Mdot_inflation
+
+    ! From Pauli+ (2026) run_star_extras file:
+    !   "soften change in wind to avoid things going bad
+    !    I allow a rapid increase in Mdot to properly get the eruptive phase.
+    !    to avoid crazy jumps I slowly go down with Mdot. This has only marginal
+    !    impact on the final mass but helps with convergence"
+    ! This is now handled by the generalized smoothing routine
+    call smooth_wind_log(w, "P26 LBV")
+
+ end subroutine eval_Pauli26_wLBV
+
+ subroutine eval_LBV_winds(w)
+           real(dp), intent(inout) :: w
+           real(dp) :: w_standard
+           w_standard = w
+
+           if (s% x_character_ctrl(11) == 'Bk10') then
+             if (log10(L/Lsun) > s% x_ctrl(6) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
+               call eval_Belczynski10_wLBV(w)
+             end if
+
+           elseif (s% x_character_ctrl(11) == 'H00') then
+              if (log10(L/Lsun) > s% x_ctrl(6) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
+                 call eval_Hurley00_wLBV(w_standard, w)
+              end if
+
+            elseif (s% x_character_ctrl(11) == 'Ch24') then
+               call eval_Cheng24_wLBV(w_standard, w)
+
+           elseif (s% x_character_ctrl(11) == 'P26') then
+              call eval_Pauli26_wLBV(w_standard, w)
+
+           end if
+      end subroutine eval_LBV_winds
+
 
       end subroutine my_other_wind
 
