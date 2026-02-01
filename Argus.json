@@ -275,10 +275,12 @@
       {
         "id": "K25",
         "ref": "Krticka et al. 2025",
-        "note": "Theoretical: warn that this should be used only below roughly 0.2Zsun",
-        "parameter_space": "Metallicity: Down to 0.01 Zsolar. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
+        "note": "Theoretical: includes bistability jump near Zsolar, but not at low metallicities",
+        "parameter_space": "Metallicity: From Zsolar to 0.01 Zsolar. 10 to 45 kK. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
         "z_solar_calibration": 0.014,
-        "warning": "This should be used only below roughly 0.2Zsun",
+        "warning": "This should be used only below Zsun",
+        "warning_2": "DANGER: when extrapolated beyond the effective temperature parameter space it can heavily underestimate mass loss (from personal experience of the dev Amedeo Romagnolo when testing it at Zsun)",
+        "warning_3": "Existence and effective temperature initiation of bistability jump were not observationally verified",
         "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K"
       },
       {
@@ -328,19 +330,19 @@
         "url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D"
       },
       {
-        "id": "vL05",
-        "ref": "van Loon et al. 2005",
-        "note": "Dusty winds",
-        "parameter_space": "LMC (0.5 Zsolar). Dust-enshrouded AGBs and RSGs. Teff < 3500 K (down to ~2500 K).",
-        "url": "https://doi.org/10.1051/0004-6361:20042555"
-      },
-      {
         "id": "Vb98",
         "ref": "Vanbeveren et al. 1998",
         "note": "RSG mass loss based on Jura (1987) / Reid (1990) for LMC RSGs (Eq. 1.2 in paper).",
         "parameter_space": "Derived for LMC RSGs with M_bol < -7. Implementation uses: log Mdot = 0.8 log L - 8.7.",
         "warning": "Implementation does NOT scale with metallicity. The paper suggests Galactic rates might be ~1.6x higher than this LMC-based formula. However, recent papers like Antoniadis et al. (2025) disagree",
         "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
+      },
+      {
+        "id": "vL05",
+        "ref": "van Loon et al. 2005",
+        "note": "Dusty winds",
+        "parameter_space": "LMC (0.5 Zsolar). Dust-enshrouded AGBs and RSGs. Teff < 3500 K (down to ~2500 K).",
+        "url": "https://doi.org/10.1051/0004-6361:20042555"
       },
       {
         "id": "Be23",
@@ -385,12 +387,45 @@
         "url": "https://ui.adsabs.harvard.edu/abs/1989A%26A...220..135L"
       },
       {
+        "id": "Ha98",
+        "ref": "Hamann & Koesterke 1998",
+        "note": "With Vink 2005 Z-dep",
+        "parameter_space": "Galactic WN stars. Includes clumping corrections. Standard empirical recipe.",
+        "z_solar_calibration": 0.019,
+        "url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H"
+      },
+      {
         "id": "Vb98",
         "ref": "Vanbeveren et al. 1998",
         "note": "Generic WR mass loss (Eq. 1.3 in paper). Includes metallicity scaling (+0.85 logZ) from Vink & de Koeter (2005).",
         "parameter_space": "Defined for Hydrogen-deficient CHeB stars with log L >= 4.5 and Teff >= 30 kK. Formula: log Mdot = log L - 10.",
         "warning": "Simple relation dependent primarily on Luminosity. Does not distinguish between WN/WC types dynamically.",
         "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
+      },
+      {
+        "id": "NL00",
+        "ref": "Nugis & Lamers 2000",
+        "note": "Canonical empirical. Provides generic WR formula, plus specific WN and WC formulae. Depends on surface Y and Z directly (not just scaled to solar). Z_solar calibrated with Z/X=0.0244 (Grevesse et al. 1996).",
+        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration",
+        "parameter_space": "Galactic WN and WC stars. Often used with Eldridge & Vink (2006) recalibration for WC/WO metallicity scaling. Nugis & Lamers (2002) support the high rates, arguing for deep-seated critical points.",
+        "z_solar_calibration": 0.019,
+        "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
+      },
+      {
+        "id": "Y06",
+        "ref": "Yoon et al. 2006",
+        "note": "Empirical",
+        "parameter_space": "WN and WC stars. Theoretical/Empirical compilation.",
+        "z_solar_calibration": 0.020,
+        "url": "https://ui.adsabs.harvard.edu/abs/2006A&A...460..199Y"
+      },
+      {
+        "id": "GH08",
+        "ref": "Grafener & Hamann 2008",
+        "note": "Function of Gamma_e",
+        "parameter_space": "WNL stars (Late-type N-rich). Grid covers range of masses. Metallicities: Galaxy, LMC, SMC. Finds M ~ Z^0.86. Includes clumping.",
+        "z_solar_calibration": 0.019,
+        "url": "https://ui.adsabs.harvard.edu/abs/2008A&A...482..945G"
       },
       {
         "id": "V11",
@@ -403,37 +438,32 @@
         "url": "https://ui.adsabs.harvard.edu/abs/2011A&A...531A.132V"
       },
       {
-        "id": "B20",
-        "ref": "Bestenlehner 2020",
-        "note": "Theoretical. Function of Gamma_e",
-        "parameter_space": "WNh (hydrogen-rich WR stars). Very massive stars (> 100 Msun). LMC metallicity (0.5 Zsolar). No explicit Z-dependence in B20, but Brands et al. (2022) suggest scaling with Z^0.85 (with Asplund Zsolar).",
-        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.3938B"
+        "id": "TSK16",
+        "ref": "Tramper, Sana & de Koter 2016",
+        "note": "Empirical. Improved WC/WO prescription.",
+        "parameter_space": "Metallicity: MW, LMC, IC1613. 21 WC/WO stars. Luminosity: 4.9-6.1 logL. Surface He: 0.14-0.98. Surface Fe: 0.15-1 solar",
+        "z_solar_calibration": "Iron based (Z_Fe_sun approx 0.0013). Z_solar assumed = 0.014",
+        "note_2": "Finds weaker dependence on luminosity (0.85) and abundance (0.44) compared to NL00. Recommended for late core-He burning and post-He burning stages.",
+        "warning": "For hydrogen-free WC/WO stars (Y >= 0.98), a steeper metallicity dependence (~1.3) should be applied (see TSK16 Eq 3).",
+        "url": "https://doi.org/10.3847/1538-4357/833/2/133"
       },
       {
-        "id": "GH08",
-        "ref": "Grafener & Hamann 2008",
-        "note": "Function of Gamma_e",
-        "parameter_space": "WNL stars (Late-type N-rich). Grid covers range of masses. Metallicities: Galaxy, LMC, SMC. Finds M ~ Z^0.86. Includes clumping.",
-        "z_solar_calibration": 0.019,
-        "url": "https://ui.adsabs.harvard.edu/abs/2008A&A...482..945G"
+        "id": "Y17",
+        "ref": "Yoon 2017",
+        "note": "Empirical/Theoretical hybrid. He stars/SN Ib/Ic progenitors.",
+        "parameter_space": "Pure He stars. Z_init: 0.02 and 0.01. Initial Mass: 4-25 Msun.",
+        "z_solar_calibration": 0.02,
+        "note_2": "Combines Potsdam WNE data from Hamann et al. (2006) and Hainich et al. (2014) with TSK16 for WC/WO. Suggests an overall scaling factor f_WR = 1 (1.58) for clumping factor D=4 (10) to reproduce faint WC/WO stars observed in the Galaxy and LMC.",
+        "warning": "The bimodal distribution of helium mass (m_He ~1.0 or ~0.2) distinguishes SN Ib vs Ic progenitors. Crucial for ejecta mass predictions.",
+        "url": "https://doi.org/10.1093/mnras/stx1496"
       },
       {
-        "id": "NL00",
-        "ref": "Nugis & Lamers 2000",
-        "note": "Canonical empirical. Provides generic WR formula, plus specific WN and WC formulae. Depends on surface Y and Z directly (not just scaled to solar). Z_solar calibrated with Z/X=0.0244 (Grevesse et al. 1996).",
-        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration",
-        "parameter_space": "Galactic WN and WC stars. Often used with Eldridge & Vink (2006) recalibration for WC/WO metallicity scaling. Nugis & Lamers (2002) support the high rates, arguing for deep-seated critical points.",
-        "z_solar_calibration": 0.019,
-        "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
-      },
-      {
-        "id": "SV20",
-        "ref": "Sander & Vink 2020",
-        "note": "Theoretical. WC/WO stars. T-dependent correction from Sander et al. (2023) commented in the Atlas run_star_extras file and therefore not included by default, but it can be activated manually!",
-        "parameter_space": "WC/WO stars. Metallicity down to 10^-4 Zsolar. Luminosity: 4.8-6.5 logL. Finds breakdown of simple Z-scaling at very low Z. Sander et al. (2023) introduced a T-dependent correction (T* at tau=20, not Teff) for these rates.",
+        "id": "S19",
+        "ref": "Sander et al. 2019",
+        "note": "Theoretical. WC/WO stars",
+        "parameter_space": "Galactic WC/WO stars. Hydrodynamically consistent grid.",
         "z_solar_calibration": 0.014,
-        "warning": "Pauli et al. (2025) showed that SV20 mass-loss rates were too high compared to empirical findings. For metallicities below 0.1%Zsun it could overestimate mass loss by orders of magnitude (from personal tests).",
-        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S"
+        "url": "https://ui.adsabs.harvard.edu/abs/2019A&A...621A..92S"
       },
       {
         "id": "Sh19",
@@ -445,38 +475,61 @@
         "url_corrigendum": "https://ui.adsabs.harvard.edu/abs/2020A%26A...641C...2S/abstract"
       },
       {
-        "id": "S19",
-        "ref": "Sander et al. 2019",
-        "note": "Theoretical. WC/WO stars",
-        "parameter_space": "Galactic WC/WO stars. Hydrodynamically consistent grid.",
+        "id": "B20",
+        "ref": "Bestenlehner 2020",
+        "note": "Theoretical. Function of Gamma_e",
+        "parameter_space": "WNh (hydrogen-rich WR stars). Very massive stars (> 100 Msun). LMC metallicity (0.5 Zsolar). No explicit Z-dependence in B20, but Brands et al. (2022) suggest scaling with Z^0.85 (with Asplund Zsolar).",
+        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.3938B"
+      },
+      {
+        "id": "SV20",
+        "ref": "Sander & Vink 2020",
+        "note": "Theoretical. WC/WO stars. T-dependent correction from Sander et al. (2023) commented in the Atlas run_star_extras file and therefore not included by default, but it can be activated manually!",
+        "parameter_space": "WC/WO stars. Metallicity down to 10^-4 Zsolar. Luminosity: 4.8-6.5 logL. Finds breakdown of simple Z-scaling at very low Z. Sander et al. (2023) introduced a T-dependent correction (T* at tau=20, not Teff) for these rates.",
         "z_solar_calibration": 0.014,
-        "url": "https://ui.adsabs.harvard.edu/abs/2019A&A...621A..92S"
-      },
-      {
-        "id": "Ha98",
-        "ref": "Hamann & Koesterke 1998",
-        "note": "With Vink 2005 Z-dep",
-        "parameter_space": "Galactic WN stars. Includes clumping corrections. Standard empirical recipe.",
-        "z_solar_calibration": 0.019,
-        "url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H"
-      },
-      {
-        "id": "Y06",
-        "ref": "Yoon et al. 2006",
-        "note": "Empirical",
-        "parameter_space": "WN and WC stars. Theoretical/Empirical compilation.",
-        "z_solar_calibration": 0.020,
-        "url": "https://ui.adsabs.harvard.edu/abs/2006A&A...460..199Y"
+        "warning": "Pauli et al. (2025) showed that SV20 mass-loss rates were too high compared to empirical findings. For metallicities below 0.1%Zsun it could overestimate mass loss by orders of magnitude (from personal tests).",
+        "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S"
       }
+
     ],
     "lbv_winds": [
       {
-        "id": "Bk10",
-        "ref": "Belczynski et al. 2010",
-        "note": "Standard fixed LBV rate",
-        "z_solar_calibration": 0.019,
-        "url": "http://dx.doi.org/10.1088/2041-8205/715/2/L138"
-      }
+          "H00": {
+            "id": "H00",
+            "ref": "Hurley et al. 2000",
+            "note": "Analytic evolution formulae. LBV-like mass loss.",
+            "note_2": "The minimum logL for the HD limit can be changed with the s% x_ctrl(6) variable",
+            "parameter_space": "General LBV behavior initiated at HD limit. Not self-consistent with internal evolution. Acts as additive factor to wind-driven mass loss.",
+            "warning": "Not self-consistent with stellar structure; triggered solely by crossing HD limit. Original limit was logL = 6.0, now set to 5.5 (Davies+18/McDonald+22).",
+            "url": "https://ui.adsabs.harvard.edu/abs/2000MNRAS.315..543H"
+          },
+          "Bk10": {
+            "id": "Bk10",
+            "ref": "Belczynski et al. 2010",
+            "note": "The minimum logL for the HD limit can be changed with the s% x_ctrl(6) variable",
+            "parameter_space": "Calibration predates GW detections and modern BH surveys; factor f_lbv may need re-calibration.",
+            "warning": "Not self-consistent with stellar structure; triggered solely by crossing HD limit. Original limit was logL = 6.0, now set to 5.5 (Davies+18/McDonald+22).",
+            "warning_2": "Fixed, flat mass-loss rate accounting for wind + shell ejections.",
+            "url": "https://ui.adsabs.harvard.edu/abs/2010ApJ...714.1217B"
+          },
+          "Ch24": {
+            "id": "Ch24",
+            "ref": "Cheng et al. 2024",
+            "note": "1D model for opacity-driven super-Eddington luminosities.",
+            "parameter_space": "Identifies opacity peaks causing super-Eddington luminosities.",
+            "warning": "Recent prescription that overlaps with the physics of inflation.",
+            "url": "https://iopscience.iop.org/article/10.3847/1538-4357/ad701e"
+          },
+          "P26": {
+            "id": "P26",
+            "ref": "Pauli et al. 2026",
+            "note": "Eruptive Mass Loss. Eddington-limit induced.",
+            "note_2": "Proposed as an alternative to Ch24 to better distinguish between static inflation and actual eruptive mass loss events near the Eddington limit.",
+            "parameter_space": "Massive star populations in LMC/SMC. Models mass ejections at Eddington limit. Additive/multiplicative factor.",
+            "warning": "Phenomenological model. Assumes super-Eddington layers drive mass loss rather than envelope inflation. Heavily dependent on the calibrated efficiency factor (f_ej) and assumes the HD limit is shaped primarily by these winds.",
+            "url": "https://arxiv.org/abs/2601.08822"
+          }
+        }
     ],
     "low_mass_winds": [
       {
