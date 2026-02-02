@@ -278,10 +278,11 @@
         "note": "Theoretical: includes bistability jump near Zsolar, but not at low metallicities",
         "parameter_space": "Metallicity: From Zsolar to 0.01 Zsolar. 10 to 45 kK. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
         "z_solar_calibration": 0.014,
-        "warning": "This should be used only below Zsun",
-        "warning_2": "DANGER: when extrapolated beyond the effective temperature parameter space it can heavily underestimate mass loss (from personal experience of the dev Amedeo Romagnolo when testing it at Zsun)",
+        "warning": "This should be used only at Z <= Zsun",
+        "warning_2": "Originally, when extrapolated beyond the effective temperature parameter space it can heavily underestimate mass loss (from personal experience of the dev Amedeo Romagnolo when testing it at Zsun). Clamping to the extremes is applied to avoid for underestimation.",
         "warning_3": "Existence and effective temperature initiation of bistability jump were not observationally verified",
-        "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K"
+        "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K",
+        "url": "The more detailed fits for this mass-loss recipe come from the Zenodo link https://zenodo.org/records/15965163"
       },
       {
         "id": "VS21",
