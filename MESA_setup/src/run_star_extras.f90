@@ -558,113 +558,107 @@ end subroutine eval_Blocker_wind
 
   subroutine eval_Krticka25_wind(w)
     real(dp), intent(inout) :: w
+    real(dp) :: t, l, z, dmdt
+    real(dp) :: p1, p2, p3, p4, p5, p6, p7
+    real(dp) :: c1, c2, c3, c4, c5, c6, c7
 
-    ! Local variables for Legendre polynomial implementation
-    real(dp) :: a_param, b_param, T0, dT
-    real(dp) :: log_L_norm, log_Z_norm, T_eff_kK, x_param
-    real(dp) :: sum_term, Cn
-    real(dp) :: P_curr, P_prev, P_prev2
-    real(dp) :: l_coeffs(7,4)
-    integer :: n
+    ! Parameters from fit
+    real(dp), parameter :: a     = -7.d0
+    real(dp), parameter :: fb    = 1.619d0
+    real(dp), parameter :: fl1   = -31.333d0
+    real(dp), parameter :: fl2   = 119.62d0
+    real(dp), parameter :: fl3   = -201.713d0
+    real(dp), parameter :: fl4   = 208.466d0
+    real(dp), parameter :: fl5   = -140.704d0
+    real(dp), parameter :: fl6   = 58.7226d0
+    real(dp), parameter :: fl7   = -11.7687d0
+    real(dp), parameter :: flz1  = -46.3518d0
+    real(dp), parameter :: flz2  = 170.353d0
+    real(dp), parameter :: flz3  = -284.575d0
+    real(dp), parameter :: flz4  = 292.063d0
+    real(dp), parameter :: flz5  = -195.337d0
+    real(dp), parameter :: flz6  = 80.3569d0
+    real(dp), parameter :: flz7  = -15.3933d0
+    real(dp), parameter :: flzz1 = -19.0704d0
+    real(dp), parameter :: flzz2 = 70.4817d0
+    real(dp), parameter :: flzz3 = -115.793d0
+    real(dp), parameter :: flzz4 = 117.131d0
+    real(dp), parameter :: flzz5 = -77.1403d0
+    real(dp), parameter :: flzz6 = 31.2397d0
+    real(dp), parameter :: flzz7 = -5.729d0
+    real(dp), parameter :: flzzz1= 0.372222d0
+    real(dp), parameter :: flzzz2= 0.119759d0
+    real(dp), parameter :: flzzz3= 0.0d0
+    real(dp), parameter :: flzzz4= 0.0d0
+    real(dp), parameter :: flzzz5= 0.0d0
+    real(dp), parameter :: flzzz6= 0.0d0
+    real(dp), parameter :: flzzz7= 0.0d0
 
     wind_scheme = 25.5
 
     ! --------------------------------------------------------------------
-    ! Krticka et al. (2025) - Equation 3 & Table 4
-    ! Implemented using Legendre Polynomials
+    ! Krticka et al. (2025) - Re-implementation with specific fits
+    !   from the Zenodo files https://zenodo.org/records/15965163
     ! --------------------------------------------------------------------
 
-    ! Global Parameters
-    a_param = -7.0d0
-    b_param = 1.619d0
-    T0 = 10.0d0   ! kK
-    dT = 35.0d0   ! kK
+    ! Normalized Temperature: t maps [10kK, 45kK] to [0, 1]
+    t = (Tsurf/1000.d0 - 10.d0)/35.d0
 
-    ! Legendre Polynomial Coefficients (l_n0, l_n1, l_n2, l_n3)
-    ! n=1
-    l_coeffs(1,1) = -31.333d0
-    l_coeffs(1,2) = -46.3518d0
-    l_coeffs(1,3) = -19.0704d0
-    l_coeffs(1,4) = 0.372222d0
-    ! n=2
-    l_coeffs(2,1) = 119.62d0
-    l_coeffs(2,2) = 70.4817d0
-    l_coeffs(2,3) = 170.353d0
-    l_coeffs(2,4) = 0.119759d0
-    ! n=3
-    l_coeffs(3,1) = -201.713d0
-    l_coeffs(3,2) = -284.575d0
-    l_coeffs(3,3) = -115.793d0
-    l_coeffs(3,4) = 0.0d0
-    ! n=4
-    l_coeffs(4,1) = 208.466d0
-    l_coeffs(4,2) = 117.131d0
-    l_coeffs(4,3) = 292.063d0
-    l_coeffs(4,4) = 0.0d0
-    ! n=5
-    l_coeffs(5,1) = -140.704d0
-    l_coeffs(5,2) = -195.337d0
-    l_coeffs(5,3) = -77.1403d0
-    l_coeffs(5,4) = 0.0d0
-    ! n=6
-    l_coeffs(6,1) = 58.7226d0
-    l_coeffs(6,2) = 31.2397d0
-    l_coeffs(6,3) = 80.3569d0
-    l_coeffs(6,4) = 0.0d0
-    ! n=7
-    l_coeffs(7,1) = -11.7687d0
-    l_coeffs(7,2) = -15.3933d0
-    l_coeffs(7,3) = -5.729d0
-    l_coeffs(7,4) = 0.0d0
+    ! Clamping to avoid crash if Tsurf is slightly out of bounds
+    if(t > 1.d0) then
+        write(*,*) "Warning: K25 Tsurf > 45kK, clamping to fit boundary."
+        t = 1.d0
+    elseif(t < 0.d0) then
+        write(*,*) "Warning: K25 Tsurf < 10kK, clamping to fit boundary."
+        t = 0.d0
+    endif
 
-    ! Normalize inputs
-    ! logL_div_Lsun is available from parent scope
-    log_L_norm = logL_div_Lsun - 6.0d0
+    ! Normalized Metallicity
+    z = logZ_div_Zsun
+    ! Clamping metallicity to valid range [-2, 0]
+    if(z < -2.d0) then
+        z = -2.d0
+    elseif(z > 0.d0) then
+        z = 0.d0
+    endif
 
-    ! logZ_div_Zsun is available from parent scope
-    log_Z_norm = logZ_div_Zsun
+    ! Normalized Luminosity
+    l = logL_div_Lsun - 6.d0
 
-    ! Normalized Temperature
-    T_eff_kK = Tsurf / 1000.0d0
-    x_param = (T_eff_kK - T0) / dT
+    ! --- Polynomials p(t) ---
+    ! p1(t)=t
+    p1 = t
+    ! p2(t)= -0.1d1 / 0.2d1 + 0.3d1 / 0.2d1 * t * t
+    p2 = -0.5d0 + 1.5d0*t*t
+    ! p3(t)= 0.5d1 / 0.2d1 * t**3 - 0.3d1 / 0.2d1 * t
+    p3 = 2.5d0*t**3 - 1.5d0*t
+    ! p4(t)= 0.3d1 / 0.8d1 + 0.35d2 / 0.8d1 * t**4 - 0.15d2 / 0.4d1 * t**2
+    p4 = 0.375d0 + 4.375d0*t**4 - 3.75d0*t**2
+    ! p5(t)= 0.63d2 / 0.8d1 * t**5 - 0.35d2 / 0.4d1 * t**3 + 0.15d2 / 0.8d1 * t
+    p5 = 7.875d0*t**5 - 8.75d0*t**3 + 1.875d0*t
+    ! p6(t)= -0.5d1 / 0.16d2 + 0.231d3 / 0.16d2 * t**6 - 0.315d3 / 0.16d2 * t**4 + 0.105d3 / 0.16d2 * t**2
+    p6 = -0.3125d0 + 14.4375d0*t**6 - 19.6875d0*t**4 + 6.5625d0*t**2
+    ! p7(t)= 0.429d3 / 0.16d2 * t**7 - 0.693d3 / 0.16d2 * t**5 + 0.315d3 / 0.16d2 * t**3 - 0.35d2 / 0.16d2 * t
+    p7 = 26.8125d0*t**7 - 43.3125d0*t**5 + 19.6875d0*t**3 - 2.1875d0*t
 
-    ! --- Summation Term Calculation ---
-    sum_term = 0.0d0
+    ! --- Coefficients c(z) ---
+    ! c_n(z) = l_n + lz_n*z + lzz_n*z^2 + lzzz_n*z^3
+    c1 = fl1 + flz1*z + flzz1*z*z + flzzz1*z**3
+    c2 = fl2 + flz2*z + flzz2*z*z + flzzz2*z**3
+    c3 = fl3 + flz3*z + flzz3*z*z + flzzz3*z**3
+    c4 = fl4 + flz4*z + flzz4*z*z + flzzz4*z**3
+    c5 = fl5 + flz5*z + flzz5*z*z + flzzz5*z**3
+    c6 = fl6 + flz6*z + flzz6*z*z + flzzz6*z**3
+    c7 = fl7 + flz7*z + flzz7*z*z + flzzz7*z**3
 
-    ! Initialize Legendre Polynomials for recurrence
-    ! P_0(x) = 1
-    ! P_1(x) = x
-    P_prev2 = 1.0d0
-    P_prev  = x_param
+    ! --- Final Mass Loss Calculation ---
+    ! logMdot = a + b*l + Sum(c_n * p_n)
+    logMdot = a + fb*l + c1*p1 + c2*p2 + c3*p3 + c4*p4 + c5*p5 + c6*p6 + c7*p7
 
-    do n = 1, 7
-        if (n == 1) then
-            P_curr = P_prev
-        else
-            ! Recurrence: P_n = [ (2n-1)x P_{n-1} - (n-1) P_{n-2} ] / n
-            P_curr = ( (2.0d0*dble(n) - 1.0d0)*x_param*P_prev - (dble(n) - 1.0d0)*P_prev2 ) / dble(n)
-
-            ! Shift history for next step
-            P_prev2 = P_prev
-            P_prev  = P_curr
-        end if
-
-        ! Calculate C_n(Z) = l_n0 + l_n1*logZ + l_n2*logZ^2 + l_n3*logZ^3
-        Cn = l_coeffs(n,1) + &
-             l_coeffs(n,2) * log_Z_norm + &
-             l_coeffs(n,3) * log_Z_norm**2 + &
-             l_coeffs(n,4) * log_Z_norm**3
-
-        sum_term = sum_term + Cn * P_curr
-    end do
-
-    ! Final Calculation
-    logMdot = a_param + b_param * log_L_norm + sum_term
-
-    w = 10**logMdot
+    w = 10.d0**logMdot
     call smooth_wind_log(w, "K25")
 
-  end subroutine   eval_Krticka25_wind
+  end subroutine eval_Krticka25_wind
 
   subroutine eval_GormazMatamala23_wind(w)
     real(dp), intent(inout) :: w
@@ -1159,7 +1153,7 @@ subroutine eval_Yoon17_wind(w)
  wind_scheme = 43.5
 
 
- w = f_WR*((L/Lsun)**1.18)*(Z_div_Z_solar**0.6)*(10**-11.32)
+ w = f_WR*((L/Lsun)**1.18)*(Z_div_Z_solar**0.6)*(10**(-11.32))
  call smooth_wind_log(w, "Y17")
 
 end subroutine eval_Yoon17_wind
