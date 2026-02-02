@@ -77,3 +77,13 @@ Use the GalPop.ipynb to produce a galactic population of massive stars. Use the 
 8. Plot the HRD. It is the same as in Figure 4 of the Stellar Winds Atlas I paper, but only with two panels. Here below what you would plot by using the parquet files that were provided
 
 <img width="1692" height="1050" alt="image" src="https://github.com/user-attachments/assets/695179ca-950f-47af-a18c-ce5e69bcc76d" /> -->
+
+---
+
+### The Hall of Fame
+
+A project like this doesn't sail alone. Special thanks to:
+
+* **Marco Ruscone**: For teaching me how to use `.json` (the *Jason* to my Argonauts) to guide LLMs.
+* **Lucas de Sá**: For suggesting the name **Argus** upon this shipwright.
+* **My own subconscious**: For quite literally dreaming up the implementation logic into MESA one night, apparently deciding that astrophysics was more important than a good night's sleep.
