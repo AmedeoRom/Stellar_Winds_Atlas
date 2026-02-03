@@ -82,7 +82,7 @@
 
       implicit none
 
-      logical :: already_thick = .true.
+      logical :: already_thick
       real(dp) :: Mdot_switch,L_switch,M_switch,gamma_edd_switch
       real(dp) :: eta,eta_trans,gamma_edd,gamma_edd_old                         ! gamma_edd_old is to check the previous timestep
       real(dp) :: wind_scheme,wind_scheme_interp                                ! To know which winds model I am using at each timestep
