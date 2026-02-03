@@ -341,7 +341,7 @@
        if (.not. thick_met .and. .not. s% x_logical_ctrl(8)) then
          ! Reset already_thick if we are no longer in the thick regime and sticky is off
          already_thick = .false.
-       elsez`
+       else
          if (.not. already_thick) then
            ! Capture state for V11 or other transitions at the first crossing
            gamma_edd_switch = gamma_edd
