@@ -76,7 +76,8 @@
           "Xsurf",
           "gamma_eta",
           "any"
-        ]
+        ],
+        "comments": "The calculation of the eta and eta_trans factors depend on the terminal velocity adopted. Under the vinf_type variable in run_star_extras, one can modify which terminal velocity fits are used"
       },
       "x_character_ctrl(2)": {
         "description": "Optically thin winds for high surface gravity (log g > 3.0)."
@@ -129,6 +130,12 @@
       },
       "x_logical_ctrl(6)": {
         "description": "Enable LBV winds beyond the Humphreys-Davidson limit."
+      },
+      "x_logical_ctrl(7)": {
+        "description": "Smooths transition to weaker winds following Pauli+ (2026)"
+      },
+      "x_logical_ctrl(8)": {
+        "description": "Sticky winds: if enabled, once the star develops thick winds, it cannot go back to thin winds even if the thick winds condition is not anymore valid."
       },
       "x_ctrl(1)": {
         "description": "Center Oxygen mass fraction limit for stopping simulation (usually 1d-4)."
@@ -276,6 +283,7 @@
         "id": "K25",
         "ref": "Krticka et al. 2025",
         "note": "Theoretical: includes bistability jump near Zsolar, but not at low metallicities",
+        "note_2": "For self-consistency, vinf_type should be set to 'Kritcka25' to properly calculate terminal velocities",
         "parameter_space": "Metallicity: From Zsolar to 0.01 Zsolar. 10 to 45 kK. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
         "z_solar_calibration": 0.014,
         "warning": "This should be used only at Z <= Zsun",
