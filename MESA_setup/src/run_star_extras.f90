@@ -82,7 +82,7 @@
 
       implicit none
 
-      integer :: already_thick = 0                                              ! 0/1/2:    not yet thick/thick with eta/thick with gamma
+      logical :: already_thick = .true.
       real(dp) :: Mdot_switch,L_switch,M_switch,gamma_edd_switch
       real(dp) :: eta,eta_trans,gamma_edd,gamma_edd_old                         ! gamma_edd_old is to check the previous timestep
       real(dp) :: wind_scheme,wind_scheme_interp                                ! To know which winds model I am using at each timestep
@@ -301,9 +301,8 @@
 
        write(*,*)
        write(*,*) "------------------------------------------------------------"
-       if ( already_thick == 1 ) then
+       if ( already_thick ) then
          write(*, '(A, f5.3, A, f5.3)') " Gamma_e: ", gamma_edd, " vs Gamma_switch: ", gamma_edd_switch,  " vs Gamma_trans: ", gamma_trans
-         write(*, *) " Mdot_switch: ", Mdot_switch, "   M_switch: ", M_switch
        else
          write(*, '(A, f5.3, A, f5.3)') " Gamma_e: ", gamma_edd, " vs Gamma_trans: ", gamma_trans
        end if
@@ -339,11 +338,11 @@
             HPoor_WR_condition = .false.
        end if
 
-       if (.not. thick_met) then
+       if (.not. thick_met .and. .not. s% x_logical_ctrl(8)) then
          ! Reset already_thick if we are no longer in the thick regime and sticky is off
-         if (.not. s% x_logical_ctrl(8)) already_thick = 0
-       elseif(thick_met .or. already_thick == 1) then
-         if (already_thick == 0) then
+         already_thick = .false.
+       elsez`
+         if (.not. already_thick) then
            ! Capture state for V11 or other transitions at the first crossing
            gamma_edd_switch = gamma_edd
            gamma_edd_switch = round_3(gamma_edd_switch)
@@ -351,6 +350,7 @@
            L_switch = L
            Mdot_switch = w
            M_switch = M
+           already_thick = .true.
          end if
          thick_met = .true.
        end if
@@ -359,7 +359,7 @@
 
      if ( Tsurf < s% x_ctrl(7) ) then                                          ! cool supergiant winds
 
-         s% max_years_for_timestep = 3d2                                       ! To have more resolution during this phase
+         ! s% max_years_for_timestep = 3d2                                       ! To have more resolution during this phase
 
          call eval_cool_wind(w)
 
@@ -367,7 +367,6 @@
          call eval_thin_winds(w)
 
      elseif(thick_met) then
-         already_thick = 1
 
          if ((Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2))) then    ! Cool WR winds, if requested
            call eval_thin_winds(w)
