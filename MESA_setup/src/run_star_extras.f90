@@ -94,7 +94,11 @@
       ! these routines are called by the standard run_star check_model
       contains
 
-
+      function round_3(val) result(res)
+      real(dp), intent(in) :: val
+      real(dp) :: res
+      res = nint(val * 1000.0d0) / 1000.0d0
+      end function round_3
 
       subroutine extras_controls(id, ierr)
          integer, intent(in) :: id
@@ -170,9 +174,10 @@
        real(dp), intent(out) :: w !wind in units of Msun/year (value is >= 0)
        real(dp) :: gmrstar,gmlogg,lteff,logMdot,logZ_div_Zsun,hehratio,vterm,Zsolar
        real(dp) :: Z_div_Z_solar,Teff_jump,alfa,log_gamma_edd,gamma_trans,logL_div_Lsun
-       real(dp) :: vesc_eff,vesc,vinf_fac,const_k
+       real(dp) :: vesc_eff,vesc,vinf_fac,const_k,Vinf_e
        real(dp) :: w1, w2
        real(dp) :: divisor,beta,alfa_mid
+       character(len=10) :: vinf_type
        logical :: thick_met
 
        logical :: gamma_condition, eta_condition, xsurf_condition, HPoor_WR_condition
@@ -184,6 +189,7 @@
        ierr = 0
 
        call star_ptr(id, s, ierr)
+
 
        gmlogg=log10(s%grav(1))
        gmrstar=R/Rsun
@@ -201,10 +207,6 @@
 
        if ( s% x_character_ctrl(1) /= 'eta' .and. s% x_character_ctrl(5) == 'V11' ) then
          call mesa_error(__FILE__,__LINE__,'V11 winds can only be computed with the eta condition')
-       end if
-
-       if ( s% x_logical_ctrl(2) .and. s% x_character_ctrl(5) == 'V11' ) then
-         call mesa_error(__FILE__,__LINE__,'V11 winds cannot work with a cool WR wind condition')
        end if
 
        ! -----------------------------------------------
@@ -261,69 +263,103 @@
 
        log_gamma_edd = -4.813d0+log10(1+X)+log10(L/Lsun)-log10(M/Msun)
        gamma_edd=10**log_gamma_edd
+       gamma_edd = round_3(gamma_edd)
        ! gamma_edd = L/s% prev_Ledd
 
-
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
-       vterm = 2.6 * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+
+       vinf_type = "Hawcroft24"
+
+       select case (trim(vinf_type))
+       case ("Lamers95")                                                        ! Usual fits for bistability jump
+            if ( Tsurf > 25000 ) then
+              Vinf_e = 2.6
+            else
+              Vinf_e = 1.3
+            end if
+            vterm = Vinf_e * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+          case ("Crowther06")                                                   ! Fits from Atlas I from Crowther+ (2006). If you want Lamers, put it at 2.6
+            Vinf_e = 1.59d-4*Tsurf - 0.89
+            vterm = Vinf_e * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5*Z_div_Z_solar**0.20d0
+          case ("Hawcroft24")                                                   ! Fits from Atlas I from Hawcroft+ (2024).
+            vterm = (9.2d-2*Tsurf-1040)*Z_div_Z_solar**0.22d0
+          case ("Kritcka25")                                                    ! Fits from K25.
+            vterm = (107+25*logZ_div_Zsun)*(Tsurf/1d3)-1190-430*logZ_div_Zsun
+          case default
+            ierr = 1 ! Handle unknown string
+       end select
+
        const_k = (clight*Msun*1d5)/(Lsun*3600d0*24d0*365d0)           ! constant to evaluate eta
 
        eta_trans = 0.75/(1+(vesc**2)/(vterm**2))
        ! eta = (ABS(s% mstar_dot /Msun)*secyer * vterm)/(L/(clight))
        eta = const_k*(ABS(s% mstar_dot/Msun*secyer)*vterm)/(L/Lsun)
 
+       eta = round_3(eta)
+       eta_trans = round_3(eta_trans)
+
 
        write(*,*)
-       write(*,*) "Edd_factor_e:", gamma_edd, "vs        Gamma_trans:", gamma_trans
-       write(*,*) "previous log(Mdot):", log10(ABS(s% mstar_dot/Msun*secyer))
-       write(*,*) "vterm:", vterm, " km/s    vs        vesc:", vesc, " km/s"
-       write(*,*) "eta factor:", eta , "vs        eta trans:", eta_trans
-       write(*,*) "log(g):", gmlogg
+       write(*,*) "------------------------------------------------------------"
+       if ( already_thick == 1 ) then
+         write(*, '(A, f5.3, A, f5.3)') " Gamma_e: ", gamma_edd, " vs Gamma_switch: ", gamma_edd_switch,  " vs Gamma_trans: ", gamma_trans
+         write(*, *) " Mdot_switch: ", Mdot_switch, "   M_switch: ", M_switch
+       else
+         write(*, '(A, f5.3, A, f5.3)') " Gamma_e: ", gamma_edd, " vs Gamma_trans: ", gamma_trans
+       end if
+       write(*, '(A, f7.3)') " previous log(Mdot): ", log10(abs(s% mstar_dot/Msun*secyer))
+       write(*, '(A, f0.3, A, f0.3, A)') " vterm: ", vterm, " km/s vs vesc: ", vesc, " km/s"
+       write(*, '(A, f5.3, A, f5.3)') " eta factor: ", eta, " vs eta trans: ", eta_trans
+       write(*,*) "------------------------------------------------------------"
        write(*,*)
 
        ! --------------------------------------------- Check for thick winds ---------------------------------------------------
        thick_met = .false.
 
+       ! Logic: If x_logical_ctrl(8) is .true., the "sticky" behavior is enabled.
+       ! If it's .false., already_thick is ignored for the initial thick_met check,
+       ! allowing the star to revert to thin winds if physical conditions are no longer met.
+
        if ( s% x_character_ctrl(1) == 'gamma' ) then
-         if ( gamma_edd >= gamma_trans .or. already_thick==1 ) then
-           thick_met = .true.
-         end if
+         if ( gamma_edd >= gamma_trans ) thick_met = .true.
        elseif (s% x_character_ctrl(1) == 'eta') then
-         if (eta>=eta_trans .or. already_thick==1) then
-           if ( already_thick == 0 ) then
-             gamma_edd_switch = gamma_edd
-             Mdot_switch = ABS(s% mstar_dot/Msun*secyer)
-             L_switch = L
-             M_switch = M
-           end if
-           thick_met = .true.
-         end if
-       elseif ( s% x_character_ctrl(1) == 'Xsurf'  ) then
-         if (X<=0.4) then
-           thick_met = .true.
-         end if
+         if (eta>=eta_trans) thick_met = .true.
+       elseif ( s% x_character_ctrl(1) == 'Xsurf' ) then
+         if (X<=0.4) thick_met = .true.
        elseif ( s% x_character_ctrl(1) == 'gamma_eta') then
-         if ( gamma_edd >= gamma_trans .or. eta>=eta_trans .or. already_thick==1 ) then
-           thick_met = .true.
-         end if
+         if ( gamma_edd >= gamma_trans .or. eta>=eta_trans ) thick_met = .true.
        elseif ( s% x_character_ctrl(1) == 'any') then
-         if ( gamma_edd >= gamma_trans .or. eta>=eta_trans .or. X<=0.4 .or. already_thick==1 ) then
-           thick_met = .true.
-         end if
+         if ( gamma_edd >= gamma_trans .or. eta>=eta_trans .or. X<=0.4 ) thick_met = .true.
        end if
 
        if ( (s% x_character_ctrl(10) == "Xsurf" .and. X <=s%  x_ctrl(3)) .or. &
-       (s% x_character_ctrl(10) == "Teff" .and. Tsurf >= s% x_ctrl(3)) ) then
-         HPoor_WR_condition = .true.
+              (s% x_character_ctrl(10) == "Teff" .and. Tsurf >= s% x_ctrl(3)) ) then
+            HPoor_WR_condition = .true.
        else
-         HPoor_WR_condition = .false.
+            HPoor_WR_condition = .false.
        end if
 
-       ! -----------------------------------------------------------------------------------------------------------------------
+       if (.not. thick_met) then
+         ! Reset already_thick if we are no longer in the thick regime and sticky is off
+         if (.not. s% x_logical_ctrl(8)) already_thick = 0
+       elseif(thick_met .or. already_thick == 1) then
+         if (already_thick == 0) then
+           ! Capture state for V11 or other transitions at the first crossing
+           gamma_edd_switch = gamma_edd
+           gamma_edd_switch = round_3(gamma_edd_switch)
+           call eval_thin_winds(w)
+           L_switch = L
+           Mdot_switch = w
+           M_switch = M
+         end if
+         thick_met = .true.
+       end if
+
+     ! --------------------------------------------- Rate Selection ---------------------------------------------------
 
      if ( Tsurf < s% x_ctrl(7) ) then                                          ! cool supergiant winds
 
-         s% max_years_for_timestep = 1d2                                       ! To have more resolution during this phase
+         s% max_years_for_timestep = 3d2                                       ! To have more resolution during this phase
 
          call eval_cool_wind(w)
 
@@ -333,12 +369,12 @@
      elseif(thick_met) then
          already_thick = 1
 
-         if ((Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2) .and. &               ! Cool WR winds, if requested
-         s% x_character_ctrl(5) /= "V11") .or. (.not. HPoor_WR_condition .and. gamma_edd < 0.4)) then                                 ! If it is V11, we go through Vink/Sabhahit procedure
+         if ((Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2))) then    ! Cool WR winds, if requested
            call eval_thin_winds(w)
          else
            call eval_thick_winds(w)
          end if
+
      end if
 
        !  ---------------------- Thick winds interpolation -------------------------
@@ -996,7 +1032,7 @@ end subroutine eval_Blocker_wind
       if (gamma_edd >= gamma_edd_switch) then
         wind_scheme = 42.5
 
-        logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/(M_switch*Msun))
+        logMdot = log10(ABS(Mdot_switch)) + 4.77d0*log10(L/L_switch) - 3.99d0*log10(M/M_switch)
         ! write(*,*) "Mdot ", ABS(Mdot_switch), "Lswitch ", log10(L/L_switch), "M_switch ", log10(M/(M_switch*Msun))
         w = 10**(logMdot)
         call smooth_wind_log(w, "V11")
@@ -1016,12 +1052,19 @@ end subroutine eval_Blocker_wind
 
    !*** Bestenlehner (2020) prescription for hot stars
    !*** with fitting parameters from Brands et al. (2022)
-    logMdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
-    logMdot = logMdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
+   if(.not. HPoor_WR_condition .and. gamma_edd < 0.4) then                      ! It underestimates Mdot at low gamma, hence this condition
+     call eval_thin_winds(w)                                                    !   if HPoor_WR_condition, it just goes to H-poor WR winds
 
-    w = 10**(logMdot)
+   else
+     logMdot = -5.19d0 + 2.69d0 * log10(gamma_edd) - 3.19d0 * log10(1-gamma_edd)
+     logMdot = logMdot + (logZ_div_Zsun+0.3d0)*(0.4+15.75d0/M)
 
-    call smooth_wind_log(w, "B20")
+     w = 10**(logMdot)
+
+     call smooth_wind_log(w, "B20")
+
+   end if
+
 
   end subroutine eval_Bestenlehner20_wind
 
