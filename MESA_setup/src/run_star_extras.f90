@@ -95,9 +95,9 @@
       contains
 
       function round_3(val) result(res)
-      real(dp), intent(in) :: val
-      real(dp) :: res
-      res = nint(val * 1000.0d0) / 1000.0d0
+        real(dp), intent(in) :: val
+        real(dp) :: res
+        res = nint(val * 1000.0d0) / 1000.0d0
       end function round_3
 
       subroutine extras_controls(id, ierr)
@@ -1481,11 +1481,11 @@ subroutine eval_Antoniadis24_wind(w)
 
     include 'formats'
 
-    if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds. For now these recipes are the only two implemented
+    if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds (supposed to be RSG-only)
        log10(L/Lsun) <= 5.8) then
-      which_cool = 7
-    else
       which_cool = 8
+    else
+      which_cool = 7
     end if
 
     if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
