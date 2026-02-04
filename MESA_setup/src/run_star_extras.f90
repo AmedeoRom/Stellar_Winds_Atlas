@@ -1405,7 +1405,7 @@ subroutine eval_Antoniadis24_wind(w)
      if ( log(L/Lsun) < 4.4 ) then
        log10w = 0.26*log10(L/Lsun) - 14.19*log10(Tsurf/4000)-9.17
      else
-       if ( Tsurf > 4000 ) then
+       if ( Tsurf < 4000 ) then
          log10w = 2.49536114*log10(L/Lsun) -33.70573385*log10(Tsurf/4000)-19.10219818
        else
          log10w = 2.49536114*log10(L/Lsun) -19.10219818
