@@ -338,22 +338,25 @@
             HPoor_WR_condition = .false.
        end if
 
-       if (.not. thick_met .and. .not. s% x_logical_ctrl(8)) then
-         ! Reset already_thick if we are no longer in the thick regime and sticky is off
-         already_thick = .false.
-       else
-         if (.not. already_thick) then
-           ! Capture state for V11 or other transitions at the first crossing
-           gamma_edd_switch = gamma_edd
-           gamma_edd_switch = round_3(gamma_edd_switch)
-           call eval_thin_winds(w)
-           L_switch = L
-           Mdot_switch = w
-           M_switch = M
-           already_thick = .true.
-         end if
+       if (s% x_logical_ctrl(8) .and. already_thick) then                       ! Sticky winds applied and always thick winds after transition
          thick_met = .true.
        end if
+
+       if (thick_met) then
+        if (.not. already_thick) then                                           ! First time thick. Save data
+          gamma_edd_switch = gamma_edd
+          gamma_edd_switch = round_3(gamma_edd_switch)
+          call eval_thin_winds(w)
+          L_switch = L
+          Mdot_switch = w
+          M_switch = M
+
+          already_thick = .true.
+        end if
+
+      else
+        already_thick = .false.                                                 ! The star is not thick, and sticky logic isn't applied.
+      end if
 
      ! --------------------------------------------- Rate Selection ---------------------------------------------------
 
