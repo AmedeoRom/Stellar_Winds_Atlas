@@ -1,0 +1,240 @@
+{
+"meta": {
+"source": "Stellar Winds Atlas (Romagnolo et al.)",
+"description": "Mapping of MESA wind_scheme IDs to physical prescriptions and literature references."
+},
+"schemes": {
+"10.0": {
+"label": "R75",
+"author": "Reimers",
+"year": 1975,
+"full_citation": "Reimers, D. 1975, Memoires de la Societe Royale des Sciences de Liege, 8, 369",
+"url": "https://ui.adsabs.harvard.edu/abs/1975MSRSL...8..369R",
+"category": "RGB"
+},
+"11.0": {
+"label": "B95",
+"author": "Bloecker",
+"year": 1995,
+"full_citation": "Bloecker, T. 1995, A&A, 297, 727",
+"url": "https://ui.adsabs.harvard.edu/abs/1995A&A...297..727B",
+"category": "AGB"
+},
+"20.0": {
+"label": "NdJ90",
+"author": "Nieuwenhuijzen & de Jager",
+"year": 1990,
+"full_citation": "Nieuwenhuijzen, H., & de Jager, C. 1990, A&A, 231, 134",
+"url": "https://ui.adsabs.harvard.edu/abs/1990A&A...231..134N",
+"category": "cool"
+},
+"21.0": {
+"label": "V01",
+"author": "Vink et al.",
+"year": 2001,
+"full_citation": "Vink, J. S., de Koter, A., & Lamers, H. J. G. L. M. 2001, A&A, 369, 574",
+"url": "https://ui.adsabs.harvard.edu/abs/2001A&A...369..574V",
+"category": "thin"
+},
+"21.5": {
+"label": "VS21",
+"author": "Vink & Sander",
+"year": 2021,
+"full_citation": "Vink, J. S., & Sander, A. A. C. 2021, MNRAS, 504, 2051",
+"url": "https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.2051V",
+"category": "thin"
+},
+"22.0": {
+"label": "V17",
+"author": "Vink",
+"year": 2017,
+"full_citation": "Vink, J. S. 2017, A&A, 607, L8",
+"url": "https://ui.adsabs.harvard.edu/abs/2017A&A...607L...8V",
+"category": "non-WR He stars"
+},
+"23.0": {
+"label": "Bj23",
+"author": "Bjorklund et al.",
+"year": 2023,
+"full_citation": "Bjorklund, R., Sundqvist, J. O., & Puls, J. 2023, A&A, 676, A109",
+"url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A.109B",
+"category": "thin"
+},
+"24.0": {
+"label": "GM23",
+"author": "Gormaz-Matamala et al.",
+"year": 2023,
+"full_citation": "Gormaz-Matamala, A. C., et al. 2023, A&A, 673, A109",
+"url": "https://ui.adsabs.harvard.edu/abs/2023A&A...673A.109G",
+"category": "thin"
+},
+"25.0": {
+"label": "K24",
+"author": "Krticka et al.",
+"year": 2024,
+"full_citation": "Krticka, J., et al. 2024, A&A, 681, A29",
+"url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..29K",
+"category": "thin"
+},
+"25.5": {
+"label": "K25",
+"author": "Krticka et al.",
+"year": 2025,
+"full_citation": "Krticka, J., et al. 2025, arXiv:2508.21702",
+"url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K",
+"category": "thin"
+},
+"26.0": {
+"label": "Sa25",
+"author": "Sabhahit et al.",
+"year": 2025,
+"full_citation": "Sabhahit, K., et al. 2025, arXiv:2512.13782",
+"url": "https://arxiv.org/abs/2512.13782",
+"category": "thin"
+},
+"30.0": {
+"label": "dJ88",
+"author": "de Jager et al.",
+"year": 1988,
+"full_citation": "de Jager, C., Nieuwenhuijzen, H., & van der Hucht, K. A. 1988, A&AS, 72, 259",
+"url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D",
+"category": "cool"
+},
+"31.0": {
+"label": "vL05",
+"author": "van Loon et al.",
+"year": 2005,
+"full_citation": "van Loon, J. T., et al. 2005, A&A, 438, 273",
+"url": "https://doi.org/10.1051/0004-6361:20042555",
+"category": "cool"
+},
+"32.0": {
+"label": "Be23",
+"author": "Beasor et al.",
+"year": 2023,
+"full_citation": "Beasor, E. R., et al. 2023, MNRAS, 524, 2460",
+"url": "https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.2460B",
+"category": "cool"
+},
+"33.0": {
+"label": "Ya23",
+"author": "Yang et al.",
+"year": 2023,
+"full_citation": "Yang, M., et al. 2023, A&A, 676, A84",
+"url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A..84Y",
+"category": "cool"
+},
+"34.0": {
+"label": "A24",
+"author": "Antoniadis et al.",
+"year": 2024,
+"full_citation": "Antoniadis, K., et al. 2024, A&A, 686, A88",
+"url": "https://ui.adsabs.harvard.edu/abs/2024A&A...686A..88A",
+"category": "cool"
+},
+"35.0": {
+"label": "D24",
+"author": "Decin et al.",
+"year": 2024,
+"full_citation": "Decin, L., et al. 2024, A&A, 681, A17",
+"url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..17D",
+"category": "cool"
+},
+"40.0": {
+"label": "L89",
+"author": "Langer",
+"year": 1989,
+"full_citation": "Langer, N. 1989, A&A, 220, 135",
+"url": "https://ui.adsabs.harvard.edu/abs/1989A%26A...220..135L",
+"category": "thick"
+},
+"40.5": {
+"label": "Ha98",
+"author": "Hamann & Koesterke",
+"year": 1998,
+"full_citation": "Hamann, W.-R., & Koesterke, L. 1998, A&A, 335, 1003",
+"url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H",
+"category": "thick"
+},
+"41.0": {
+"label": "NL00",
+"author": "Nugis & Lamers",
+"year": 2000,
+"full_citation": "Nugis, T., & Lamers, H. J. G. L. M. 2000, A&A, 360, 227",
+"url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N",
+"category": "thick"
+},
+"42.5": {
+"label": "V11",
+"author": "Vink et al.",
+"year": 2011,
+"full_citation": "Vink, J. S., et al. 2011, A&A, 531, A132",
+"url": "https://ui.adsabs.harvard.edu/abs/2011A&A...531A.132V",
+"category": "thick"
+},
+"43.0": {
+"label": "TSK16",
+"author": "Tramper, Sana & de Koter",
+"year": 2016,
+"full_citation": "Tramper, F., Sana, H., & de Koter, A. 2016, ApJ, 833, 133",
+"url": "https://doi.org/10.3847/1538-4357/833/2/133",
+"category": "thick"
+},
+"45.5": {
+"label": "SV20",
+"author": "Sander & Vink",
+"year": 2020,
+"full_citation": "Sander, A. A. C., & Vink, J. S. 2020, MNRAS, 499, 873",
+"url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S",
+"category": "thick"
+},
+"50.0": {
+"label": "H00",
+"author": "Hurley et al.",
+"year": 2000,
+"full_citation": "Hurley, J. R., Pols, O. R., & Tout, C. A. 2000, MNRAS, 315, 543",
+"url": "https://ui.adsabs.harvard.edu/abs/2000MNRAS.315..543H",
+"category": "LBV"
+},
+"50.5": {
+"label": "Bk10",
+"author": "Belczynski et al.",
+"year": 2010,
+"full_citation": "Belczynski, K., et al. 2010, ApJ, 714, 1217",
+"url": "https://ui.adsabs.harvard.edu/abs/2010ApJ...714.1217B",
+"category": "LBV"
+},
+"51.0": {
+"label": "Ch24",
+"author": "Cheng et al.",
+"year": 2024,
+"full_citation": "Cheng, S., et al. 2024, ApJ, 976, 21",
+"url": "https://iopscience.iop.org/article/10.3847/1538-4357/ad701e",
+"category": "LBV"
+},
+"51.5": {
+"label": "P26",
+"author": "Pauli et al.",
+"year": 2026,
+"full_citation": "Pauli, D., et al. 2026, arXiv:2601.08822",
+"url": "https://arxiv.org/abs/2601.08822",
+"category": "LBV"
+},
+"90.0": {
+"label": "Vb98",
+"author": "Vanbeveren et al.",
+"year": 1998,
+"full_citation": "Vanbeveren, D., de Loore, C., & Van Rensbergen, W. 1998, A&ARv, 9, 63",
+"url": "https://ui.adsabs.harvard.edu/abs/1998A&ARv...9...63V",
+"category": "mixed"
+},
+"90.5": {
+"label": "P25",
+"author": "Pauli et al.",
+"year": 2025,
+"full_citation": "Pauli, D., et al. 2025, A&A, 697, A114",
+"url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P",
+"category": "mixed"
+}
+}
+}
