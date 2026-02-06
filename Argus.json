@@ -1,7 +1,6 @@
 {
   "meta_info": {
     "description": "Configuration reference for MESA stellar wind prescriptions based on Romagnolo et al. Wind Atlas I & II and provided run_star_extras.f90.",
-    "version": "3.6",
     "usage": "Use this data to generate 'inlist_project' modifications for the '&controls' namelist."
   },
   "repository_info": {
@@ -305,9 +304,10 @@
         "id": "P25",
         "ref": "Pauli et al. 2025",
         "note": "Empirical. Function of Gamma_e",
+        "note_2": "Thin winds, He stars, and thick winds",
         "parameter_space": "Metallicity: Galaxy, LMC, SMC. Mass: 15-150 Msun. Accounts for microclumping (D=10).",
         "z_solar_calibration": "Iron based (Z_Fe_sun approx 0.0013).",
-        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased. This recipe scales with Iron abundance, not total Z.",
+        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased. This recipe scales with Iron abundance, not total Z, but in the current implementation it was changed to scale with Z/Zsun.",
         "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
       },
       {
@@ -471,7 +471,8 @@
         "ref": "Sander et al. 2019",
         "note": "Theoretical. WC/WO stars",
         "parameter_space": "Galactic WC/WO stars. Hydrodynamically consistent grid.",
-        "z_solar_calibration": 0.014,
+        "z_solar_calibration": "Iron-based.",
+        "warning": "There is currently no option to make these mass-loss rates dependent on metallicity in general. This is due to the fact that S19 is as a function of the Fe56 abundance not weighted by its solar value. It is therefore difficult to make a 1:1 change from Fe56 to Z",
         "url": "https://ui.adsabs.harvard.edu/abs/2019A&A...621A..92S"
       },
       {
@@ -498,7 +499,17 @@
         "z_solar_calibration": 0.014,
         "warning": "Pauli et al. (2025) showed that SV20 mass-loss rates were too high compared to empirical findings. For metallicities below 0.1%Zsun it could overestimate mass loss by orders of magnitude (from personal tests).",
         "url": "https://ui.adsabs.harvard.edu/abs/2020MNRAS.499..873S"
-      }
+      },
+      {
+        "id": "P25",
+        "ref": "Pauli et al. 2025",
+        "note": "Empirical. Function of Gamma_e",
+        "note_2": "Thin winds, He stars, and thick winds",
+        "parameter_space": "Metallicity: Galaxy, LMC, SMC. Mass: 15-150 Msun. Accounts for microclumping (D=10).",
+        "z_solar_calibration": "Iron based (Z_Fe_sun approx 0.0013).",
+        "warning": "The authors highlight that their sample did not contain many Wolf-Rayet binaries, and their mass loss for this regime might be biased. This recipe scales with Iron abundance, not total Z, but in the current implementation it was changed to scale with Z/Zsun.",
+        "url": "https://ui.adsabs.harvard.edu/abs/2025A&A...697A.114P"
+      },
 
     ],
     "lbv_winds": [
