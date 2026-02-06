@@ -23,18 +23,18 @@
     pgstar_flag = .true.
     pause_before_terminate = .false.
 
-     ! new_rotation_flag = .true.
-     ! change_rotation_flag = .true.
+     new_rotation_flag = .true.
+     change_rotation_flag = .true.
      !
-     ! !new_surface_rotation_v = 350
-     ! !set_surface_rotation_v = .true.
-     ! !relax_surface_rotation_v = .true.
-     ! new_omega_div_omega_crit = 0.4
-     ! !set_omega_div_omega_crit = .true.
-     ! set_initial_omega_div_omega_crit = .true.
-     ! relax_omega_div_omega_crit = .true.
-     ! num_steps_to_relax_rotation = 100
-     ! set_omega_div_omega_crit_step_limit = 25
+     !new_surface_rotation_v = 350
+     !set_surface_rotation_v = .true.
+     !relax_surface_rotation_v = .true.
+     new_omega_div_omega_crit = 0.4
+     !set_omega_div_omega_crit = .true.
+     set_initial_omega_div_omega_crit = .true.
+     relax_omega_div_omega_crit = .true.
+     num_steps_to_relax_rotation = 100
+     set_omega_div_omega_crit_step_limit = 25
 
      initial_zfracs = 8 ! A09_Prz_zfracs
 
@@ -84,6 +84,8 @@
     ! stop when the center mass fraction of o16 drops below this limit
     x_logical_ctrl(1) = .true.                                                  ! Oxygen core
     x_ctrl(1) = 1d-4
+    stop_near_zams = .false.
+
   ! wind
 
     use_other_wind = .true.
@@ -94,28 +96,28 @@
     x_character_ctrl(1) = 'gamma_eta'                                                 ! Which winds condition: gamma/eta/Xsurf/gamma_eta/any
     x_ctrl(2) = 0.5
 
-    x_character_ctrl(2) = 'P25'                                                ! High log g thin winds: NdJ90/Vb98/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
-    x_character_ctrl(3) = 'P25'                                                ! Low log g thin winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(2) = 'V01'                                                ! High log g thin winds: NdJ90/Vb98/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
+    x_character_ctrl(3) = 'V01'                                                ! Low log g thin winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25
     x_character_ctrl(4) = 'P25'                                                ! Cool WR winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25 (x_logical_ctrl(2) == .true.)
-    x_character_ctrl(5) = 'B20'                                                ! WR winds: L89/Ha98/Vb98/NL00/Y06/GH08/V11/Sh19/S19/B20
-    x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: L89/Vb98/NL00/Y06/TSK16/Y17/Sh19/S19/SV20
+    x_character_ctrl(5) = 'B20'                                                ! WR winds: L89/Ha98/Vb98/NL00/Y06/GH08/V11/Sh19/S19/B20/P25
+    x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: L89/Vb98/NL00/Y06/TSK16/Y17/Sh19/S19/SV20/P25
     x_character_ctrl(7) = 'dJ88'                                                ! 1st Cool supergiant winds: dJ88/Vb98/vL05/Be23/Ya23/A24/D24
     x_character_ctrl(8) = 'A24'                                                ! 2nd (optional) WR-poor winds: dJ88/Vb98/vL05/B23/Ya23/A24/D24
     x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
 
-    x_character_ctrl(10) = 'Xsurf'                                              ! Canonical WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
-    x_ctrl(3) = 1d-7                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
+    x_character_ctrl(10) = 'Teff'                                              ! Canonical WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
+    x_ctrl(3) = 1d5                                                            ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
 
     x_ctrl(4) = 0.05d0                                                          ! Delta for thick winds interpolation
     x_ctrl(5) = 30                                                              ! [kK] Teff threshold for cool WR winds
-    x_logical_ctrl(2) = .true.                                                  ! Cool WR thin winds: do I use thin (.true.)
+    x_logical_ctrl(2) = .false.                                                  ! Cool WR thin winds: do I use thin (.true.)
                                                                                 !    or thick (.false.) winds for Mdot?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
     x_logical_ctrl(4) = .false.                                                 ! Interpolate thick winds: yes/no   -------- Need to debug
     x_logical_ctrl(5) = .true.                                                  ! Cool supergiant winds interpolation
 
-    x_logical_ctrl(6) = .true.                                                  ! LBV winds beyond the HD limit
+    x_logical_ctrl(6) = .false.                                                  ! LBV winds beyond the HD limit
     x_ctrl(6) = 5.5                                                             ! [log (L/Lsun)] HD minimum luminosity
     x_character_ctrl(11) = 'Bk10'                                                ! LBV winds: H00/Bk10/Ch24/P26
 
@@ -125,10 +127,12 @@
     x_ctrl(7) = 4.0d3                                                           ! [K] --- The actual threshold for cool supergiant winds
     x_ctrl(8) = 0.0045d4                                                          ! [K] --- In case we have a second cool supergiant winds switch
                                                                                 !  ignore if x_character_ctrl(7) and x_character_ctrl(8) are the same
-    x_ctrl(9) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
+    x_ctrl(9) = 0.0142d0                                                         ! Zsolar scaling factor for mass loss rates
 
 
-    x_logical_ctrl(7) = .true.                                                  ! smooth winds between different prescriptions
+    x_logical_ctrl(7) = .true.                                                  ! Smooth winds between different prescriptions
+    x_logical_ctrl(8) = .true.                                                  ! Sticky Winds: once you get thick winds, you stick to thick winds
+                                                                                !   Regardless of whether the condition to thick winds is not satisfied anymore
 
 
     ! ~~~~~~~~~ ADJUST MASS LOSS ~~~~~~~~~
@@ -205,9 +209,9 @@
 
 
   ! timesteps
-    ! max_years_for_timestep = 1d3
+    max_years_for_timestep = 1d3
 
-    ! varcontrol_target = 0.3d-3
+    varcontrol_target = 1d-3
     convective_bdy_weight = 0.5d0
     !
     mesh_delta_coeff = 0.75d0
@@ -232,7 +236,7 @@
 
     delta_XH_cntr_limit = 0.001d0
     delta_XH_cntr_hard_limit = -1
-    !
+
     delta_XHe_cntr_limit = 0.002d0
     delta_XHe_cntr_hard_limit = -1
 
@@ -251,7 +255,7 @@
 
   ! mesh
      mesh_Pgas_div_P_exponent = 0.35d0
-     ! max_dq = 1d-4 ! 1d-2
+     max_dq = 1d-4 ! 1d-2
      ! min_dq_for_xa = 1d-5 ! default 1d-14
      max_allowed_nz = 250000
 
