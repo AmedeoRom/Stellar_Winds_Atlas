@@ -20,11 +20,9 @@ You can load this file in Python with just a few lines of code to label your plo
   ```python
 import json
 
-# Load the mapping
 with open('wind_scheme_map.json', 'r') as f:
     wind_map = json.load(f)
 
-# Example: get info for a specific ID from your history file
 # (Note: MESA IDs are floats, so we convert to string to match the JSON keys)
 scheme_id = "24.0"
 info = wind_map['schemes'].get(scheme_id)
