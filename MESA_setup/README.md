@@ -24,6 +24,7 @@ with open('wind_scheme_map.json', 'r') as f:
     wind_map = json.load(f)
 
 # (Note: MESA IDs are floats, so we convert to string to match the JSON keys)
+# Example below
 scheme_id = "24.0"
 info = wind_map['schemes'].get(scheme_id)
 
