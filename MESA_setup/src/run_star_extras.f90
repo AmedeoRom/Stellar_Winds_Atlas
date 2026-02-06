@@ -36,8 +36,7 @@
 !  24.0: GM23  (Gormaz-Matamala+ 2023)
 !  25.0: K24   (Krticka+ 2024)
 !  25.5: K25   (Krticka+ 2025) --> Only for Z < 0.2 Zsun!
-!  26.0: P25   (Pauli+ 2025) --> Also for WR and He stars!
-!  27.0: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
+!  26.0: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
 !
 ! Dust/Cool Winds:
 !  30.0: dJ88  (de Jager+ 1988)
@@ -61,12 +60,16 @@
 !  45.0: B20   (Bestenlehner 2020)
 !  45.5: SV20  (Sander & Vink 2020)
 !
+! LBV:
+!  50.0: H00    (Hurley+ 2000; LBV)
+!  50.5: Bk10   (Belczynski+ 2010; LBV)
+!  51.0: Ch24   (Cheng+ 2024; LBV)
+!  51.5: P26    (Pauli+ 2026; LBV)
+!
 ! Special Cases:
 !  90.0: Vb98   (Vanbeveren+ 1998 + Vink, de Koter 2005 for WR/OB; three different formulae for OB, WR, and cool supergiants)
-!  90.5: H00    (Hurley+ 2000; LBV)
-!  91.0: Bk10   (Belczynski+ 2010; LBV)
-!  91.5: Ch24   (Cheng+ 2024; LBV)
-!  92.0: P26    (Pauli+ 2026; LBV)
+!  90.5: P25   (Pauli+ 2025) --> Also for WR and He stars!
+
 !===================================================================================
 
       module run_star_extras
@@ -353,7 +356,6 @@
 
           already_thick = .true.
         end if
-
       else
         already_thick = .false.                                                 ! The star is not thick, and sticky logic isn't applied.
       end if
@@ -865,7 +867,7 @@ end subroutine eval_Blocker_wind
      real(dp), intent(inout) :: w
      real(dp) :: logMdot, Meff
 
-     wind_scheme = 26.0
+     wind_scheme = 90.5
 
      ! eq 5 from Pauli et al, 2025, A&A, 697 (2025) A114
      logMdot = -3.92 + 4.27*log_gamma_edd + 0.86*logZ_div_Zsun
@@ -917,7 +919,7 @@ end subroutine eval_Blocker_wind
      real(dp) :: logMdot
      real(dp) :: a,b,c,T1,T2,G1,G2,Tref,Mref,f_low,f_high,sigmaT
 
-     wind_scheme = 27.0
+     wind_scheme = 26.0
 
      a = -5.527
      Tref = 38
@@ -1252,7 +1254,7 @@ subroutine eval_Sander19_wind(w)
 
  wind_scheme = 44.5
 
- fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)
+ fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)                 ! It is hard to scale the absolute value of Fe56 linearly to Z
  fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
 
  ! metallicity dependence adopted from fits in Costa et al. (2021)
@@ -1308,7 +1310,11 @@ subroutine eval_thick_winds(w)
 
      if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-rich WR winds
 
-       if ( s%x_character_ctrl(5)=='B20' ) then
+       if ( s%x_character_ctrl(5)=='P25' ) then
+
+         call eval_Pauli25_wind(w)
+
+       elseif ( s%x_character_ctrl(5)=='B20' ) then
 
          call eval_Bestenlehner20_wind(w)
 
@@ -1352,7 +1358,11 @@ subroutine eval_thick_winds(w)
 
      else
 
-       if (  s%x_character_ctrl(6)=='SV20' ) then
+       if ( s%x_character_ctrl(6)=='P25' ) then
+
+         call eval_Pauli25_wind(w)
+
+       elseif (  s%x_character_ctrl(6)=='SV20' ) then
 
          call eval_SanderVink20_wind(w)
 
@@ -1535,7 +1545,7 @@ subroutine eval_Antoniadis24_wind(w)
     ! H00 Eq: Mdot = 0.1 * (10^-5 * R * L^0.5 - 1.0)^3 * (L/6e5 - 1.0)
     ! Conditions: L > 6e5 and 10^-5 * R * L^0.5 > 1.0
     ! Units: R and L are solar units in the formula context (paper says "stellar luminosity, radius... numerical values... in solar units").
-    wind_scheme = 90.5
+    wind_scheme = 50.0
     Mdot_LBV = 0.1d0 * (1.0d-5 * (R/Rsun) * sqrt(L/Lsun) - 1.0d0)**3 * &
                ((L/Lsun)/6.0d5 - 1.0d0)
     ! Convert to Msun/yr. The paper formula result is in Msun/yr.
@@ -1550,7 +1560,7 @@ subroutine eval_Antoniadis24_wind(w)
      real(dp), intent(out) :: w
      real(dp) :: log10w
      include 'formats'
-     wind_scheme = 91.0
+     wind_scheme = 50.5
 
      w  = 1.5d-4
      call smooth_wind_log(w, "Bk10 LBV")
@@ -1579,7 +1589,7 @@ subroutine eval_Antoniadis24_wind(w)
 
 
     w = 0.0d0
-    wind_scheme = 91.5
+    wind_scheme = 51.0
 
     ! -----------------------------------------------------------
     ! 1. Configuration
@@ -1721,7 +1731,7 @@ subroutine eval_Antoniadis24_wind(w)
     real(dp) :: R_core,Rcrit_scaling,beta, minRho
     integer :: i ! Explicit declaration for loop variable
     include 'formats'
-    wind_scheme = 92.0
+    wind_scheme = 51.5
 
     ! check if the envelope is not from a RSG (Pgas is dominating in their envelopes)
     ! Pgas/Ptotal < 0.3 (value arbitrarily chosen from models)
