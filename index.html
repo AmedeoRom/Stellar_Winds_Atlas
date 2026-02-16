@@ -5,28 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stellar Wind Explorer</title>
     
-    <!-- 1. SYSTEM LOGGING (Visual Console) -->
     <style>
-        body { margin: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { margin: 0; background: #f8fafc; font-family: -apple-system, sans-serif; }
         #system-log { font-family: monospace; padding: 10px; background: #fff1f2; color: #9f1239; border-bottom: 1px solid #e11d48; display: none; font-size: 12px; }
         .error-boundary { padding: 20px; border: 2px solid #ef4444; background: #fef2f2; border-radius: 8px; margin: 20px; color: #991b1b; }
     </style>
+    
     <script>
-        // Catch global errors and show them
-        window.onerror = function(msg, url, line, col, error) {
+        window.onerror = function(msg, url, line) {
             var log = document.getElementById('system-log');
             log.style.display = 'block';
-            log.innerHTML += '<div><strong>Global Error:</strong> ' + msg + ' (Line ' + line + ')</div>';
-            console.error(msg, error);
+            log.innerHTML += '<div><strong>Error:</strong> ' + msg + ' (Line ' + line + ')</div>';
             return false;
         };
-        window.logStatus = function(msg) { console.log("[App Status]: " + msg); };
     </script>
 
-    <!-- 2. ENVIRONMENT SHIM -->
+    <!-- Environment Shim -->
     <script>window.process = { env: { NODE_ENV: 'production' } };</script>
 
-    <!-- 3. LIBRARIES (With crossorigin for better error reporting) -->
+    <!-- Core Libraries -->
     <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -37,54 +34,32 @@
     <script crossorigin src="https://unpkg.com/recharts@2.12.0/umd/Recharts.js"></script>
 </head>
 <body>
-    <!-- Top Error Bar -->
     <div id="system-log"></div>
-
     <div id="root">
-        <!-- Initial Loading State -->
-        <div style="height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #64748b;">
-            <div style="font-size: 24px; font-weight: bold; margin-bottom: 1rem;">Stellar Wind Explorer</div>
-            <div id="loading-text">Loading application resources...</div>
+        <div style="height: 100vh; display: flex; justify-content: center; align-items: center; color: #64748b;">
+            Loading application resources...
         </div>
     </div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, Component } = React;
 
-        // --- ERROR BOUNDARY COMPONENT ---
-        // This prevents the "White Screen of Death" by catching React render errors
+        // --- ERROR BOUNDARY ---
         class ErrorBoundary extends Component {
             constructor(props) {
                 super(props);
-                this.state = { hasError: false, error: null, errorInfo: null };
+                this.state = { hasError: false, error: null };
             }
-
-            static getDerivedStateFromError(error) {
-                return { hasError: true, error };
-            }
-
-            componentDidCatch(error, errorInfo) {
-                console.error("React Component Error:", error, errorInfo);
-                this.setState({ errorInfo });
-            }
-
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
             render() {
                 if (this.state.hasError) {
                     return (
                         <div className="error-boundary">
-                            <h2 className="text-xl font-bold mb-2">Something went wrong.</h2>
-                            <p className="mb-4">The application crashed while rendering.</p>
-                            <details className="whitespace-pre-wrap font-mono text-sm bg-white p-4 rounded border border-red-200">
+                            <h2 className="text-xl font-bold mb-2">Application Crash</h2>
+                            <p className="font-mono text-sm bg-white p-4 border rounded">
                                 {this.state.error && this.state.error.toString()}
-                                <br />
-                                {this.state.errorInfo && this.state.errorInfo.componentStack}
-                            </details>
-                            <button 
-                                onClick={() => window.location.reload()}
-                                className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                                Reload Page
-                            </button>
+                            </p>
+                            <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded">Reload</button>
                         </div>
                     );
                 }
@@ -92,39 +67,9 @@
             }
         }
 
-        // --- SAFE RECHARTS ACCESS ---
-        // Access Recharts safely to prevent undefined errors
-        const RC = window.Recharts || {};
-        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = RC;
+        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = window.Recharts;
 
-        if (!LineChart) {
-            throw new Error("Recharts library failed to load. window.Recharts is undefined.");
-        }
-
-        // --- ICONS ---
-        const WindIcon = ({ size = 24, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
-                <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
-                <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
-            </svg>
-        );
-
-        const SettingsIcon = ({ size = 24, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-            </svg>
-        );
-
-        const GithubIcon = ({ size = 24, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-                <path d="M9 18c-4.51 2-5-2-7-2" />
-            </svg>
-        );
-
-        // --- PHYSICS & CONSTANTS ---
+        // --- PHYSICS CONSTANTS ---
         const LSUN = 3.828e33; 
         const SIGMA_SB = 5.670374419e-5; 
         const RSUN = 6.957e10; 
@@ -139,47 +84,32 @@
 
         // --- RECIPES ---
         const recipes = {
-            Reimers75: (p) => {
-                const mdot = 4e-13 * (p.L * p.R / p.M);
-                return log10(mdot);
-            },
-            deJager88: (p) => {
-                return 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158;
-            },
-            vanLoon05: (p) => {
-                return 1.05 * log10(p.L / 10000) - 6.3 * log10(p.T / 3500) - 5.56;
-            },
+            Reimers75: (p) => log10(4e-13 * (p.L * p.R / p.M)),
+            deJager88: (p) => 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158,
+            vanLoon05: (p) => 1.05 * log10(p.L / 10000) - 6.3 * log10(p.T / 3500) - 5.56,
             Vink01: (p) => {
                 const v_inf_esc_hot = 2.6 * Math.pow(p.Z, 0.13); 
                 const v_inf_esc_cool = 1.3 * Math.pow(p.Z, 0.13);
-                let logMdot = -99;
                 if (p.T > 25000) {
-                    logMdot = -6.697 + 2.194 * log10(p.L/1e5) - 1.313 * log10(p.M/30) - 1.226 * log10(v_inf_esc_hot/2.0) + 0.933 * log10(p.T/40000) - 10.92 * Math.pow(log10(p.T/40000), 2) + 0.85 * log10(p.Z);
+                    return -6.697 + 2.194 * log10(p.L/1e5) - 1.313 * log10(p.M/30) - 1.226 * log10(v_inf_esc_hot/2.0) + 0.933 * log10(p.T/40000) - 10.92 * Math.pow(log10(p.T/40000), 2) + 0.85 * log10(p.Z);
                 } else {
-                    logMdot = -6.688 + 2.210 * log10(p.L/1e5) - 1.339 * log10(p.M/30) - 1.601 * log10(v_inf_esc_cool/2.0) + 1.07 * log10(p.T/20000) + 0.85 * log10(p.Z);
+                    return -6.688 + 2.210 * log10(p.L/1e5) - 1.339 * log10(p.M/30) - 1.601 * log10(v_inf_esc_cool/2.0) + 1.07 * log10(p.T/20000) + 0.85 * log10(p.Z);
                 }
-                return logMdot;
             },
-            Bjorklund23: (p) => {
-                return -5.52 + 2.39 * log10(p.L/1e6) - 1.48 * log10(p.M/45) + 2.12 * log10(p.T/45000) + (0.75 - 1.87 * log10(p.T/45000)) * log10(p.Z);
-            },
+            Bjorklund23: (p) => -5.52 + 2.39 * log10(p.L/1e6) - 1.48 * log10(p.M/45) + 2.12 * log10(p.T/45000) + (0.75 - 1.87 * log10(p.T/45000)) * log10(p.Z),
             Krticka24: (p) => {
-                const logZ = log10(p.Z);
-                const t_k = p.T / 1000.0;
-                const term1 = Math.exp(-Math.pow((t_k - 14.16) / 3.58, 2));
-                const term2 = 3.84 * Math.exp(-Math.pow((t_k - 37.9) / 56.5, 2));
-                return -13.82 + 0.358 * logZ + (1.52 - 0.11 * logZ) * (log10(p.L) - 6.0) + 13.82 * log10((1.0 + 0.73 * logZ) * term1 + term2);
+                const lZ = log10(p.Z);
+                const tk = p.T / 1000.0;
+                const t1 = Math.exp(-Math.pow((tk - 14.16) / 3.58, 2));
+                const t2 = 3.84 * Math.exp(-Math.pow((tk - 37.9) / 56.5, 2));
+                return -13.82 + 0.358 * lZ + (1.52 - 0.11 * lZ) * (log10(p.L) - 6.0) + 13.82 * log10((1.0 + 0.73 * lZ) * t1 + t2);
             },
-            Vink17: (p) => {
-                 return -13.3 + 1.36 * log10(p.L) + 0.61 * log10(p.Z);
-            },
+            Vink17: (p) => -13.3 + 1.36 * log10(p.L) + 0.61 * log10(p.Z),
             NugisLamers00: (p) => {
                 const Y = Math.max(0.01, 1.0 - p.X - (p.Z * 0.014));
                 return -13.60 + 1.63 * log10(p.L) + 2.22 * log10(Y) + 0.85 * log10(p.Z);
             },
-            Langer89: (p) => {
-                 return 2.5 * log10(p.M) + 0.85 * log10(p.Z) - 7.1;
-            }
+            Langer89: (p) => 2.5 * log10(p.M) + 0.85 * log10(p.Z) - 7.1
         };
 
         const RECIPE_META = {
@@ -195,171 +125,125 @@
         };
 
         const App = () => {
-            const [xAxisType, setXAxisType] = useState('Teff');
-            const [fixedParams, setFixedParams] = useState({ L: 5.0,  M: 40.0, T: 4.6, Z: 1.0, X: 0.7 });
-            const [selectedModels, setSelectedModels] = useState({
-                Vink01: true, Bjorklund23: true, Krticka24: false,
-                Reimers75: false, deJager88: false, NugisLamers00: false
-            });
-
-            // Debugging Hook
-            useEffect(() => {
-                window.logStatus("App Component Mounted Successfully");
-            }, []);
+            const [axisChoice, setAxisChoice] = useState('temp'); // Renamed from Teff to axisChoice
+            const [params, setParams] = useState({ logL: 5.0, mass: 40.0, logT: 4.6, z: 1.0, hydrogen: 0.7 });
+            const [models, setModels] = useState({ Vink01: true, Bjorklund23: true, Krticka24: false, Reimers75: false, deJager88: false, NugisLamers00: false });
 
             const plotData = useMemo(() => {
                 const data = [];
-                let steps = 100;
                 let min, max;
-                
-                if (xAxisType === 'Teff') { min = 3.5; max = 5.3; }
-                else if (xAxisType === 'L') { min = 3.0; max = 6.5; }
-                else if (xAxisType === 'Z') { min = -2.0; max = 0.5; }
+                if (axisChoice === 'temp') { min = 3.5; max = 5.3; }
+                else if (axisChoice === 'lum') { min = 3.0; max = 6.5; }
+                else { min = -2.0; max = 0.5; }
 
-                const stepSize = (max - min) / steps;
-
-                for (let i = 0; i <= steps; i++) {
-                    const xValLog = min + i * stepSize;
-                    const xValLinear = Math.pow(10, xValLog);
-                    const currentP = {
-                        L: xAxisType === 'L' ? xValLinear : Math.pow(10, fixedParams.L),
-                        M: fixedParams.M,
-                        T: xAxisType === 'Teff' ? xValLinear : Math.pow(10, fixedParams.T),
-                        Z: xAxisType === 'Z' ? xValLinear : fixedParams.Z,
-                        X: fixedParams.X
+                for (let i = 0; i <= 100; i++) {
+                    const xLog = min + i * ((max - min) / 100);
+                    const xLin = Math.pow(10, xLog);
+                    const p = {
+                        L: axisChoice === 'lum' ? xLin : Math.pow(10, params.logL),
+                        M: params.mass,
+                        T: axisChoice === 'temp' ? xLin : Math.pow(10, params.logT),
+                        Z: axisChoice === 'metal' ? xLin : params.z,
+                        X: params.hydrogen
                     };
-                    currentP.R = calcRadius(currentP.L, currentP.T);
-                    const point = { x: xValLog };
-                    Object.keys(recipes).forEach(key => {
-                        if (selectedModels[key]) {
-                            point[key] = recipes[key](currentP);
-                        }
-                    });
+                    p.R = calcRadius(p.L, p.T);
+                    const point = { x: xLog };
+                    Object.keys(recipes).forEach(k => { if (models[k]) point[k] = recipes[k](p); });
                     data.push(point);
                 }
                 return data;
-            }, [xAxisType, fixedParams, selectedModels]);
+            }, [axisChoice, params, models]);
 
-            const handleParamChange = (key, val) => {
-                setFixedParams(prev => ({ ...prev, [key]: parseFloat(val) }));
-            };
-
-            const toggleModel = (key) => {
-                setSelectedModels(prev => ({ ...prev, [key]: !prev[key] }));
-            };
+            // Descriptive labels to avoid unquoted letter issues
+            const xLabel = axisChoice === 'temp' ? 'log Teff [K]' : axisChoice === 'lum' ? 'log L/Lsun' : 'log Z/Zsun';
+            const titleLabel = axisChoice === 'temp' ? 'Temperature' : axisChoice === 'lum' ? 'Luminosity' : 'Metallicity';
 
             return (
-                <div className="min-h-screen p-4 md:p-8 font-sans text-slate-800">
-                    <header className="mb-8 max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="text-center md:text-left">
-                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                                Stellar Wind Models
-                            </h1>
-                            <p className="text-slate-500 mt-1">Interactive Mass-Loss Rates Explorer</p>
-                        </div>
-                        <div className="flex gap-4">
-                            <a href="https://github.com/AmedeoRom" className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 transition" target="_blank">
-                                <GithubIcon size={18} /> View Profile
-                            </a>
-                        </div>
+                <div className="min-h-screen p-4 md:p-8 text-slate-800">
+                    <header className="mb-8 max-w-6xl mx-auto flex justify-between items-center">
+                        <h1 className="text-3xl font-bold text-blue-700">Stellar Wind Models</h1>
+                        <a href="https://github.com/AmedeoRom" className="text-sm text-slate-500 hover:text-blue-600">GitHub Profile</a>
                     </header>
 
                     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* CONTROLS */}
                         <div className="lg:col-span-3 space-y-6">
-                            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4 flex items-center gap-2">
-                                    <SettingsIcon size={16} /> Plot Axis
-                                </h3>
-                                <div className="space-y-2">
-                                    {['Teff', 'L', 'Z'].map(type => (
-                                        <label key={type} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-slate-50 transition">
-                                            <input type="radio" name="xaxis" checked={xAxisType === type} onChange={() => setXAxisType(type)} className="w-4 h-4 text-blue-600 accent-blue-600" />
-                                            <span className="font-medium">{type === 'Teff' ? 'Temperature (log T)' : type === 'L' ? 'Luminosity (log L)' : 'Metallicity (log Z)'}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                            {/* Axis */}
+                            <div className="bg-white p-5 rounded-xl border shadow-sm">
+                                <h3 className="text-xs uppercase font-bold text-slate-400 mb-4">Plot Axis</h3>
+                                {['temp', 'lum', 'metal'].map(t => (
+                                    <label key={t} className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded">
+                                        <input type="radio" checked={axisChoice === t} onChange={() => setAxisChoice(t)} className="accent-blue-600" />
+                                        <span className="capitalize">{t === 'temp' ? 'Temperature' : t === 'lum' ? 'Luminosity' : 'Metallicity'}</span>
+                                    </label>
+                                ))}
                             </div>
 
-                            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4">Fixed Parameters</h3>
-                                <div className="space-y-5">
-                                    {xAxisType !== 'L' && (
+                            {/* Sliders */}
+                            <div className="bg-white p-5 rounded-xl border shadow-sm">
+                                <h3 className="text-xs uppercase font-bold text-slate-400 mb-4">Parameters</h3>
+                                <div className="space-y-4">
+                                    {axisChoice !== 'lum' && (
                                         <div>
-                                            <div className="flex justify-between text-sm mb-1"><span className="text-slate-600">Luminosity (log L)</span><span className="font-mono text-blue-600 font-bold">{fixedParams.L}</span></div>
-                                            <input type="range" min="3" max="6.5" step="0.1" value={fixedParams.L} onChange={(e) => handleParamChange('L', e.target.value)} className="w-full" />
+                                            <div className="flex justify-between text-xs mb-1"><span>log L</span><span className="font-bold text-blue-600">{params.logL}</span></div>
+                                            <input type="range" min="3" max="6.5" step="0.1" value={params.logL} onChange={(e) => setParams({...params, logL: parseFloat(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                                         </div>
                                     )}
                                     <div>
-                                        <div className="flex justify-between text-sm mb-1"><span className="text-slate-600">Mass (M☉)</span><span className="font-mono text-blue-600 font-bold">{fixedParams.M}</span></div>
-                                        <input type="range" min="5" max="100" step="1" value={fixedParams.M} onChange={(e) => handleParamChange('M', e.target.value)} className="w-full" />
+                                        <div className="flex justify-between text-xs mb-1"><span>Mass (Msun)</span><span className="font-bold text-blue-600">{params.mass}</span></div>
+                                        <input type="range" min="5" max="100" step="1" value={params.mass} onChange={(e) => setParams({...params, mass: parseFloat(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                                     </div>
-                                    {xAxisType !== 'Teff' && (
+                                    {axisChoice !== 'temp' && (
                                         <div>
-                                            <div className="flex justify-between text-sm mb-1"><span className="text-slate-600">Temp (log Teff)</span><span className="font-mono text-blue-600 font-bold">{fixedParams.T}</span></div>
-                                            <input type="range" min="3.5" max="5.3" step="0.05" value={fixedParams.T} onChange={(e) => handleParamChange('T', e.target.value)} className="w-full" />
+                                            <div className="flex justify-between text-xs mb-1"><span>log Teff</span><span className="font-bold text-blue-600">{params.logT}</span></div>
+                                            <input type="range" min="3.5" max="5.3" step="0.05" value={params.logT} onChange={(e) => setParams({...params, logT: parseFloat(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                                         </div>
                                     )}
-                                    {xAxisType !== 'Z' && (
+                                    {axisChoice !== 'metal' && (
                                         <div>
-                                            <div className="flex justify-between text-sm mb-1"><span className="text-slate-600">Metallicity (Z/Z☉)</span><span className="font-mono text-blue-600 font-bold">{fixedParams.Z}</span></div>
-                                            <input type="range" min="0.01" max="2.0" step="0.01" value={fixedParams.Z} onChange={(e) => handleParamChange('Z', e.target.value)} className="w-full" />
+                                            <div className="flex justify-between text-xs mb-1"><span>Z/Zsun</span><span className="font-bold text-blue-600">{params.z}</span></div>
+                                            <input type="range" min="0.01" max="2.0" step="0.01" value={params.z} onChange={(e) => setParams({...params, z: parseFloat(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
                                         </div>
                                     )}
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-1"><span className="text-slate-600">Surface H (X)</span><span className="font-mono text-blue-600 font-bold">{fixedParams.X}</span></div>
-                                        <input type="range" min="0.0" max="0.75" step="0.05" value={fixedParams.X} onChange={(e) => handleParamChange('X', e.target.value)} className="w-full" />
-                                    </div>
                                 </div>
                             </div>
 
-                            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-400 mb-4 flex items-center gap-2"><WindIcon size={16} /> Models</h3>
-                                <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                    {Object.keys(recipes).map(key => (
-                                        <label key={key} className="flex items-center gap-3 cursor-pointer group select-none">
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${selectedModels[key] ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white group-hover:border-blue-400'}`}>
-                                                <input type="checkbox" className="hidden" checked={selectedModels[key]} onChange={() => toggleModel(key)} />
-                                                {selectedModels[key] && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                            </div>
-                                            <div className="flex-1">
-                                                <span className={`text-sm font-medium transition ${selectedModels[key] ? 'text-slate-800' : 'text-slate-500'}`}>{RECIPE_META[key].name}</span>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="w-2 h-2 rounded-full" style={{backgroundColor: RECIPE_META[key].color}}></span>
-                                                    <span className="text-xs text-slate-400 uppercase">{RECIPE_META[key].category}</span>
-                                                </div>
-                                            </div>
+                            {/* Models */}
+                            <div className="bg-white p-5 rounded-xl border shadow-sm">
+                                <h3 className="text-xs uppercase font-bold text-slate-400 mb-4">Models</h3>
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                    {Object.keys(recipes).map(k => (
+                                        <label key={k} className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={models[k]} onChange={() => setModels({...models, [k]: !models[k]})} className="accent-blue-600" />
+                                            <span className="text-sm truncate" title={RECIPE_META[k].name}>{RECIPE_META[k].name}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        {/* PLOT */}
-                        <div className="lg:col-span-9">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-[600px] flex flex-col">
-                                <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
-                                    <h2 className="font-bold text-lg text-slate-700">Mass Loss Rate vs {xAxisType === 'Teff' ? 'Effective Temperature' : xAxisType === 'L' ? 'Luminosity' : 'Metallicity'}</h2>
-                                </div>
-                                <div className="flex-1 w-full min-h-0">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 10, right: 30, left: 20, bottom: 40 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                            <XAxis dataKey="x" type="number" domain={['auto', 'auto']} tickFormatter={(val) => val.toFixed(2)} label={{ value: xAxisType === 'Teff' ? 'log Teff [K]' : xAxisType === 'L' ? 'log L/L☉' : 'log Z/Z☉', position: 'bottom', offset: 20, style: { fill: '#64748b' } }} reversed={xAxisType === 'Teff'} stroke="#94a3b8" />
-                                            <YAxis label={{ value: 'log Ṁ [M☉/yr]', angle: -90, position: 'insideLeft', style: { fill: '#64748b' } }} domain={['auto', 'auto']} stroke="#94a3b8" />
-                                            <Tooltip labelFormatter={(val) => `${xAxisType === 'Teff' ? 'log Teff' : xAxisType === 'L' ? 'log L' : 'log Z'}: ${Number(val).toFixed(3)}`} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                                            <Legend verticalAlign="top" height={36}/>
-                                            {Object.keys(recipes).map(key => (
-                                                selectedModels[key] && (
-                                                    <Line key={key} type="monotone" dataKey={key} stroke={RECIPE_META[key].color} name={RECIPE_META[key].name} strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-                                                )
-                                            ))}
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="mt-4 text-xs text-slate-400 text-center">
-                                    Note: Approximations used for stellar parameters ($R \propto \sqrt{L/T^4}$). Internal structure variables approximated from surface values.
-                                </div>
+                        {/* Chart */}
+                        <div className="lg:col-span-9 bg-white p-6 rounded-xl border shadow-sm h-[600px] flex flex-col">
+                            <h2 className="font-bold mb-4">log M-dot vs {titleLabel}</h2>
+                            <div className="flex-1">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={plotData} margin={{ top: 10, right: 30, left: 20, bottom: 40 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis 
+                                            dataKey="x" 
+                                            type="number" 
+                                            domain={['auto', 'auto']} 
+                                            reversed={axisChoice === 'temp'} 
+                                            tickFormatter={v => v.toFixed(2)}
+                                            label={{ value: xLabel, position: 'bottom', offset: 20 }}
+                                        />
+                                        <YAxis label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft' }} />
+                                        <Tooltip labelFormatter={v => titleLabel + ': ' + v.toFixed(3)} />
+                                        <Legend verticalAlign="top" height={36}/>
+                                        {Object.keys(recipes).map(k => models[k] && (
+                                            <Line key={k} type="monotone" dataKey={k} stroke={RECIPE_META[k].color} name={RECIPE_META[k].name} strokeWidth={2} dot={false} />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
                     </div>
@@ -368,11 +252,7 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(
-            <ErrorBoundary>
-                <App />
-            </ErrorBoundary>
-        );
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
 </body>
 </html>
