@@ -186,7 +186,7 @@
             B20: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -5.19 + 2.69*log10(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M) - 3.19*log10(1-(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M)) + (log10(p.Z/s.Zsun)+0.3)*(0.4 + 15.75/p.M),
             Vb98_WR: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(p.L) + 0.85*log10(p.Z/s.Zsun) - 10,
             dJ88: (p, s, opts = {}) => {
-                if (log10(p.L) <= s.lumCutoff) return null;
+                if (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) return null;
                 let xlmdot = 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158;
                 if (opts.dJ88ZCorr) xlmdot += 0.5 * log10(p.Z / s.Zsun);
                 return xlmdot;
