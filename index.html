@@ -152,7 +152,7 @@
             NdJ90: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
                 let xlmdot = log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16));
-                if (opts.NdJ90ZCorr) xlmdot = xlmdot * 0.5 * log10(p.Z / s.Zsun);
+                if (opts.NdJ90ZCorr) xlmdot += 0.5 * log10(p.Z / s.Zsun);
                 return xlmdot;
             },
             Vb98_OB: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin) ? null : 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z/s.Zsun) - 8.29,
@@ -366,7 +366,7 @@
                                                         <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
                                                             <label className="flex items-center gap-2 cursor-pointer group">
                                                                 <input type="checkbox" checked={options.A24TCorr} onChange={e => setOptions({...options, A24TCorr: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Romagnolo+ (2026)">T-correction</span>
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Atlas I (Romagnolo+ 2026)">T-correction</span>
                                                             </label>
                                                         </div>
                                                     )}
