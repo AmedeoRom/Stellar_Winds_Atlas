@@ -293,7 +293,7 @@
             }, [plotData, plotOpt.autoY]);
 
             useEffect(() => {
-                let newX = { min: "3.5", max: "4.6" };
+                let newX = { min: "3.5", max: "5.3" };
                 if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
                 else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
                 setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
