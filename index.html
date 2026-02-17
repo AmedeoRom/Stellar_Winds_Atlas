@@ -59,21 +59,26 @@
         };
 
         const MODEL_META = {
+            // LOW (Monochrome)
             R75: { name: "Reimers 1975", cat: "LOW", color: "#000000", dash: "0", year: 1975 },
             B95: { name: "Bloecker 1995", cat: "LOW", color: "#000000", dash: "5 5", year: 1995 },
-            NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "THIN", color: "#475569", dash: "0", year: 1990 },
-            Vb98_OB: { name: "Vanbeveren+ 1998 (OB)", cat: "THIN", color: "#475569", dash: "5 5", year: 1998 },
+
+            // THIN (Blues & Purples only)
+            NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "THIN", color: "#1e3a8a", dash: "0", year: 1990 },
+            Vb98_OB: { name: "Vanbeveren+ 1998 (OB)", cat: "THIN", color: "#1e3a8a", dash: "5 5", year: 1998 },
             V01: { name: "Vink+ 2001", cat: "THIN", color: "#2563eb", dash: "0", year: 2001 },
-            V17: { name: "Vink 2017", cat: "THIN", color: "#7c3aed", dash: "0", year: 2017 },
             VS21: { name: "Vink & Sander 2021", cat: "THIN", color: "#2563eb", dash: "5 5", year: 2021 },
+            V17: { name: "Vink 2017", cat: "THIN", color: "#7c3aed", dash: "0", year: 2017 },
             Bj23: { name: "Bjorklund+ 2023", cat: "THIN", color: "#7c3aed", dash: "5 5", year: 2023 },
-            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#4f46e5", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.0." },
-            K24: { name: "Krticka+ 2024", cat: "THIN", color: "#0891b2", dash: "0", year: 2024 },
-            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#0891b2", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK." },
-            P25_thin: { name: "Pauli+ 2025 (Thin)", cat: "THIN", color: "#4b5563", dash: "3 3", year: 2025.1 },
-            Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025.2 },
+            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#0ea5e9", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.2." },
+            K24: { name: "Krticka+ 2024", cat: "THIN", color: "#4f46e5", dash: "0", year: 2024 },
+            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK." },
+            Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#a855f7", dash: "0", year: 2025.2 },
+            P25: { name: "Pauli+ 2025", cat: "THIN", color: "#6366f1", dash: "0", year: 2025.3 },
+            
+            // THICK (Greens & Beige)
             L89: { name: "Langer 1989", cat: "THICK", color: "#059669", dash: "0", year: 1989 },
-            Ha95: { name: "Hamann+ 1995", cat: "THICK", color: "#854d0e", dash: "0", year: 1995 },
+            Ha95: { name: "Hamann+ 1995", cat: "THICK", color: "#d97706", dash: "0", year: 1995 },
             Vb98_WR: { name: "Vanbeveren+ 1998 (WR)", cat: "THICK", color: "#059669", dash: "5 5", year: 1998 },
             NL00: { name: "Nugis & Lamers 2000", cat: "THICK", color: "#16a34a", dash: "0", year: 2000 },
             Y06: { name: "Yoon+ 2006", cat: "THICK", color: "#16a34a", dash: "5 5", year: 2006 },
@@ -81,18 +86,19 @@
             V11: { name: "Vink+ 2011", cat: "THICK", color: "#92400e", dash: "0", year: 2011 },
             TSK16: { name: "Tramper+ 2016", cat: "THICK", color: "#0d9488", dash: "5 5", year: 2016 },
             Y17: { name: "Yoon 2017", cat: "THICK", color: "#15803d", dash: "0", year: 2017 },
-            Sh19: { name: "Shenar+ 2019", cat: "THICK", color: "#854d0e", dash: "5 5", year: 2019 },
-            S19: { name: "Sander+ 2019", cat: "THICK", color: "#0284c7", dash: "0", year: 2019.2 },
+            Sh19: { name: "Shenar+ 2019", cat: "THICK", color: "#d97706", dash: "5 5", year: 2019 },
+            S19: { name: "Sander+ 2019", cat: "THICK", color: "#065f46", dash: "0", year: 2019.2 },
             B20: { name: "Bestenlehner 2020", cat: "THICK", color: "#065f46", dash: "5 5", year: 2020.1 },
-            SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#dc2626", dash: "0", year: 2020.2 },
-            P25_thick: { name: "Pauli+ 2025 (WR)", cat: "THICK", color: "#4b5563", dash: "3 3", year: 2025 },
+            SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#92400e", dash: "5 5", year: 2020.2 },
+
+            // COOL (Yellow, Orange, Red)
             dJ88: { name: "de Jager+ 1988", cat: "COOL", color: "#ea580c", dash: "0", year: 1988 },
+            Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 },
             vL05: { name: "van Loon+ 2005", cat: "COOL", color: "#ea580c", dash: "5 5", year: 2005 },
             Be23: { name: "Beasor+ 2023", cat: "COOL", color: "#ca8a04", dash: "0", reqMini: true, year: 2023 },
             Ya23: { name: "Yang+ 2023", cat: "COOL", color: "#ca8a04", dash: "5 5", year: 2023.2 },
             A24: { name: "Antoniadis+ 2024", cat: "COOL", color: "#dc2626", dash: "0", year: 2024, warning: "Capped at 4 kK." },
-            D24: { name: "Decin+ 2024", cat: "COOL", color: "#dc2626", dash: "5 5", reqMini: true, year: 2024.2 },
-            Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 }
+            D24: { name: "Decin+ 2024", cat: "COOL", color: "#dc2626", dash: "5 5", reqMini: true, year: 2024.2 }
         };
 
         // --- CALCULATIONS ---
@@ -138,7 +144,7 @@
             },
             GM23: (p) => {
                 const logg = calcLogG(p.M, p.R);
-                if (logg < 3.0) return null;
+                if (logg <= 3.2) return null;
                 const lt = log10(p.T/1000); const lz = log10(p.Z/0.0142);
                 let m = -40.314 + 15.438*lt + 45.838/logg - 8.284*lt/logg + 1.0564*p.R - lt*p.R/2.36 - 1.1967*p.R/logg + 11.6*lz - 4.223*lt*lz - 16.377*lz/logg + (p.R*lz)/81.735;
                 return m + 0.0475 - 0.559*0.085;
@@ -149,14 +155,13 @@
             },
             NdJ90: (p) => log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16) * Math.pow(p.Z/0.0142, 0.5)),
             Vb98_OB: (p) => 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z/Z_SUN) - 8.29,
-            P25_thin: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/Z_SUN),
-            P25_thick: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/Z_SUN),
+            P25: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/Z_SUN),
             L89: (p) => 2.5 * log10(p.M) + 0.85 * log10(p.Z/Z_SUN) - 7.1,
             NL00: (p) => -13.6 + 1.63 * log10(p.L) + 2.22 * log10(1-p.X) + 0.85 * log10(p.Z/Z_SUN),
             Y06: (p) => log10(p.L) > 4.5 ? -12.95 + 1.5*log10(p.L) - 2.85*p.X + 0.85*log10(p.Z/Z_SUN) : -36.8 + 6.8*log10(p.L),
             Y17: (p) => log10(Math.pow(p.L, 1.18) * Math.pow(p.Z/Z_SUN, 0.6) * Math.pow(10, -11.32)),
             V11: (p, s) => log10(s.mdot) + 4.77 * log10(p.L/s.L) - 3.99 * log10(p.M/s.M),
-            SV20: (p, options = {}) => {
+            SV20: (p, s, options = {}) => {
                 const log_gamma_edd = -4.813 + log10(1+p.X) + log10(p.L) - log10(p.M);
                 const gamma_edd = Math.pow(10, log_gamma_edd);
                 const lZ = log10(p.Z/0.0142);
@@ -197,12 +202,13 @@
         const App = () => {
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.5, mass: 40.0, logT: 4.6, z: 1.0, X: 0.7, Mi: 40 });
-            const [activeModels, setActiveModels] = useState({ V01: true, NL00: true, dJ88: true });
+            // New Defaults: K24, dJ88, Sh19
+            const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
             const [options, setOptions] = useState({ sv20TCorr: false });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, PLOT: false });
-            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 4.6, ymin: -11, ymax: -3, height: 600, autoY: true });
+            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 4.6, ymin: -11, ymax: -3, height: 720, autoY: true });
 
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
 
@@ -224,7 +230,7 @@
                     const point = { x: xLog };
                     Object.keys(activeModels).forEach(k => {
                         if (activeModels[k]) {
-                            const val = k === 'V11' ? recipes[k](p, vinkSettings) : recipes[k](p, options);
+                            const val = k === 'V11' ? recipes[k](p, vinkSettings) : recipes[k](p, vinkSettings, options);
                             if (val !== null && !isNaN(val)) point[k] = val;
                         }
                     });
@@ -249,7 +255,7 @@
                 }
             }, [plotData, plotOpt.autoY]);
 
-            // Default margins on type change
+            // Specified Margins on type change
             useEffect(() => {
                 if (axis === 'temp') setPlotOpt(p => ({...p, xmin: 3.5, xmax: 4.6}));
                 else if (axis === 'lum') setPlotOpt(p => ({...p, xmin: 4.0, xmax: 6.5}));
@@ -262,7 +268,7 @@
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
                     <header className="px-6 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10">
-                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v3.1</span></h1>
+                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v3.1.2</span></h1>
                         <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition" target="_blank">GitHub Profile</a>
                     </header>
 
@@ -339,7 +345,7 @@
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             {Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
-                                                <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={2.5} dot={false} animationDuration={300} connectNulls={false} />
+                                                <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={3} dot={false} animationDuration={300} connectNulls={false} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
