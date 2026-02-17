@@ -165,7 +165,7 @@
                 const breakdown_val = Math.max(0, (-0.324 * lZ + 0.244) / gamma_edd);
                 const logMdot_breakdown = log10(2.0) * Math.pow(breakdown_val, (-0.44 * lZ + 9.15));
                 let xlmdot = logMdot_pureWR - logMdot_breakdown;
-                if (opts.sv20TCorr && P.T >= 1e5) xlmdot -= 6.0 * log10(p.T/141000);
+                if (opts.sv20TCorr && p.T >= 1e5) xlmdot -= 6.0 * log10(p.T/141000);
                 return xlmdot;
             },
             TSK16: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : 0.85 * log10(p.L) + 0.44 * log10(1-p.X) + 0.25 * log10(p.Z/s.Zsun) - 9.2,
@@ -281,7 +281,7 @@
                                                 <div className="p-3 space-y-4 text-xs">
                                                     <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent hover:border-slate-200 transition" title="Adds information on supergiant and WR temperature ranges, HD limit and Pop I to III metallicity regimes">
                                                         <input type="checkbox" checked={options.moreDetails} onChange={e => setOptions({...options, moreDetails: e.target.checked})} className="w-4 h-4 text-blue-600 rounded" />
-                                                        <span className="font-bold">More details</span>
+                                                        <span className="font-bold">More Details</span>
                                                     </label>
                                                     <div className="pt-2 border-t border-slate-100">
                                                         <label className="text-[10px] font-black text-slate-400 uppercase cursor-help block" title="Anders+ 1989 (0.019), Grevesse+ 1998 (0.017), or Asplund+ 2009 (0.0142)">Zsun Calibration</label>
