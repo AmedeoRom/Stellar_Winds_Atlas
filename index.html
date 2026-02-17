@@ -34,8 +34,8 @@
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = window.Recharts;
 
         // --- CONSTANTS ---
-        const LSUN = 3.826e33; 
-        const RSUN = 6.9599e10; 
+        const LSUN_CGS = 3.826e33; 
+        const RSUN_CGS = 6.9599e10; 
         const MSUN_CGS = 1.989e33;
         const G_CGS = 6.67430e-8;
         const Z_SUN = 0.0142;
@@ -47,7 +47,7 @@
         };
 
         const calcLogG = (M_sol, R_sol) => {
-            return Math.log10(G_CGS * (M_sol * MSUN_CGS) / Math.pow(R_sol * RSUN, 2));
+            return Math.log10(G_CGS * (M_sol * MSUN_CGS) / Math.pow(R_sol * RSUN_CGS, 2));
         };
 
         // --- RECIPE DATA & META ---
@@ -97,7 +97,10 @@
 
         // --- CALCULATIONS ---
         const recipes = {
-            R75: (p) => log10(4e-13 * (p.L * p.R / p.M)),
+            R75: (p) => {
+                const scaling = (p.h1_center > 0.001) ? 0.85 : (p.L/p.Ledd > 1 ? 3.0 : 1.0);
+                return log10(scaling * 4e-13 * (p.L * p.R / p.M));
+            },
             B95: (p) => log10(0.1 * 4.83e-9 * Math.pow(p.M, -2.1) * Math.pow(p.L, 2.7) * 4e-13 * p.L * p.R / p.M),
             V01: (p) => {
                 const vi = (p.T > 25000 ? 2.6 : 1.3) * Math.pow(p.Z / Z_SUN, 0.13);
@@ -186,21 +189,28 @@
         const App = () => {
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.5, mass: 40.0, logT: 4.6, z: 1.0, X: 0.7, Mi: 40 });
-            const [activeModels, setActiveModels] = useState({ V01: true, NL00: true, dJ88: true, R75: true });
+            const [activeModels, setActiveModels] = useState({ V01: true, NL00: true, dJ88: true }); // Low-mass disabled by default
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
-            const [expandedCats, setExpandedCats] = useState({ LOW: true, THIN: true, THICK: true, COOL: true, PLOT: true });
-            const [plotOpt, setPlotOpt] = useState({ ymin: -11, ymax: -3, height: 720 });
+            const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, PLOT: false });
+            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720 });
 
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
 
             const plotData = useMemo(() => {
                 const data = [];
-                const limits = axis === 'temp' ? [3.5, 5.3] : axis === 'lum' ? [3.5, 7.0] : [-2.0, 0.5];
-                for (let i = 0; i <= 100; i++) {
-                    const xLog = limits[0] + i * (limits[1] - limits[0]) / 100;
+                const stepCount = 100;
+                for (let i = 0; i <= stepCount; i++) {
+                    const xLog = plotOpt.xmin + i * (plotOpt.xmax - plotOpt.xmin) / stepCount;
                     const xLin = Math.pow(10, xLog);
-                    const p = { L: axis === 'lum' ? xLin : Math.pow(10, params.logL), M: params.mass, T: axis === 'temp' ? xLin : Math.pow(10, params.logT), Z: axis === 'metal' ? xLin : params.z, X: params.X, Mi: params.Mi };
+                    const p = { 
+                        L: axis === 'lum' ? xLin : Math.pow(10, params.logL), 
+                        M: params.mass, 
+                        T: axis === 'temp' ? xLin : Math.pow(10, params.logT), 
+                        Z: axis === 'metal' ? xLin : params.z, 
+                        X: params.X, 
+                        Mi: params.Mi 
+                    };
                     p.R = calcRadius(p.L, p.T);
                     const point = { x: xLog };
                     Object.keys(activeModels).forEach(k => {
@@ -212,15 +222,22 @@
                     data.push(point);
                 }
                 return data;
-            }, [axis, params, activeModels, vinkSettings]);
+            }, [axis, params, activeModels, vinkSettings, plotOpt.xmin, plotOpt.xmax]);
 
             const xLabel = axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)';
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
 
+            // Sync default x-margins when axis type changes
+            useEffect(() => {
+                if (axis === 'temp') setPlotOpt(p => ({...p, xmin: 3.5, xmax: 5.3}));
+                else if (axis === 'lum') setPlotOpt(p => ({...p, xmin: 3.5, xmax: 7.0}));
+                else setPlotOpt(p => ({...p, xmin: -2.0, xmax: 0.5}));
+            }, [axis]);
+
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
                     <header className="px-6 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10">
-                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v2.9.1</span></h1>
+                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v3.0</span></h1>
                         <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition" target="_blank">GitHub Profile</a>
                     </header>
 
@@ -233,10 +250,10 @@
                                         <svg className={`w-4 h-4 transition-transform ${expandedCats[id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                     {expandedCats[id] && (
-                                        <div className="p-2 space-y-1 bg-white">
+                                        <div className="p-2 space-y-1 bg-white max-h-64 overflow-y-auto custom-scrollbar">
                                             {sortedModels.filter(([_, m]) => m.cat === id).map(([key, meta]) => (
                                                 <label key={key} className="model-card flex items-center p-2 rounded-lg cursor-pointer select-none">
-                                                    <input type="checkbox" checked={activeModels[key]} onChange={() => {
+                                                    <input type="checkbox" checked={!!activeModels[key]} onChange={() => {
                                                         setActiveModels(p => ({ ...p, [key]: !p[key] }));
                                                         if (key === 'V11' && !activeModels[key]) setShowVinkModal(true);
                                                     }} className="mr-3 h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
@@ -256,39 +273,34 @@
                                     )}
                                 </div>
                             ))}
-
-                            <div className="border rounded-xl overflow-hidden shadow-sm border-blue-200">
-                                <div onClick={() => setExpandedCats(p => ({ ...p, PLOT: !p.PLOT }))} className="collapsible-header flex justify-between items-center p-3 bg-blue-50 text-blue-800 border-b">
-                                    <span className="text-xs font-black uppercase tracking-widest">Plot Settings</span>
-                                    <svg className={`w-4 h-4 transition-transform ${expandedCats.PLOT ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-                                </div>
-                                {expandedCats.PLOT && (
-                                    <div className="p-4 space-y-4 bg-white">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min (log Ṁ)</label>
-                                            <input type="number" value={plotOpt.ymin} onChange={e => setPlotOpt({...plotOpt, ymin: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max (log Ṁ)</label>
-                                            <input type="number" value={plotOpt.ymax} onChange={e => setPlotOpt({...plotOpt, ymax: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Plot Height (px)</label>
-                                            <input type="number" value={plotOpt.height} onChange={e => setPlotOpt({...plotOpt, height: parseInt(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
                         </aside>
 
                         <section className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto custom-scrollbar">
                             <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-col shrink-0" style={{ height: plotOpt.height + 'px' }}>
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
+                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 80 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis dataKey="x" type="number" domain={['auto', 'auto']} reversed={axis === 'temp'} tickFormatter={v => v.toFixed(1)} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: xLabel, position: 'insideBottom', offset: 45, fontWeight: 700, fill: '#1e293b' }} />
-                                            <YAxis domain={[plotOpt.ymin, plotOpt.ymax]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} />
+                                            <XAxis 
+                                                dataKey="x" 
+                                                type="number" 
+                                                domain={[plotOpt.xmin, plotOpt.xmax]} 
+                                                reversed={axis === 'temp'} 
+                                                tickFormatter={v => v.toFixed(1)} 
+                                                stroke="#1e293b" 
+                                                strokeWidth={2}
+                                                fontSize={12} 
+                                                tick={{ fontWeight: 600 }}
+                                                label={{ value: xLabel, position: 'insideBottom', offset: 60, fontWeight: 700, fill: '#1e293b' }} 
+                                            />
+                                            <YAxis 
+                                                domain={[plotOpt.ymin, plotOpt.ymax]} 
+                                                stroke="#1e293b" 
+                                                strokeWidth={2}
+                                                fontSize={12} 
+                                                tick={{ fontWeight: 600 }}
+                                                label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} 
+                                            />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             {Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
@@ -333,9 +345,41 @@
                                     <input type="range" min="0" max="0.75" step="0.01" value={params.X} onChange={e => setParams({...params, X: parseFloat(e.target.value)})} className="w-full" />
                                 </div>
                                 {needsInitialMass && (
-                                    <div className="col-span-full lg:col-span-1 space-y-2 border-l-4 pl-4 border-amber-500 bg-amber-50 rounded-r-lg p-2">
-                                        <div className="flex justify-between text-[11px] font-black uppercase text-amber-600"><span>Initial Mass</span><span>{params.Mi}</span></div>
+                                    <div className="col-span-full space-y-2 border-l-4 pl-4 border-amber-500 bg-amber-50 rounded-r-lg p-2">
+                                        <div className="flex justify-between text-[11px] font-black uppercase text-amber-600"><span>Initial Mass (Mi)</span><span>{params.Mi}</span></div>
                                         <input type="range" min="5" max="120" step="1" value={params.Mi} onChange={e => setParams({...params, Mi: parseFloat(e.target.value)})} className="w-full" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* PLOT VIEWPORT CONTROLLER */}
+                            <div className="border rounded-2xl overflow-hidden shadow-sm border-blue-200 bg-white">
+                                <div onClick={() => setExpandedCats(p => ({ ...p, PLOT: !p.PLOT }))} className="collapsible-header flex justify-between items-center p-4 bg-blue-50 text-blue-800 border-b">
+                                    <span className="text-xs font-black uppercase tracking-widest">Plot Viewport & Margins</span>
+                                    <svg className={`w-4 h-4 transition-transform ${expandedCats.PLOT ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                {expandedCats.PLOT && (
+                                    <div className="p-6 grid grid-cols-2 md:grid-cols-5 gap-6 animate-in slide-in-from-top-1 duration-200">
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Min</label>
+                                            <input type="number" step="0.1" value={plotOpt.xmin} onChange={e => setPlotOpt({...plotOpt, xmin: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Max</label>
+                                            <input type="number" step="0.1" value={plotOpt.xmax} onChange={e => setPlotOpt({...plotOpt, xmax: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min</label>
+                                            <input type="number" step="0.5" value={plotOpt.ymin} onChange={e => setPlotOpt({...plotOpt, ymin: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max</label>
+                                            <input type="number" step="0.5" value={plotOpt.ymax} onChange={e => setPlotOpt({...plotOpt, ymax: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Plot Height</label>
+                                            <input type="number" step="10" value={plotOpt.height} onChange={e => setPlotOpt({...plotOpt, height: parseInt(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -344,7 +388,7 @@
 
                     {showVinkModal && (
                         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 backdrop-blur-md">
-                            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full border-t-8 border-blue-600 animate-in fade-in zoom-in duration-300">
+                            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full border-t-8 border-blue-600">
                                 <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Vink 2011 Switch</h2>
                                 <p className="text-[10px] text-slate-500 mb-6 font-bold uppercase">Transition parameters for sticky optically-thick winds.</p>
                                 <div className="space-y-4">
