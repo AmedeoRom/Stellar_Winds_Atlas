@@ -84,7 +84,7 @@
             Vb98_WR: { name: "Vanbeveren+ 1998 (WR)", cat: "THICK", color: "#064e3b", dash: "5 5", year: 1998 },
             NL00: { name: "Nugis & Lamers 2000", cat: "THICK", color: "#059669", dash: "0", year: 2000 },
             Y06: { name: "Yoon+ 2006", cat: "THICK", color: "#059669", dash: "5 5", year: 2006 },
-            GH08: { name: "Grafener & Hamann 2008", cat: "THICK", color: "#0d9488", dash: "0", year: 2008 },
+            GH08: { name: "Grafener & Hamann 2008", cat: "THICK", color: "#0d9488", dash: "0", year: 2008, warning: "Restricted to logL > 5.7" },
             V11: { name: "Vink+ 2011", cat: "THICK", color: "#b45309", dash: "0", year: 2011 },
             TSK16: { name: "Tramper+ 2016", cat: "THICK", color: "#0d9488", dash: "5 5", year: 2016 },
             Y17: { name: "Yoon 2017", cat: "THICK", color: "#15803d", dash: "0", year: 2017 },
@@ -169,7 +169,7 @@
                 return xlmdot;
             },
             TSK16: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : 0.85 * log10(p.L) + 0.44 * log10(1-p.X) + 0.25 * log10(p.Z/s.Zsun) - 9.2,
-            GH08: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : 10.046 + 1.727 * log10((Math.pow(10, -4.813 + log10(1+p.X) + log10(p.L) - log10(p.M))) - 0.326) - 3.5 * log10(p.T) + 0.42 * log10(p.L) - 0.45 * p.X,
+            GH08: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.L) < 5.7) ? null : 10.046 + 1.727 * log10((Math.pow(10, -4.813 + log10(1+p.X) + log10(p.L) - log10(p.M))) - 0.326) - 3.5 * log10(p.T) + 0.42 * log10(p.L) - 0.45 * p.X,
             Ha95: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : 1.5*log10(p.L) + 0.85*log10(p.Z/s.Zsun) - 2.85*p.X - 11.95,
             Sh19: (p, s) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
@@ -407,7 +407,7 @@
                                                     })()}
                                                 </React.Fragment>
                                             )}
-                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 12, fontWeight: "bold", fill: "#64748b" }} />}
+                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={5.8} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 12, fontWeight: "bold", fill: "#64748b" }} />}
                                             {options.moreDetails && axis === 'metal' && (
                                                 <React.Fragment>
                                                     {(() => {
