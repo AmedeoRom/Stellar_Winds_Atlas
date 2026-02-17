@@ -15,7 +15,7 @@
         .model-card:hover { border-color: #3b82f6; background-color: #eff6ff; }
         .collapsible-header { cursor: pointer; user-select: none; transition: background 0.2s; }
         .collapsible-header:hover { background-color: #f1f5f9; }
-        .warning-tooltip { position: relative; display: inline-block; cursor: help; }
+        .warning-tooltip { position: relative; display: inline-block; cursor: help; margin-left: 4px; }
     </style>
 
     <script>window.process = { env: { NODE_ENV: 'production' } };</script>
@@ -34,17 +34,16 @@
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = window.Recharts;
 
         // --- CONSTANTS ---
-        const LSUN = 3.828e33; 
-        const SIGMA_SB = 5.670374419e-5; 
-        const RSUN = 6.957e10; 
+        const LSUN = 3.826e33; 
+        const RSUN = 6.9599e10; 
         const MSUN_CGS = 1.989e33;
         const G_CGS = 6.67430e-8;
+        const Z_SUN = 0.0142;
         const log10 = (x) => Math.log10(x > 1e-25 ? x : 1e-25);
 
         // --- PHYSICS UTILS ---
         const calcRadius = (L_sol, T_eff) => {
-            const R_cgs = Math.sqrt((L_sol * LSUN) / (4 * Math.PI * SIGMA_SB * Math.pow(T_eff, 4)));
-            return R_cgs / RSUN;
+            return Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
         };
 
         const calcLogG = (M_sol, R_sol) => {
@@ -60,24 +59,19 @@
         };
 
         const MODEL_META = {
-            // LOW
             R75: { name: "Reimers 1975", cat: "LOW", color: "#000000", dash: "0", year: 1975 },
             B95: { name: "Bloecker 1995", cat: "LOW", color: "#000000", dash: "5 5", year: 1995 },
-
-            // THIN
             NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "THIN", color: "#475569", dash: "0", year: 1990 },
             Vb98_OB: { name: "Vanbeveren+ 1998 (OB)", cat: "THIN", color: "#475569", dash: "5 5", year: 1998 },
             V01: { name: "Vink+ 2001", cat: "THIN", color: "#2563eb", dash: "0", year: 2001 },
             V17: { name: "Vink 2017", cat: "THIN", color: "#7c3aed", dash: "0", year: 2017 },
             VS21: { name: "Vink & Sander 2021", cat: "THIN", color: "#2563eb", dash: "5 5", year: 2021 },
             Bj23: { name: "Bjorklund+ 2023", cat: "THIN", color: "#7c3aed", dash: "5 5", year: 2023 },
-            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#4f46e5", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.0 to prevent heavy overestimation from extrapolation." },
+            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#4f46e5", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.0." },
             K24: { name: "Krticka+ 2024", cat: "THIN", color: "#0891b2", dash: "0", year: 2024 },
-            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#0891b2", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK; calculations outside this regime lead to invalid underestimations." },
+            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#0891b2", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK." },
             P25_thin: { name: "Pauli+ 2025 (Thin)", cat: "THIN", color: "#4b5563", dash: "3 3", year: 2025.1 },
             Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025.2 },
-            
-            // THICK
             L89: { name: "Langer 1989", cat: "THICK", color: "#059669", dash: "0", year: 1989 },
             Ha95: { name: "Hamann+ 1995", cat: "THICK", color: "#854d0e", dash: "0", year: 1995 },
             Vb98_WR: { name: "Vanbeveren+ 1998 (WR)", cat: "THICK", color: "#059669", dash: "5 5", year: 1998 },
@@ -92,101 +86,89 @@
             B20: { name: "Bestenlehner 2020", cat: "THICK", color: "#065f46", dash: "5 5", year: 2020.1 },
             SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#92400e", dash: "5 5", year: 2020.2 },
             P25_thick: { name: "Pauli+ 2025 (WR)", cat: "THICK", color: "#4b5563", dash: "3 3", year: 2025 },
-
-            // COOL
             dJ88: { name: "de Jager+ 1988", cat: "COOL", color: "#ea580c", dash: "0", year: 1988 },
-            Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 },
             vL05: { name: "van Loon+ 2005", cat: "COOL", color: "#ea580c", dash: "5 5", year: 2005 },
             Be23: { name: "Beasor+ 2023", cat: "COOL", color: "#ca8a04", dash: "0", reqMini: true, year: 2023 },
             Ya23: { name: "Yang+ 2023", cat: "COOL", color: "#ca8a04", dash: "5 5", year: 2023.2 },
-            A24: { name: "Antoniadis+ 2024", cat: "COOL", color: "#dc2626", dash: "0", year: 2024, warning: "Calibrated for Teff <= 4 kK. Values for higher temperatures are calculated at the 4 kK boundary." },
+            A24: { name: "Antoniadis+ 2024", cat: "COOL", color: "#dc2626", dash: "0", year: 2024, warning: "Capped at 4 kK." },
             D24: { name: "Decin+ 2024", cat: "COOL", color: "#dc2626", dash: "5 5", reqMini: true, year: 2024.2 },
             Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 }
         };
 
         // --- CALCULATIONS ---
         const recipes = {
-            R75: (p) => {
-                const scaling = (p.h1_center > 0.001) ? 0.85 : (p.L/p.Ledd > 1 ? 3.0 : 1.0);
-                return log10(scaling * 4e-13 * (p.L * p.R / p.M));
-            },
+            R75: (p) => log10(4e-13 * (p.L * p.R / p.M)),
             B95: (p) => log10(0.1 * 4.83e-9 * Math.pow(p.M, -2.1) * Math.pow(p.L, 2.7) * 4e-13 * p.L * p.R / p.M),
             V01: (p) => {
-                const logZ = log10(p.Z); let vi, logMdot;
-                if (p.T > 25000) {
-                    vi = 2.6 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
-                } else {
-                    vi = 1.3 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
-                } 
-                return logMdot;
+                const vi = (p.T > 25000 ? 2.6 : 1.3) * Math.pow(p.Z / Z_SUN, 0.13);
+                if (p.T > 25000) return -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*log10(p.Z/Z_SUN);
+                return -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*log10(p.Z/Z_SUN);
             },
             VS21: (p) => {
-                const logZ = log10(p.Z); let vi, logMdot;
+                let vi, logMdot;
                 if (p.T > 25000) {
-                    vi = 2.6 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
+                    vi = 2.6 * Math.pow(p.Z/Z_SUN, 0.13);
+                    logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*log10(p.Z/Z_SUN);
                 } else if (p.T > 20000) {
-                    vi = 1.3 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
+                    vi = 1.3 * Math.pow(p.Z/Z_SUN, 0.13);
+                    logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*log10(p.Z/Z_SUN);
                 } else {
-                    vi = 0.7 * Math.pow(p.Z, 0.13);
-                    logMdot = -5.99 + 2.21*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
+                    vi = 0.7 * Math.pow(p.Z/Z_SUN, 0.13);
+                    logMdot = -5.99 + 2.21*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*log10(p.Z/Z_SUN);
                 }
                 return logMdot;
             },
-            V17: (p) => -13.3 + 1.36 * log10(p.L) + 0.61 * log10(p.Z),
-            Bj23: (p) => -5.52 + 2.39 * log10(p.L/1e6) - 1.48 * log10(p.M/45) + 2.12 * log10(p.T/4.5e4) + (0.75 - 1.87 * log10(p.T/4.5e4)) * log10(p.Z),
-            K24: (p) => {
-                const lZ = log10(p.Z); const tk = p.T/1000;
-                return -13.82 + 0.358 * lZ + (1.52 - 0.11 * lZ) * (log10(p.L) - 6) + 13.82 * log10((1 + 0.73 * lZ) * Math.exp(-Math.pow((tk-14.16)/3.58, 2)) + 3.84 * Math.exp(-Math.pow((tk-37.9)/56.5, 2)));
-            },
+            V17: (p) => -13.3 + 1.36 * log10(p.L) + 0.61 * log10(p.Z/Z_SUN),
+            Bj23: (p) => -5.52 + 2.39 * log10(p.L/1e6) - 1.48 * log10(p.M/45) + 2.12 * log10(p.T/4.5e4) + (0.75 - 1.87 * log10(p.T/4.5e4)) * log10(p.Z/Z_SUN),
+            K24: (p) => -13.82 + 0.358*log10(p.Z/Z_SUN) + (1.52-0.11*log10(p.Z/Z_SUN))*(log10(p.L)-6) + 13.82*log10((1+0.73*log10(p.Z/Z_SUN))*Math.exp(-Math.pow((p.T/1000-14.16)/3.58, 2)) + 3.84*Math.exp(-Math.pow((p.T/1000-37.9)/56.5, 2))),
             K25: (p) => {
                 if (p.T < 10000 || p.T > 45000) return null;
-                const t = (p.T/1000 - 10)/35; const z = log10(p.Z); const l = log10(p.L) - 6;
-                const c1 = -31.33 + -46.35*z; const c2 = 119.62 + 170.35*z;
-                return -7.0 + 1.619 * l + c1*t + c2*(-0.5 + 1.5*t*t); 
+                const l_coeffs = [
+                    [-31.333, -46.3518, -19.0704, 0.372222], [119.62, 70.4817, 170.353, 0.119759], [-201.713, -284.575, -115.793, 0.0],
+                    [208.466, 117.131, 292.063, 0.0], [-140.704, -195.337, -77.1403, 0.0], [58.7226, 31.2397, 80.3569, 0.0], [-11.7687, -15.3933, -5.729, 0.0]
+                ];
+                const lZ = Math.max(-2, Math.min(0, log10(p.Z/Z_SUN)));
+                const t = (p.T/1000 - 10) / 35;
+                const polys = [t, -0.5+1.5*t**2, 2.5*t**3-1.5*t, 0.375+4.375*t**4-3.75*t**2, 7.875*t**5-8.75*t**3+1.875*t, -0.3125+14.4375*t**6-19.6875*t**4+6.5625*t**2, 26.8125*t**7-43.3125*t**5+19.6875*t**3-2.1875*t];
+                let sum = 0;
+                for(let i=0; i<7; i++) {
+                    const c = l_coeffs[i][0] + l_coeffs[i][1]*lZ + l_coeffs[i][2]*lZ**2 + l_coeffs[i][3]*lZ**3;
+                    sum += c * polys[i];
+                }
+                return -7.0 + 1.619*log10(p.L/1e6) + sum;
             },
             GM23: (p) => {
                 const logg = calcLogG(p.M, p.R);
                 if (logg < 3.0) return null;
-                const lteff = log10(p.T/1000); const gmlogg = logg; const gmrstar = p.R;
-                return -40.3 + 15.4*lteff + 45.8/gmlogg - 8.2*lteff/gmlogg + 1.05*gmrstar + 11.6*log10(p.Z);
+                const lt = log10(p.T/1000); const lz = log10(p.Z/0.0142);
+                let m = -40.314 + 15.438*lt + 45.838/logg - 8.284*lt/logg + 1.0564*p.R;
+                m = m - lt*p.R/2.36 - 1.1967*p.R/logg + 11.6*lz - 4.223*lt*lz - 16.377*lz/logg + (p.R*lz)/81.735;
+                return m + 0.0475 - 0.559*0.085;
             },
             Sa25: (p) => {
                 const tk = p.T/1000;
-                return -5.527 + 3.974 * log10(tk/38)**2 - 2.062 * log10(tk/38);
+                return -5.527 + 3.974 * Math.pow(log10(tk/38), 2) - 2.062 * log10(tk/38);
             },
-            NdJ90: (p) => log10(9.6e-15 * Math.pow(p.R, 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16) * Math.pow(p.Z, 0.5)),
-            Vb98_OB: (p) => 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z) - 8.29,
-            P25_thin: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z),
-            P25_thick: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z),
-            L89: (p) => 2.5 * log10(p.M) + 0.85 * log10(p.Z) - 7.1,
-            NL00: (p) => -13.6 + 1.63 * log10(p.L) + 2.22 * log10(1-p.X) + 0.85 * log10(p.Z),
-            Y06: (p) => log10(p.L) > 4.5 ? -12.95 + 1.5*log10(p.L) - 2.85*p.X + 0.85*log10(p.Z) : -36.8 + 6.8*log10(p.L),
-            Y17: (p) => log10(Math.pow(p.L, 1.18) * Math.pow(p.Z, 0.6) * Math.pow(10, -11.32)),
+            NdJ90: (p) => log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16) * Math.pow(p.Z/0.0142, 0.5)),
+            Vb98_OB: (p) => 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z/Z_SUN) - 8.29,
+            P25_thin: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/Z_SUN),
+            P25_thick: (p) => -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/Z_SUN),
+            L89: (p) => 2.5 * log10(p.M) + 0.85 * log10(p.Z/Z_SUN) - 7.1,
+            NL00: (p) => -13.6 + 1.63 * log10(p.L) + 2.22 * log10(1-p.X) + 0.85 * log10(p.Z/Z_SUN),
+            Y06: (p) => log10(p.L) > 4.5 ? -12.95 + 1.5*log10(p.L) - 2.85*p.X + 0.85*log10(p.Z/Z_SUN) : -36.8 + 6.8*log10(p.L),
+            Y17: (p) => log10(Math.pow(p.L, 1.18) * Math.pow(p.Z/Z_SUN, 0.6) * Math.pow(10, -11.32)),
             V11: (p, s) => log10(s.mdot) + 4.77 * log10(p.L/s.L) - 3.99 * log10(p.M/s.M),
-            SV20: (p) => {
-                const ge = Math.pow(10, -4.813) * (1+p.X) * p.L / p.M;
-                return 2.932 * log10(-log10(1 - ge)) - 2.61;
-            },
-            TSK16: (p) => 0.85 * log10(p.L) + 0.44 * log10(1-p.X) + 0.25 * log10(p.Z) - 9.2,
-            GH08: (p) => {
-                const ge = Math.pow(10, -4.813) * (1+p.X) * p.L / p.M;
-                return 10.046 + 1.727 * log10(ge - 0.326) - 3.5 * log10(p.T) + 0.42 * log10(p.L) - 0.45 * p.X;
-            },
-            Ha95: (p) => 1.5*log10(p.L) + 0.85*log10(p.Z) - 2.85*p.X - 11.95,
+            SV20: (p) => 2.932 * log10(-log10(1 - (Math.pow(10, -4.813) * (1+p.X) * p.L / p.M))) - 2.61,
+            TSK16: (p) => 0.85 * log10(p.L) + 0.44 * log10(1-p.X) + 0.25 * log10(p.Z/Z_SUN) - 9.2,
+            GH08: (p) => 10.046 + 1.727 * log10((Math.pow(10, -4.813) * (1+p.X) * p.L / p.M) - 0.326) - 3.5 * log10(p.T) + 0.42 * log10(p.L) - 0.45 * p.X,
+            Ha95: (p) => 1.5*log10(p.L) + 0.85*log10(p.Z/Z_SUN) - 2.85*p.X - 11.95,
             Sh19: (p) => {
                 let C = (p.X >= 0.4) ? [ -6.50, 0.79, -0.37, 1.42, 0.68 ] : [ -8.13, 1.01, -0.06, 1.42, 0.95 ];
-                return C[0] + C[1]*log10(p.L) + C[2]*log10(p.T) + C[3]*log10(1-p.X) + C[4]*log10(p.Z);
+                return C[0] + C[1]*log10(p.L) + C[2]*log10(p.T) + C[3]*log10(1-p.X) + C[4]*log10(p.Z/Z_SUN);
             },
             S19: (p) => -8.31 + 0.68*log10(p.L),
-            B20: (p) => {
-                const ge = Math.pow(10, -4.813) * (1+p.X) * p.L / p.M;
-                return -5.19 + 2.69*log10(ge) - 3.19*log10(1-ge) + (log10(p.Z)+0.3)*(0.4 + 15.75/p.M);
-            },
-            Vb98_WR: (p) => log10(p.L) + 0.85*log10(p.Z) - 10,
+            B20: (p) => -5.19 + 2.69*log10(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M) - 3.19*log10(1-(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M)) + (log10(p.Z/Z_SUN)+0.3)*(0.4 + 15.75/p.M),
+            Vb98_WR: (p) => log10(p.L) + 0.85*log10(p.Z/Z_SUN) - 10,
             dJ88: (p) => 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158,
             vL05: (p) => 1.05 * log10(p.L/1e4) - 6.3 * log10(p.T/3500) - 5.56,
             Be23: (p) => -0.15 * p.Mi + 3.6 * log10(p.L) - 21.5,
@@ -207,11 +189,10 @@
             const [activeModels, setActiveModels] = useState({ V01: true, NL00: true, dJ88: true, R75: true });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
-            const [expandedCats, setExpandedCats] = useState({ LOW: true, THIN: true, THICK: true, COOL: true });
+            const [expandedCats, setExpandedCats] = useState({ LOW: true, THIN: true, THICK: true, COOL: true, PLOT: true });
+            const [plotOpt, setPlotOpt] = useState({ ymin: -11, ymax: -3, height: 720 });
 
-            const sortedModels = useMemo(() => {
-                return Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year);
-            }, []);
+            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
 
             const plotData = useMemo(() => {
                 const data = [];
@@ -219,20 +200,13 @@
                 for (let i = 0; i <= 100; i++) {
                     const xLog = limits[0] + i * (limits[1] - limits[0]) / 100;
                     const xLin = Math.pow(10, xLog);
-                    const p = {
-                        L: axis === 'lum' ? xLin : Math.pow(10, params.logL),
-                        M: params.mass,
-                        T: axis === 'temp' ? xLin : Math.pow(10, params.logT),
-                        Z: axis === 'metal' ? xLin : params.z,
-                        X: params.X,
-                        Mi: params.Mi
-                    };
+                    const p = { L: axis === 'lum' ? xLin : Math.pow(10, params.logL), M: params.mass, T: axis === 'temp' ? xLin : Math.pow(10, params.logT), Z: axis === 'metal' ? xLin : params.z, X: params.X, Mi: params.Mi };
                     p.R = calcRadius(p.L, p.T);
                     const point = { x: xLog };
                     Object.keys(activeModels).forEach(k => {
                         if (activeModels[k]) {
                             const val = k === 'V11' ? recipes[k](p, vinkSettings) : recipes[k](p);
-                            if (val !== null) point[k] = val;
+                            if (val !== null && !isNaN(val)) point[k] = val;
                         }
                     });
                     data.push(point);
@@ -241,31 +215,22 @@
             }, [axis, params, activeModels, vinkSettings]);
 
             const xLabel = axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)';
-
-            const needsInitialMass = useMemo(() => 
-                Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), 
-            [activeModels]);
+            const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
                     <header className="px-6 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10">
-                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v2.9</span></h1>
+                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v2.9.1</span></h1>
                         <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition" target="_blank">GitHub Profile</a>
                     </header>
 
                     <main className="flex-1 flex overflow-hidden">
-                        {/* LEFT: COLLAPSIBLE BOXES */}
                         <aside className="w-80 border-r bg-white flex flex-col overflow-y-auto p-4 custom-scrollbar space-y-4">
                             {Object.entries(CATEGORIES).map(([id, cat]) => (
                                 <div key={id} className="border rounded-xl overflow-hidden shadow-sm">
-                                    <div 
-                                        onClick={() => setExpandedCats(p => ({ ...p, [id]: !p[id] }))}
-                                        className={`collapsible-header flex justify-between items-center p-3 bg-${cat.color}-50 text-${cat.color}-800 border-b`}
-                                    >
+                                    <div onClick={() => setExpandedCats(p => ({ ...p, [id]: !p[id] }))} className={`collapsible-header flex justify-between items-center p-3 bg-${cat.color}-50 text-${cat.color}-800 border-b`}>
                                         <span className="text-xs font-black uppercase tracking-widest">{cat.label}</span>
-                                        <svg className={`w-4 h-4 transition-transform ${expandedCats[id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                                        </svg>
+                                        <svg className={`w-4 h-4 transition-transform ${expandedCats[id] ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
                                     </div>
                                     {expandedCats[id] && (
                                         <div className="p-2 space-y-1 bg-white">
@@ -278,11 +243,7 @@
                                                     <div className="flex-1 overflow-hidden">
                                                         <div className="flex items-center gap-1">
                                                             <div className="text-[11px] font-bold text-slate-700 truncate">{meta.name}</div>
-                                                            {meta.warning && (
-                                                                <div className="warning-tooltip" title={meta.warning}>
-                                                                    <span className="text-[10px]">⚠️</span>
-                                                                </div>
-                                                            )}
+                                                            {meta.warning && <div className="warning-tooltip" title={meta.warning}><span className="text-[10px]">⚠️</span></div>}
                                                         </div>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             <div className="h-0.5 w-8" style={{ background: meta.color, borderTop: meta.dash === "0" ? 'none' : `2.5px dashed ${meta.color}` }}></div>
@@ -295,35 +256,39 @@
                                     )}
                                 </div>
                             ))}
+
+                            <div className="border rounded-xl overflow-hidden shadow-sm border-blue-200">
+                                <div onClick={() => setExpandedCats(p => ({ ...p, PLOT: !p.PLOT }))} className="collapsible-header flex justify-between items-center p-3 bg-blue-50 text-blue-800 border-b">
+                                    <span className="text-xs font-black uppercase tracking-widest">Plot Settings</span>
+                                    <svg className={`w-4 h-4 transition-transform ${expandedCats.PLOT ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                                {expandedCats.PLOT && (
+                                    <div className="p-4 space-y-4 bg-white">
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min (log Ṁ)</label>
+                                            <input type="number" value={plotOpt.ymin} onChange={e => setPlotOpt({...plotOpt, ymin: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max (log Ṁ)</label>
+                                            <input type="number" value={plotOpt.ymax} onChange={e => setPlotOpt({...plotOpt, ymax: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase">Plot Height (px)</label>
+                                            <input type="number" value={plotOpt.height} onChange={e => setPlotOpt({...plotOpt, height: parseInt(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded text-sm font-mono" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </aside>
 
-                        {/* CENTER: CHART & GLOBAL SLIDERS */}
                         <section className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                            <div className="bg-white rounded-2xl shadow-sm border p-4 h-[700px] flex flex-col">
+                            <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-col shrink-0" style={{ height: plotOpt.height + 'px' }}>
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
+                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 60 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis 
-                                                dataKey="x" 
-                                                type="number" 
-                                                domain={['auto', 'auto']} 
-                                                reversed={axis === 'temp'} 
-                                                tickFormatter={v => v.toFixed(1)} 
-                                                stroke="#1e293b" 
-                                                strokeWidth={2}
-                                                fontSize={12} 
-                                                tick={{ fontWeight: 600 }}
-                                                label={{ value: xLabel, position: 'insideBottom', offset: 0, fontWeight: 700, fill: '#1e293b' }}
-                                            />
-                                            <YAxis 
-                                                domain={[-11, -3]} 
-                                                stroke="#1e293b" 
-                                                strokeWidth={2}
-                                                fontSize={12} 
-                                                tick={{ fontWeight: 600 }}
-                                                label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} 
-                                            />
+                                            <XAxis dataKey="x" type="number" domain={['auto', 'auto']} reversed={axis === 'temp'} tickFormatter={v => v.toFixed(1)} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: xLabel, position: 'insideBottom', offset: 45, fontWeight: 700, fill: '#1e293b' }} />
+                                            <YAxis domain={[plotOpt.ymin, plotOpt.ymax]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             {Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
@@ -332,26 +297,14 @@
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
-                                
                                 <div className="flex justify-center gap-4 mt-8 border-t pt-4">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter self-center mr-2">X-Axis Type:</span>
-                                    {[
-                                        { id: 'temp', label: 'log (Teff / K)' },
-                                        { id: 'lum', label: 'log (L / Lsun)' },
-                                        { id: 'metal', label: 'log (Z / Zsun)' }
-                                    ].map(opt => (
-                                        <button 
-                                            key={opt.id}
-                                            onClick={() => setAxis(opt.id)}
-                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                                        >
-                                            {opt.label}
-                                        </button>
+                                    {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
+                                        <button key={opt.id} onClick={() => setAxis(opt.id)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{opt.label}</button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* PARAMETERS PANEL */}
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 bg-white p-6 rounded-2xl border shadow-sm border-slate-200">
                                 {axis !== 'lum' && (
                                     <div className="space-y-2">
@@ -389,7 +342,6 @@
                         </section>
                     </main>
 
-                    {/* VINK 2011 MODAL */}
                     {showVinkModal && (
                         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 backdrop-blur-md">
                             <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full border-t-8 border-blue-600 animate-in fade-in zoom-in duration-300">
@@ -399,13 +351,7 @@
                                     {['mdot', 'L', 'M'].map(key => (
                                         <div key={key}>
                                             <label className="text-[10px] font-black uppercase text-slate-400">{key === 'mdot' ? 'log M-dot switch' : key + ' switch'}</label>
-                                            <input 
-                                                type="number" 
-                                                step={key === 'mdot' ? 0.1 : 1}
-                                                value={key === 'mdot' ? log10(vinkSettings.mdot) : vinkSettings[key]} 
-                                                onChange={e => setVinkSettings({...vinkSettings, [key]: key === 'mdot' ? Math.pow(10, parseFloat(e.target.value)) : parseFloat(e.target.value)})} 
-                                                className="w-full p-2 bg-slate-50 rounded-lg border font-mono text-sm" 
-                                            />
+                                            <input type="number" step={key === 'mdot' ? 0.1 : 1} value={key === 'mdot' ? log10(vinkSettings.mdot) : vinkSettings[key]} onChange={e => setVinkSettings({...vinkSettings, [key]: key === 'mdot' ? Math.pow(10, parseFloat(e.target.value)) : parseFloat(e.target.value)})} className="w-full p-2 bg-slate-50 rounded-lg border font-mono text-sm" />
                                         </div>
                                     ))}
                                     <button onClick={() => setShowVinkModal(false)} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black uppercase hover:bg-blue-700 transition-all mt-4">Accept</button>
