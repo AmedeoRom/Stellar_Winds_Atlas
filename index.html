@@ -101,9 +101,15 @@
             R75: (p) => log10(4e-13 * (p.L * p.R / p.M)),
             B95: (p) => log10(0.1 * 4.83e-9 * Math.pow(p.M, -2.1) * Math.pow(p.L, 2.7) * 4e-13 * p.L * p.R / p.M),
             V01: (p) => {
-                const logZ = log10(p.Z);
-                const vi = (p.T > 25000 ? 2.6 : 1.3) * Math.pow(p.Z, 0.13);
-                return (p.T > 25000 ? -6.697 : -6.688) + 2.2 * log10(p.L/1e5) - 1.3 * log10(p.M/30) - 1.6 * log10(vi/2.0) + 1.0 * log10(p.T/(p.T > 25000 ? 4e4 : 2e4)) + 0.85 * logZ;
+                const logZ = log10(p.Z); let vi, logMdot;
+                if (p.T > 25000) {
+                    vi = 2.6 * Math.pow(p.Z, 0.13);
+                    logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
+                } else {
+                    vi = 1.3 * Math.pow(p.Z, 0.13);
+                    logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
+                }
+                return logMdot;
             },
             VS21: (p) => {
                 const logZ = log10(p.Z); let vi, logMdot;
@@ -111,11 +117,11 @@
                     vi = 2.6 * Math.pow(p.Z, 0.13);
                     logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
                 } else if (p.T > 20000) {
-                    vi = 0.7 * Math.pow(p.Z, 0.13);
-                    logMdot = -5.99 + 2.21*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
-                } else {
                     vi = 1.3 * Math.pow(p.Z, 0.13);
                     logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
+                } else {
+                    vi = 0.7 * Math.pow(p.Z, 0.13);
+                    logMdot = -5.99 + 2.21*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
                 }
                 return logMdot;
             },
