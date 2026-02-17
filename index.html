@@ -6,7 +6,12 @@
     <title>Stellar Wind Atlas</title>
     
     <style>
-        body { margin: 0; background: #f8fafc; font-family: -apple-system, sans-serif; }
+        /* Global Font Change to Candara */
+        body { 
+            margin: 0; 
+            background: #f8fafc; 
+            font-family: "Candara", "Calibri", "Segoe UI", sans-serif; 
+        }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -51,15 +56,17 @@
 
         const CATEGORIES = {
             LOW: { label: "Low-Mass Winds", color: "slate" },
-            THIN: { label: "Optically Thin (Hot Stars)", color: "blue", warning: "Tunable Teff cutoff active." },
+            THIN: { label: "Optically Thin (Hot Stars)", color: "blue", warning: "Restricted to log(Teff) < tunable cutoff." },
             THICK: { label: "Optically Thick (Wolf-Rayet)", color: "emerald" },
-            COOL: { label: "Cool Supergiant Winds", color: "orange", warning: "Tunable Teff cutoff active." },
+            COOL: { label: "Cool Supergiant Winds", color: "orange", warning: "Restricted to log(Teff) < tunable cutoff." },
             OTHER: { label: "Other Options", color: "indigo" }
         };
 
         const MODEL_META = {
+            // LOW
             R75: { name: "Reimers 1975", cat: "LOW", color: "#000000", dash: "0", year: 1975 },
             B95: { name: "Bloecker 1995", cat: "LOW", color: "#64748b", dash: "5 5", year: 1995 },
+            // THIN
             NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "THIN", color: "#1e3a8a", dash: "0", year: 1990 },
             Vb98_OB: { name: "Vanbeveren+ 1998 (OB)", cat: "THIN", color: "#1e3a8a", dash: "5 5", year: 1998 },
             V01: { name: "Vink+ 2001", cat: "THIN", color: "#2563eb", dash: "0", year: 2001 },
@@ -68,9 +75,10 @@
             Bj23: { name: "Bjorklund+ 2023", cat: "THIN", color: "#7c3aed", dash: "5 5", year: 2023 },
             GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#0ea5e9", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.2." },
             K24: { name: "Krticka+ 2024", cat: "THIN", color: "#4f46e5", dash: "0", year: 2024 },
-            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK and Z < Zsun." },
+            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK." },
             Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#a855f7", dash: "0", year: 2025.2 },
-            P25: { name: "Pauli+ 2025", cat: "THIN", color: "#6366f1", dash: "0", year: 2025.3 },
+            P25: { name: "Pauli+ 2025", cat: "THIN", color: "#312e81", dash: "0", year: 2025.3 },
+            // THICK
             L89: { name: "Langer 1989", cat: "THICK", color: "#064e3b", dash: "0", year: 1989 },
             Ha95: { name: "Hamann+ 1995", cat: "THICK", color: "#92400e", dash: "0", year: 1995 },
             Vb98_WR: { name: "Vanbeveren+ 1998 (WR)", cat: "THICK", color: "#064e3b", dash: "5 5", year: 1998 },
@@ -84,6 +92,7 @@
             S19: { name: "Sander+ 2019", cat: "THICK", color: "#166534", dash: "0", year: 2019.2 },
             B20: { name: "Bestenlehner 2020", cat: "THICK", color: "#166534", dash: "5 5", year: 2020.1 },
             SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#b45309", dash: "5 5", year: 2020.2 },
+            // COOL
             dJ88: { name: "de Jager+ 1988", cat: "COOL", color: "#ea580c", dash: "0", year: 1988 },
             Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 },
             vL05: { name: "van Loon+ 2005", cat: "COOL", color: "#ea580c", dash: "5 5", year: 2005 },
@@ -93,7 +102,6 @@
             D24: { name: "Decin+ 2024", cat: "COOL", color: "#ef4444", dash: "5 5", reqMini: true, year: 2024.2 }
         };
 
-        // --- CALCULATIONS ---
         const recipes = {
             R75: (p) => {
                 const scaling = (p.h1_center > 0.001) ? 0.85 : (p.L/p.Ledd > 1 ? 3.0 : 1.0);
@@ -238,6 +246,16 @@
                 else setPlotOpt(p => ({...p, xmin: -3.0, xmax: 0.5}));
             }, [axis]);
 
+            // Centering helper for labels in shaded regions
+            const getVisibleMidpoint = (r1, r2) => {
+                const start = plotOpt.xmin < plotOpt.xmax ? plotOpt.xmin : plotOpt.xmax;
+                const end = plotOpt.xmin < plotOpt.xmax ? plotOpt.xmax : plotOpt.xmin;
+                const vStart = Math.max(r1, start);
+                const vEnd = Math.min(r2, end);
+                if (vStart >= vEnd) return null;
+                return (vStart + vEnd) / 2;
+            };
+
             const xLabel = axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)';
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
 
@@ -318,30 +336,65 @@
                             <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-col shrink-0" style={{ height: plotOpt.height + 'px' }}>
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 80 }}>
+                                        <LineChart data={plotData} margin={{ top: 20, right: 20, left: 10, bottom: 80 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis dataKey={plotOpt.linearX ? "linearX" : "x"} type="number" domain={[plotOpt.linearX ? Math.pow(10, plotOpt.xmin) : plotOpt.xmin, plotOpt.linearX ? Math.pow(10, plotOpt.xmax) : plotOpt.xmax]} reversed={axis === 'temp'} tickFormatter={v => plotOpt.linearX ? v.toLocaleString() : v.toFixed(1)} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: plotOpt.linearX ? xLabel.replace('log ', '') : xLabel, position: 'insideBottom', offset: 0, fontWeight: 700, fill: '#1e293b' }} />
-                                            <YAxis domain={[plotOpt.ymin, plotOpt.ymax]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} />
+                                            <XAxis 
+                                                dataKey={plotOpt.linearX ? "linearX" : "x"} 
+                                                type="number" 
+                                                domain={[plotOpt.linearX ? Math.pow(10, plotOpt.xmin) : plotOpt.xmin, plotOpt.linearX ? Math.pow(10, plotOpt.xmax) : plotOpt.xmax]} 
+                                                reversed={axis === 'temp'} 
+                                                tickFormatter={v => plotOpt.linearX ? v.toLocaleString() : v.toFixed(1)} 
+                                                stroke="#1e293b" 
+                                                strokeWidth={2} 
+                                                fontSize={12} 
+                                                tick={{ fontWeight: 600 }}
+                                                label={{ value: plotOpt.linearX ? xLabel.replace('log ', '') : xLabel, position: 'bottom', offset: 15, fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
+                                            />
+                                            <YAxis domain={[plotOpt.ymin, plotOpt.ymax]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             
-                                            {/* REFERENCE LAYERS (More Details) */}
+                                            {/* REFERENCE LAYERS */}
                                             {options.moreDetails && axis === 'temp' && (
                                                 <React.Fragment>
-                                                    <ReferenceArea x1={Math.log10(1000)} x2={Math.log10(4000)} fill="#fecaca" fillOpacity={0.15} label={{ value: "RSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#dc2626" }} />
-                                                    <ReferenceArea x1={Math.log10(4000)} x2={Math.log10(8000)} fill="#fef08a" fillOpacity={0.15} label={{ value: "YSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#854d0e" }} />
-                                                    <ReferenceArea x1={Math.log10(8000)} x2={Math.log10(12000)} fill="#bfdbfe" fillOpacity={0.15} label={{ value: "BSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#1e40af" }} />
-                                                    <ReferenceArea x1={Math.log10(100000)} x2={plotOpt.xmax} fill="#bbf7d0" fillOpacity={0.15} label={{ value: "Canonical WR", position: "top", fontSize: 10, fontWeight: "bold", fill: "#166534" }} />
+                                                    <ReferenceArea x1={Math.log10(1000)} x2={Math.log10(4000)} fill="#fecaca" fillOpacity={0.15} />
+                                                    {getVisibleMidpoint(Math.log10(1000), Math.log10(4000)) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(Math.log10(1000), Math.log10(4000))} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#dc2626" }} />
+                                                    )}
+                                                    
+                                                    <ReferenceArea x1={Math.log10(4000)} x2={Math.log10(8000)} fill="#fef08a" fillOpacity={0.15} />
+                                                    {getVisibleMidpoint(Math.log10(4000), Math.log10(8000)) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(Math.log10(4000), Math.log10(8000))} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#854d0e" }} />
+                                                    )}
+
+                                                    <ReferenceArea x1={Math.log10(8000)} x2={Math.log10(12000)} fill="#bfdbfe" fillOpacity={0.15} />
+                                                    {getVisibleMidpoint(Math.log10(8000), Math.log10(12000)) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(Math.log10(8000), Math.log10(12000))} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 10, fontWeight: "bold", fill: "#1e40af" }} />
+                                                    )}
+
+                                                    <ReferenceArea x1={Math.log10(100000)} x2={6.0} fill="#bbf7d0" fillOpacity={0.15} />
+                                                    {getVisibleMidpoint(Math.log10(100000), 6.0) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(Math.log10(100000), 6.0)} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 10, fontWeight: "bold", fill: "#166534" }} />
+                                                    )}
                                                 </React.Fragment>
                                             )}
                                             {options.moreDetails && axis === 'lum' && (
-                                                <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 10, fontWeight: "bold", fill: "#64748b" }} />
+                                                <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 12, fontWeight: "bold", fill: "#64748b" }} />
                                             )}
                                             {options.moreDetails && axis === 'metal' && (
                                                 <React.Fragment>
-                                                    <ReferenceArea x1={plotOpt.xmin} x2={-11} fill="#e2e8f0" fillOpacity={0.2} label={{ value: "Pop III", position: "top", fontSize: 10, fill: "#64748b" }} />
-                                                    <ReferenceArea x1={-11} x2={-5} fill="#cbd5e1" fillOpacity={0.2} label={{ value: "Pop II", position: "top", fontSize: 10, fill: "#64748b" }} />
-                                                    <ReferenceArea x1={-5} x2={plotOpt.xmax} fill="#94a3b8" fillOpacity={0.2} label={{ value: "Pop I", position: "top", fontSize: 10, fill: "#64748b" }} />
+                                                    <ReferenceArea x1={-20} x2={-11} fill="#e2e8f0" fillOpacity={0.2} />
+                                                    {getVisibleMidpoint(-20, -11) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(-20, -11)} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 10, fill: "#64748b" }} />
+                                                    )}
+                                                    <ReferenceArea x1={-11} x2={-5} fill="#cbd5e1" fillOpacity={0.2} />
+                                                    {getVisibleMidpoint(-11, -5) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(-11, -5)} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 10, fill: "#64748b" }} />
+                                                    )}
+                                                    <ReferenceArea x1={-5} x2={5} fill="#94a3b8" fillOpacity={0.2} />
+                                                    {getVisibleMidpoint(-5, 5) !== null && (
+                                                        <ReferenceLine x={getVisibleMidpoint(-5, 5)} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 10, fill: "#64748b" }} />
+                                                    )}
                                                 </React.Fragment>
                                             )}
 
