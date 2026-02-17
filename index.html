@@ -377,7 +377,7 @@
                                                         return rsg && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={rsg.mid} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 11, fontWeight: "bold", fill: "#dc2626" }} />
+                                                                <ReferenceLine x={rsg.mid} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#dc2626" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
@@ -386,7 +386,7 @@
                                                         return ysg && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={ysg.mid} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 11, fontWeight: "bold", fill: "#ca8a04" }} />
+                                                                <ReferenceLine x={ysg.mid} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#ca8a04" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
@@ -395,7 +395,7 @@
                                                         return bsg && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={bsg.mid} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 11, fontWeight: "bold", fill: "#2563eb" }} />
+                                                                <ReferenceLine x={bsg.mid} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#2563eb" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
@@ -404,13 +404,13 @@
                                                         return wr && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={wr.mid} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 11, fontWeight: "bold", fill: "#059669" }} />
+                                                                <ReferenceLine x={wr.mid} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
                                                 </React.Fragment>
                                             )}
-                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 12, fontWeight: "bold", fill: "#64748b" }} />}
+                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />}
                                             {options.moreDetails && axis === 'metal' && (
                                                 <React.Fragment>
                                                     {(() => {
@@ -418,7 +418,7 @@
                                                         return p3 && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={p3.x1} x2={p3.x2} fill="#94a3b8" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p3.mid} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 11, fontWeight: "bold", fill: "#475569" }} />
+                                                                <ReferenceLine x={p3.mid} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 14, fontWeight: "bold", fill: "#475569" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
@@ -427,7 +427,7 @@
                                                         return p2 && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={p2.x1} x2={p2.x2} fill="#64748b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p2.mid} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 11, fontWeight: "bold", fill: "#334155" }} />
+                                                                <ReferenceLine x={p2.mid} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 14, fontWeight: "bold", fill: "#334155" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
@@ -436,7 +436,7 @@
                                                         return p1 && (
                                                             <React.Fragment>
                                                                 <ReferenceArea x1={p1.x1} x2={p1.x2} fill="#1e293b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p1.mid} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 11, fontWeight: "bold", fill: "#0f172a" }} />
+                                                                <ReferenceLine x={p1.mid} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
