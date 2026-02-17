@@ -215,7 +215,7 @@
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
-            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: false });
+            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: true });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
