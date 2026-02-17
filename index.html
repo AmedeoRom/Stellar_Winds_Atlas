@@ -116,7 +116,7 @@
                 if (p.T > 25000) {
                     vi = 2.6 * Math.pow(p.Z, 0.13);
                     logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
-                } else (p.T > 20000) {
+                } else {
                     vi = 1.3 * Math.pow(p.Z, 0.13);
                     logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
                 } 
