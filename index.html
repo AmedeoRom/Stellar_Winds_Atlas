@@ -149,7 +149,11 @@
                 return m + 0.0475 - 0.559*0.085;
             },
             Sa25: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin) ? null : -5.527 + 3.974 * Math.pow(log10(p.T/38000), 2) - 2.062 * log10(p.T/38000),
-            NdJ90: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16) * Math.pow(p.Z/s.Zsun, 0.5)),
+            NdJ90: (p, s, opts = {}) => {
+                if (log10(p.L) <= s.lumCutoff) return null;
+                let xlmdot = log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16));
+               if (opts.NdJ90ZCorr) xlmdot = xlmdot * 0.5 * log10(p.Z / s.Zsun);
+            },
             Vb98_OB: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin) ? null : 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z/s.Zsun) - 8.29,
             P25: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/s.Zsun),
             L89: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : 2.5 * log10(p.M) + 0.85 * log10(p.Z/s.Zsun) - 7.1,
@@ -180,7 +184,11 @@
             S19: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -8.31 + 0.68*log10(p.L),
             B20: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -5.19 + 2.69*log10(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M) - 3.19*log10(1-(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M)) + (log10(p.Z/s.Zsun)+0.3)*(0.4 + 15.75/p.M),
             Vb98_WR: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(p.L) + 0.85*log10(p.Z/s.Zsun) - 10,
-            dJ88: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158,
+            dJ88: (p, s, opts = {}) => {
+                if (log10(p.L) <= s.lumCutoff) return null;
+                let xlmdot = 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158;
+               if (opts.dJ88) xlmdot += 0.5 * log10(p.Z / s.Zsun);
+            },
             vL05: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.05 * log10(p.L/1e4) - 6.3 * log10(p.T/3500) - 5.56,
             Be23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : -0.15 * p.Mi + 3.6 * log10(p.L) - 21.5,
             Ya23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 0.45 * log10(p.L)**3 - 5.26 * Math.pow(log10(p.L), 2) + 20.93 * log10(p.L) - 34.56,
@@ -198,7 +206,7 @@
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
-            const [options, setOptions] = useState({ sv20TCorr: false, moreDetails: false });
+            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr: false, sv20TCorr: false, moreDetails: false });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
@@ -322,6 +330,22 @@
                                                             </div>
                                                         </div>
                                                     </label>
+                                                    {key === 'dJ88' && activeModels.NdJ90 && (
+                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
+                                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                                <input type="checkbox" checked={options.dJ88ZCorr} onChange={e => setOptions({...options, dJ88ZCorr: e.target.checked})} className="w-3 h-3 rounded" />
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Vink & de Koeter (2005)">Z-correction</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                    {key === 'NdJ90' && activeModels.NdJ90 && (
+                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
+                                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                                <input type="checkbox" checked={options.NdJ90ZCorr} onChange={e => setOptions({...options, NdJ90ZCorr: e.target.checked})} className="w-3 h-3 rounded" />
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Vink & de Koeter (2005)">Z-correction</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
                                                     {key === 'SV20' && activeModels.SV20 && (
                                                         <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
                                                             <label className="flex items-center gap-2 cursor-pointer group">
