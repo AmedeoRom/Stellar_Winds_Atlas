@@ -15,6 +15,7 @@
         .model-card:hover { border-color: #3b82f6; background-color: #eff6ff; }
         .collapsible-header { cursor: pointer; user-select: none; transition: background 0.2s; }
         .collapsible-header:hover { background-color: #f1f5f9; }
+        .warning-tooltip { position: relative; display: inline-block; cursor: help; }
     </style>
 
     <script>window.process = { env: { NODE_ENV: 'production' } };</script>
@@ -36,12 +37,18 @@
         const LSUN = 3.828e33; 
         const SIGMA_SB = 5.670374419e-5; 
         const RSUN = 6.957e10; 
+        const MSUN_CGS = 1.989e33;
+        const G_CGS = 6.67430e-8;
         const log10 = (x) => Math.log10(x > 1e-25 ? x : 1e-25);
 
         // --- PHYSICS UTILS ---
         const calcRadius = (L_sol, T_eff) => {
             const R_cgs = Math.sqrt((L_sol * LSUN) / (4 * Math.PI * SIGMA_SB * Math.pow(T_eff, 4)));
             return R_cgs / RSUN;
+        };
+
+        const calcLogG = (M_sol, R_sol) => {
+            return Math.log10(G_CGS * (M_sol * MSUN_CGS) / Math.pow(R_sol * RSUN, 2));
         };
 
         // --- RECIPE DATA & META ---
@@ -53,24 +60,24 @@
         };
 
         const MODEL_META = {
-            // LOW (Black/Grey)
+            // LOW
             R75: { name: "Reimers 1975", cat: "LOW", color: "#000000", dash: "0", year: 1975 },
             B95: { name: "Bloecker 1995", cat: "LOW", color: "#000000", dash: "5 5", year: 1995 },
 
-            // THIN (Blue, Teal, Purple)
+            // THIN
             NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "THIN", color: "#475569", dash: "0", year: 1990 },
             Vb98_OB: { name: "Vanbeveren+ 1998 (OB)", cat: "THIN", color: "#475569", dash: "5 5", year: 1998 },
             V01: { name: "Vink+ 2001", cat: "THIN", color: "#2563eb", dash: "0", year: 2001 },
             V17: { name: "Vink 2017", cat: "THIN", color: "#7c3aed", dash: "0", year: 2017 },
             VS21: { name: "Vink & Sander 2021", cat: "THIN", color: "#2563eb", dash: "5 5", year: 2021 },
             Bj23: { name: "Bjorklund+ 2023", cat: "THIN", color: "#7c3aed", dash: "5 5", year: 2023 },
-            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#4f46e5", dash: "0", year: 2023 },
+            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#4f46e5", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.0 to prevent heavy overestimation from extrapolation." },
             K24: { name: "Krticka+ 2024", cat: "THIN", color: "#0891b2", dash: "0", year: 2024 },
-            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#0891b2", dash: "5 5", year: 2025 },
+            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#0891b2", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK; calculations outside this regime lead to invalid underestimations." },
             P25_thin: { name: "Pauli+ 2025 (Thin)", cat: "THIN", color: "#4b5563", dash: "3 3", year: 2025.1 },
             Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025.2 },
             
-            // THICK (Green, Beige, Brown)
+            // THICK
             L89: { name: "Langer 1989", cat: "THICK", color: "#059669", dash: "0", year: 1989 },
             Ha95: { name: "Hamann+ 1995", cat: "THICK", color: "#854d0e", dash: "0", year: 1995 },
             Vb98_WR: { name: "Vanbeveren+ 1998 (WR)", cat: "THICK", color: "#059669", dash: "5 5", year: 1998 },
@@ -86,30 +93,28 @@
             SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#92400e", dash: "5 5", year: 2020.2 },
             P25_thick: { name: "Pauli+ 2025 (WR)", cat: "THICK", color: "#4b5563", dash: "3 3", year: 2025 },
 
-            // COOL (Yellow, Orange, Red)
+            // COOL
             dJ88: { name: "de Jager+ 1988", cat: "COOL", color: "#ea580c", dash: "0", year: 1988 },
             Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 },
             vL05: { name: "van Loon+ 2005", cat: "COOL", color: "#ea580c", dash: "5 5", year: 2005 },
             Be23: { name: "Beasor+ 2023", cat: "COOL", color: "#ca8a04", dash: "0", reqMini: true, year: 2023 },
             Ya23: { name: "Yang+ 2023", cat: "COOL", color: "#ca8a04", dash: "5 5", year: 2023.2 },
-            A24: { name: "Antoniadis+ 2024", cat: "COOL", color: "#dc2626", dash: "0", year: 2024 },
-            D24: { name: "Decin+ 2024", cat: "COOL", color: "#dc2626", dash: "5 5", reqMini: true, year: 2024.2 }
+            A24: { name: "Antoniadis+ 2024", cat: "COOL", color: "#dc2626", dash: "0", year: 2024, warning: "Calibrated for Teff <= 4 kK. Values for higher temperatures are calculated at the 4 kK boundary." },
+            D24: { name: "Decin+ 2024", cat: "COOL", color: "#dc2626", dash: "5 5", reqMini: true, year: 2024.2 },
+            Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 }
         };
 
         // --- CALCULATIONS ---
         const recipes = {
-            R75: (p) => log10(4e-13 * (p.L * p.R / p.M)),
+            R75: (p) => {
+                const scaling = (p.h1_center > 0.001) ? 0.85 : (p.L/p.Ledd > 1 ? 3.0 : 1.0);
+                return log10(scaling * 4e-13 * (p.L * p.R / p.M));
+            },
             B95: (p) => log10(0.1 * 4.83e-9 * Math.pow(p.M, -2.1) * Math.pow(p.L, 2.7) * 4e-13 * p.L * p.R / p.M),
             V01: (p) => {
-                const logZ = log10(p.Z); let vi, logMdot;
-                if (p.T > 25000) {
-                    vi = 2.6 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.697 + 2.194*log10(p.L/1e5) - 1.313*log10(p.M/30) - 1.226*log10(vi/2) + 0.933*log10(p.T/4e4) - 10.92*Math.pow(log10(p.T/4e4), 2) + 0.85*logZ;
-                } else {
-                    vi = 1.3 * Math.pow(p.Z, 0.13);
-                    logMdot = -6.688 + 2.210*log10(p.L/1e5) - 1.339*log10(p.M/30) - 1.601*log10(vi/2) + 1.07*log10(p.T/2e4) + 0.85*logZ;
-                }
-                return logMdot;
+                const logZ = log10(p.Z);
+                const vi = (p.T > 25000 ? 2.6 : 1.3) * Math.pow(p.Z, 0.13);
+                return (p.T > 25000 ? -6.697 : -6.688) + 2.2 * log10(p.L/1e5) - 1.3 * log10(p.M/30) - 1.6 * log10(vi/2.0) + 1.0 * log10(p.T/(p.T > 25000 ? 4e4 : 2e4)) + 0.85 * logZ;
             },
             VS21: (p) => {
                 const logZ = log10(p.Z); let vi, logMdot;
@@ -132,12 +137,15 @@
                 return -13.82 + 0.358 * lZ + (1.52 - 0.11 * lZ) * (log10(p.L) - 6) + 13.82 * log10((1 + 0.73 * lZ) * Math.exp(-Math.pow((tk-14.16)/3.58, 2)) + 3.84 * Math.exp(-Math.pow((tk-37.9)/56.5, 2)));
             },
             K25: (p) => {
+                if (p.T < 10000 || p.T > 45000) return null;
                 const t = (p.T/1000 - 10)/35; const z = log10(p.Z); const l = log10(p.L) - 6;
                 const c1 = -31.33 + -46.35*z; const c2 = 119.62 + 170.35*z;
                 return -7.0 + 1.619 * l + c1*t + c2*(-0.5 + 1.5*t*t); 
             },
             GM23: (p) => {
-                const lteff = log10(p.T/1000); const gmlogg = 4.0; const gmrstar = p.R;
+                const logg = calcLogG(p.M, p.R);
+                if (logg < 3.0) return null;
+                const lteff = log10(p.T/1000); const gmlogg = logg; const gmrstar = p.R;
                 return -40.3 + 15.4*lteff + 45.8/gmlogg - 8.2*lteff/gmlogg + 1.05*gmrstar + 11.6*log10(p.Z);
             },
             Sa25: (p) => {
@@ -177,7 +185,12 @@
             vL05: (p) => 1.05 * log10(p.L/1e4) - 6.3 * log10(p.T/3500) - 5.56,
             Be23: (p) => -0.15 * p.Mi + 3.6 * log10(p.L) - 21.5,
             Ya23: (p) => 0.45 * log10(p.L)**3 - 5.26 * Math.pow(log10(p.L), 2) + 20.93 * log10(p.L) - 34.56,
-            A24: (p) => log10(p.L) < 4.4 ? 0.26 * log10(p.L) - 14.19 * log10(p.T/4000) - 9.17 : 2.49 * log10(p.L) - 19.1,
+            A24: (p) => {
+                const effectiveT = p.T > 4000 ? 4000 : p.T;
+                const logL = log10(p.L);
+                if (logL < 4.4) return 0.26 * logL - 14.19 * log10(effectiveT / 4000) - 9.17;
+                return 2.49536114 * logL - (effectiveT < 4000 ? 33.7 * log10(effectiveT/4000) : 0) - 19.10219818;
+            },
             D24: (p) => 1.71 - 1.63 * (p.Mi/10) + 3.47 * log10(p.L/1e5) - 5,
             Vb98_cool: (p) => 0.8*log10(p.L) - 8.7
         };
@@ -212,8 +225,8 @@
                     const point = { x: xLog };
                     Object.keys(activeModels).forEach(k => {
                         if (activeModels[k]) {
-                            const recipeKey = k.split('_')[0] === 'P25' ? (k === 'P25_thin' ? 'P25_thin' : 'P25_thick') : k;
-                            point[k] = k === 'V11' ? recipes[k](p, vinkSettings) : recipes[k](p);
+                            const val = k === 'V11' ? recipes[k](p, vinkSettings) : recipes[k](p);
+                            if (val !== null) point[k] = val;
                         }
                     });
                     data.push(point);
@@ -230,8 +243,8 @@
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
                     <header className="px-6 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10">
-                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v2.8</span></h1>
-                        <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition">GitHub Profile</a>
+                        <h1 className="text-xl font-bold text-slate-800 italic">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v2.9</span></h1>
+                        <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition" target="_blank">GitHub Profile</a>
                     </header>
 
                     <main className="flex-1 flex overflow-hidden">
@@ -255,9 +268,16 @@
                                                     <input type="checkbox" checked={activeModels[key]} onChange={() => {
                                                         setActiveModels(p => ({ ...p, [key]: !p[key] }));
                                                         if (key === 'V11' && !activeModels[key]) setShowVinkModal(true);
-                                                    }} className="mr-3 h-4 w-4 rounded text-blue-600" />
+                                                    }} className="mr-3 h-4 w-4 rounded text-blue-600 focus:ring-blue-500" />
                                                     <div className="flex-1 overflow-hidden">
-                                                        <div className="text-[11px] font-bold text-slate-700 truncate">{meta.name}</div>
+                                                        <div className="flex items-center gap-1">
+                                                            <div className="text-[11px] font-bold text-slate-700 truncate">{meta.name}</div>
+                                                            {meta.warning && (
+                                                                <div className="warning-tooltip" title={meta.warning}>
+                                                                    <span className="text-[10px]">⚠️</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             <div className="h-0.5 w-8" style={{ background: meta.color, borderTop: meta.dash === "0" ? 'none' : `2.5px dashed ${meta.color}` }}></div>
                                                             <span className="text-[9px] text-slate-400 font-mono italic">{Math.floor(meta.year)}</span>
@@ -273,10 +293,10 @@
 
                         {/* CENTER: CHART & GLOBAL SLIDERS */}
                         <section className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                            <div className="bg-white rounded-2xl shadow-sm border p-4 h-[440px] flex flex-col">
+                            <div className="bg-white rounded-2xl shadow-sm border p-4 h-[480px] flex flex-col">
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                        <LineChart data={plotData} margin={{ top: 10, right: 20, left: 10, bottom: 40 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis 
                                                 dataKey="x" 
@@ -287,26 +307,27 @@
                                                 stroke="#1e293b" 
                                                 strokeWidth={2}
                                                 fontSize={12} 
-                                                label={{ value: xLabel, position: 'insideBottom', offset: -5, fontWeight: 700 }}
+                                                tick={{ fontWeight: 600 }}
+                                                label={{ value: xLabel, position: 'insideBottom', offset: 30, fontWeight: 700, fill: '#1e293b' }}
                                             />
                                             <YAxis 
                                                 domain={[-11, -3]} 
                                                 stroke="#1e293b" 
                                                 strokeWidth={2}
                                                 fontSize={12} 
-                                                label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700 }} 
+                                                tick={{ fontWeight: 600 }}
+                                                label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 12, fontWeight: 700, fill: '#1e293b' }} 
                                             />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             {Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
-                                                <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={2.5} dot={false} animationDuration={300} />
+                                                <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={2.5} dot={false} animationDuration={300} connectNulls={false} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
                                 
-                                {/* X-AXIS TYPE SELECTION BELOW CHART */}
-                                <div className="flex justify-center gap-4 mt-6 border-t pt-4">
+                                <div className="flex justify-center gap-4 mt-8 border-t pt-4">
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter self-center mr-2">X-Axis Type:</span>
                                     {[
                                         { id: 'temp', label: 'log (Teff / K)' },
