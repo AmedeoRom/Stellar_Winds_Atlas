@@ -363,7 +363,10 @@
                                                 }} 
                                             />
                                             <YAxis domain={[plotOpt.ymin, plotOpt.ymax]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
-                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} />
+                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} 
+                                             labelFormatter={(value) => value.toFixed(1)}
+                                             formatter={(value) => value.toFixed(2)}
+                                            />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
                                             
                                             {/* REFERENCE LAYERS */}
