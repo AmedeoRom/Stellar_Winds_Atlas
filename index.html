@@ -221,9 +221,9 @@
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
             
             // For margins and options, we use string state to allow typing "-" and starting from empty
-            const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "4.6", ymin: "-11", ymax: "-3" });
+            const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
-            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 4.6, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
+            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
 
             // VALIDATION: Check if current string inputs are valid numbers and logically sound
             const isMarginValid = useMemo(() => {
