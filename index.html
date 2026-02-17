@@ -188,17 +188,23 @@
             dJ88: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
                 let xlmdot = 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158;
-                if (opts.dJ88) xlmdot += 0.5 * log10(p.Z / s.Zsun);
+                if (opts.dJ88ZCorr) xlmdot += 0.5 * log10(p.Z / s.Zsun);
                 return xlmdot;
             },
             vL05: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.05 * log10(p.L/1e4) - 6.3 * log10(p.T/3500) - 5.56,
             Be23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : -0.15 * p.Mi + 3.6 * log10(p.L) - 21.5,
             Ya23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 0.45 * log10(p.L)**3 - 5.26 * Math.pow(log10(p.L), 2) + 20.93 * log10(p.L) - 34.56,
-            A24: (p, s) => {
+            A24: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) return null;
-                const effectiveT = p.T > 4000 ? 4000 : p.T; const logL = log10(p.L);
-                if (logL < 4.4) return 0.26 * logL - 14.19 * log10(Math.min(p.T, 4000) / 4000) - 9.17;
-                return 2.49536 * logL - (p.T < 4000 ? 33.7 * log10(p.T/4000) : 0) - 19.1022;
+                if (log10(p.L) < 4.4){
+                    if (p.T > 4000 && opts.A24TCorr) return 0.26 * log10(p.L) - 14.19 * log10(4000 / 4000) - 9.17;
+                    else return 0.26 * log10(p.L) - 14.19 * log10(p.T / 4000) - 9.17;
+                }
+                else {
+                    if (p.T > 4000 && opts.A24TCorr) 2.49536 * log10(p.L) - log10(4000 / 4000) - 19.1022;
+                    else return 2.49536 * log10(p.L) - 33.7 * log10(p.T/4000)- 19.1022;
+                }
+                
             },
             D24: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.71 - 1.63 * (p.Mi/10) + 3.47 * log10(p.L/1e5) - 5,
             Vb98_cool: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 0.8*log10(p.L) - 8.7
@@ -208,7 +214,7 @@
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
-            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr: false, sv20TCorr: false, moreDetails: false });
+            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: false });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
@@ -353,6 +359,14 @@
                                                             <label className="flex items-center gap-2 cursor-pointer group">
                                                                 <input type="checkbox" checked={options.sv20TCorr} onChange={e => setOptions({...options, sv20TCorr: e.target.checked})} className="w-3 h-3 rounded" />
                                                                 <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Sander+ (2023)">T-correction</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                    {key === 'A24' && activeModels.A24 && (
+                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
+                                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                                <input type="checkbox" checked={options.A24TCorr} onChange={e => setOptions({...options, A24TCorr: e.target.checked})} className="w-3 h-3 rounded" />
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Romagnolo+ (2026)">T-correction</span>
                                                             </label>
                                                         </div>
                                                     )}
