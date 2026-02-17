@@ -152,7 +152,8 @@
             NdJ90: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
                 let xlmdot = log10(9.6e-15 * Math.pow(Math.sqrt(p.L)/Math.pow(p.T/5772, 2), 0.81) * Math.pow(p.L, 1.24) * Math.pow(p.M, 0.16));
-               if (opts.NdJ90ZCorr) xlmdot = xlmdot * 0.5 * log10(p.Z / s.Zsun);
+                if (opts.NdJ90ZCorr) xlmdot = xlmdot * 0.5 * log10(p.Z / s.Zsun);
+                return xlmdot;
             },
             Vb98_OB: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin) ? null : 1.67*log10(p.L) - 1.55*log10(p.T) + 0.85*log10(p.Z/s.Zsun) - 8.29,
             P25: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -3.92 + 4.27*(-4.813 + log10(1+p.X) + log10(p.L) - log10(p.M)) + 0.86*log10(p.Z/s.Zsun),
@@ -187,7 +188,8 @@
             dJ88: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
                 let xlmdot = 1.769 * log10(p.L) - 1.676 * log10(p.T) - 8.158;
-               if (opts.dJ88) xlmdot += 0.5 * log10(p.Z / s.Zsun);
+                if (opts.dJ88) xlmdot += 0.5 * log10(p.Z / s.Zsun);
+                return xlmdot;
             },
             vL05: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.05 * log10(p.L/1e4) - 6.3 * log10(p.T/3500) - 5.56,
             Be23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : -0.15 * p.Mi + 3.6 * log10(p.L) - 21.5,
