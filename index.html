@@ -52,17 +52,17 @@
         const RSUN_CGS = 6.9599e10; 
         const MSUN_CGS = 1.989e33;
         const G_CGS = 6.67430e-8;
-        const Z_SUN = 0.0142;
+        const Z_SUN_DEF = 0.0142;
         const log10 = (x) => Math.log10(x > 1e-45 ? x : 1e-45);
 
         // --- PHYSICS UTILS ---
         const calcRadius = (L_sol, T_eff) => Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
-        const calcLogG = (M_sol, R_sol) => Math.log10(G_CGS * (M_sol * MSUN_CGS) / Math.pow(R_sol * RSUN_CGS, 2));
+        const calcLogG = (M_sol, R_sol) => Math.log10(G_CGS * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
 
         const CATEGORIES = {
             LOW: { label: "Low-Mass Winds", color: "slate", warning: "Restricted to luminosity < cutoff." },
-            THIN: { label: "Optically Thin (Hot Stars)", color: "blue", warning: "Tunable Teff range applied." },
-            THICK: { label: "Optically Thick (Wolf-Rayet)", color: "emerald" },
+            THIN: { label: "Optically Thin", color: "blue", warning: "Tunable Teff range applied." },
+            THICK: { label: "Optically Thick", color: "emerald" },
             COOL: { label: "Cool Supergiant Winds", color: "orange", warning: "Tunable Teff cutoff applied." },
             OTHER: { label: "Other Options", color: "indigo" }
         };
@@ -95,7 +95,6 @@
             B20: { name: "Bestenlehner 2020", cat: "THICK", color: "#166534", dash: "5 5", year: 2020.1 },
             SV20: { name: "Sander & Vink 2020", cat: "THICK", color: "#b45309", dash: "5 5", year: 2020.2 },
             dJ88: { name: "de Jager+ 1988", cat: "COOL", color: "#ea580c", dash: "0", year: 1988 },
-            NdJ90: { name: "Nieuwenhuijzen+ 1990", cat: "COOL", color: "#1e3a8a", dash: "0", year: 1990 },
             Vb98_cool: { name: "Vanbeveren+ 1998 (Cool)", cat: "COOL", color: "#eab308", dash: "0", year: 1998 },
             vL05: { name: "van Loon+ 2005", cat: "COOL", color: "#ea580c", dash: "5 5", year: 2005 },
             Be23: { name: "Beasor+ 2023", cat: "COOL", color: "#ca8a04", dash: "0", reqMini: true, year: 2023 },
@@ -163,7 +162,7 @@
             NL00: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : -13.6 + 1.63 * log10(p.L) + 2.22 * log10(1-p.X) + 0.85 * log10(p.Z/s.Zsun),
             Y06: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(p.L) > 4.5 ? -12.95 + 1.5*log10(p.L) - 2.85*p.X + 0.85*log10(p.Z/s.Zsun) : -36.8 + 6.8*log10(p.L),
             Y17: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(Math.pow(p.L, 1.18) * Math.pow(p.Z/s.Zsun, 0.6) * Math.pow(10, -11.32)),
-            V11: (p, settings) => (log10(p.L) <= settings.lumCutoff) ? null : log10(settings.mdot) + 4.77 * log10(p.L/settings.L) - 3.99 * log10(p.M/settings.M),
+            V11: (p, s) => (log10(p.L) <= s.lumCutoff) ? null : log10(s.mdot) + 4.77 * log10(p.L/s.L) - 3.99 * log10(p.M/s.M),
             SV20: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff) return null;
                 const log_ge = -4.813 + log10(1+p.X) + log10(p.L) - log10(p.M);
@@ -221,8 +220,9 @@
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
             
-            // For margins, we use string state to allow typing "-"
+            // For margins and options, we use string state to allow typing "-" and starting from empty
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "4.6", ymin: "-11", ymax: "-3" });
+            const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
             const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 4.6, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
 
             // VALIDATION: Check if current string inputs are valid numbers and logically sound
@@ -231,19 +231,36 @@
                 const xmax = parseFloat(marginInputs.xmax);
                 const ymin = parseFloat(marginInputs.ymin);
                 const ymax = parseFloat(marginInputs.ymax);
-                
                 const xValid = !isNaN(xmin) && !isNaN(xmax) && xmin < xmax;
                 const yValid = plotOpt.autoY ? true : (!isNaN(ymin) && !isNaN(ymax) && ymin < ymax);
-                
                 return { xmin: !isNaN(xmin), xmax: !isNaN(xmax) && xmin < xmax, ymin: !isNaN(ymin), ymax: !isNaN(ymax) && ymin < ymax, all: xValid && yValid };
             }, [marginInputs, plotOpt.autoY]);
 
-            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
+            const isOptionValid = useMemo(() => {
+                return {
+                    Zsun: !isNaN(parseFloat(optionInputs.Zsun)) && parseFloat(optionInputs.Zsun) > 0,
+                    thinTMin: !isNaN(parseFloat(optionInputs.thinTMin)),
+                    thinTMax: !isNaN(parseFloat(optionInputs.thinTMax)) && (parseFloat(optionInputs.thinTMax) > parseFloat(optionInputs.thinTMin)),
+                    coolCutoff: !isNaN(parseFloat(optionInputs.coolCutoff)),
+                    lumCutoff: !isNaN(parseFloat(optionInputs.lumCutoff))
+                };
+            }, [optionInputs]);
 
+            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
 
+            // Sync numerical params from option inputs
+            useEffect(() => {
+                const update = {};
+                Object.entries(optionInputs).forEach(([key, val]) => {
+                    const n = parseFloat(val);
+                    if (!isNaN(n)) update[key] = n;
+                });
+                setParams(prev => ({...prev, ...update}));
+            }, [optionInputs]);
+
             const plotData = useMemo(() => {
-                if (!isMarginValid.all) return []; // Stop rendering data if margins are broken
+                if (!isMarginValid.all) return []; 
                 const data = []; const stepCount = 100;
                 const curMin = parseFloat(marginInputs.xmin); const curMax = parseFloat(marginInputs.xmax);
                 for (let i = 0; i <= stepCount; i++) {
@@ -271,7 +288,6 @@
                         const newYMin = Math.floor(min - 0.5);
                         const newYMax = Math.ceil(max + 0.5);
                         setMarginInputs(prev => ({...prev, ymin: newYMin.toString(), ymax: newYMax.toString()}));
-                        setPlotOpt(prev => ({...prev, ymin: newYMin, ymax: newYMax}));
                     }
                 }
             }, [plotData, plotOpt.autoY]);
@@ -281,7 +297,6 @@
                 if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
                 else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
                 setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
-                setPlotOpt(prev => ({...prev, xmin: parseFloat(newX.min), xmax: parseFloat(newX.max)}));
             }, [axis]);
 
             const getShadeBounds = (rMin_log, rMax_log) => {
@@ -289,12 +304,12 @@
                 const curXmax = parseFloat(marginInputs.xmax);
                 if (isNaN(curXmin) || isNaN(curXmax)) return null;
 
-                const dMin = Math.min(curXmin, curXmax);
-                const dMax = Math.max(curXmin, curXmax);
-                const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
-                const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
-                const vStart = Math.max(effectiveRMin, dMin);
-                const vEnd = Math.min(effectiveRMax, dMax);
+                const domainMin = Math.min(curXmin, curXmax);
+                const domainMax = Math.max(curXmin, curXmax);
+                const effectiveRMin = rMin_log < -20 ? domainMin : rMin_log;
+                const effectiveRMax = rMax_log > 20 ? domainMax : rMax_log;
+                const vStart = Math.max(effectiveRMin, domainMin);
+                const vEnd = Math.min(effectiveRMax, domainMax);
                 if (vStart >= vEnd) return null;
 
                 return {
@@ -333,23 +348,23 @@
                                                         <span className="font-bold">More Details</span>
                                                     </label>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase block cursor-help" title="Anders+ 1989 (0.019), Grevesse+ 1998 (0.017), or Asplund+ 2009 (0.0142)">Zsun Calibration</label>
-                                                        <input type="number" step="0.0001" value={params.Zsun} onChange={e => setParams({...params, Zsun: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" />
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase cursor-help block" title="Anders+ 1989 (0.019), Grevesse+ 1998 (0.017), or Asplund+ 2009 (0.0142)">Zsun Calibration</label>
+                                                        <input type="text" value={optionInputs.Zsun} onChange={e => setOptionInputs({...optionInputs, Zsun: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.Zsun ? 'input-error' : ''}`} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase block">Thin logTeff Cutoffs (Min/Max)</label>
                                                         <div className="flex gap-2">
-                                                            <input type="number" step="0.1" value={params.thinTMin} onChange={e => setParams({...params, thinTMin: parseFloat(e.target.value)})} className="w-1/2 mt-1 p-2 bg-slate-50 border rounded font-mono" />
-                                                            <input type="number" step="0.1" value={params.thinTMax} onChange={e => setParams({...params, thinTMax: parseFloat(e.target.value)})} className="w-1/2 mt-1 p-2 bg-slate-50 border rounded font-mono" />
+                                                            <input type="text" value={optionInputs.thinTMin} onChange={e => setOptionInputs({...optionInputs, thinTMin: e.target.value})} className={`w-1/2 mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.thinTMin ? 'input-error' : ''}`} />
+                                                            <input type="text" value={optionInputs.thinTMax} onChange={e => setOptionInputs({...optionInputs, thinTMax: e.target.value})} className={`w-1/2 mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.thinTMax ? 'input-error' : ''}`} />
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase block">Cool logTeff Cutoff</label>
-                                                        <input type="number" step="0.1" value={params.coolCutoff} onChange={e => setParams({...params, coolCutoff: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" />
+                                                        <input type="text" value={optionInputs.coolCutoff} onChange={e => setOptionInputs({...optionInputs, coolCutoff: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.coolCutoff ? 'input-error' : ''}`} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase block text-indigo-600 font-bold italic">High/Low-mass logL cutoff</label>
-                                                        <input type="number" step="0.1" value={params.lumCutoff} onChange={e => setParams({...params, lumCutoff: parseFloat(e.target.value)})} className="w-full mt-1 p-2 bg-indigo-50 border border-indigo-200 rounded font-mono text-indigo-800" />
+                                                        <input type="text" value={optionInputs.lumCutoff} onChange={e => setOptionInputs({...optionInputs, lumCutoff: e.target.value})} className={`w-full mt-1 p-2 bg-indigo-50 border border-indigo-200 rounded font-mono text-indigo-800 ${!isOptionValid.lumCutoff ? 'input-error' : ''}`} />
                                                     </div>
                                                 </div>
                                             ) : sortedModels.filter(([_, m]) => m.cat === id).map(([key, meta]) => (
@@ -558,7 +573,6 @@
                                             <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Min</label>
                                             <input type="text" value={marginInputs.xmin} 
                                                 onChange={e => setMarginInputs({...marginInputs, xmin: e.target.value})} 
-                                                onBlur={e => { const v = parseFloat(e.target.value); if(!isNaN(v)) setPlotOpt({...plotOpt, xmin: v}); }}
                                                 className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmin ? 'input-error' : ''}`} 
                                             />
                                         </div>
@@ -566,7 +580,6 @@
                                             <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Max</label>
                                             <input type="text" value={marginInputs.xmax} 
                                                 onChange={e => setMarginInputs({...marginInputs, xmax: e.target.value})} 
-                                                onBlur={e => { const v = parseFloat(e.target.value); if(!isNaN(v)) setPlotOpt({...plotOpt, xmax: v}); }}
                                                 className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmax ? 'input-error' : ''}`} 
                                             />
                                         </div>
@@ -580,7 +593,6 @@
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min</label>
                                             <input type="text" value={marginInputs.ymin} disabled={plotOpt.autoY} 
                                                 onChange={e => setMarginInputs({...marginInputs, ymin: e.target.value})} 
-                                                onBlur={e => { const v = parseFloat(e.target.value); if(!isNaN(v)) setPlotOpt({...plotOpt, ymin: v}); }}
                                                 className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymin && !plotOpt.autoY ? 'input-error' : ''}`} 
                                             />
                                         </div>
@@ -588,7 +600,6 @@
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max</label>
                                             <input type="text" value={marginInputs.ymax} disabled={plotOpt.autoY} 
                                                 onChange={e => setMarginInputs({...marginInputs, ymax: e.target.value})} 
-                                                onBlur={e => { const v = parseFloat(e.target.value); if(!isNaN(v)) setPlotOpt({...plotOpt, ymax: v}); }}
                                                 className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymax && !plotOpt.autoY ? 'input-error' : ''}`} 
                                             />
                                         </div>
@@ -598,10 +609,12 @@
                                                 <span className="text-[10px] font-black text-slate-400 uppercase">Auto-fit Y</span>
                                             </label>
                                         </div>
+                                        {/*
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Height (px)</label>
                                             <input type="number" step="10" value={plotOpt.height} onChange={e => setPlotOpt({...plotOpt, height: parseInt(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" />
                                         </div>
+                                        */}
                                     </div>
                                 )}
                             </div>
