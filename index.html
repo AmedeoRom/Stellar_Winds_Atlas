@@ -30,6 +30,10 @@
             border-color: #ef4444 !important;
             color: #b91c1c !important;
         }
+
+        .colorbar-gradient {
+            background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725);
+        }
     </style>
 
     <script>window.process = { env: { NODE_ENV: 'production' } };</script>
@@ -45,13 +49,27 @@
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
-        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, Label } = window.Recharts;
+        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, Label, Customized } = window.Recharts;
 
-        // --- PHYSICS CONSTANTS & UTILS ---
+        // --- PHYSICS UTILS ---
         const log10 = (x) => Math.log10(x > 1e-45 ? x : 1e-45);
         const calcRadius = (L_sol, T_eff) => Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
         const calcLogG = (M_sol, R_sol) => Math.log10(6.67430e-8 * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
 
+        const getViridisColor = (t) => {
+            const colors = [
+                [68, 1, 84],   [59, 82, 139],  [33, 145, 140], [94, 201, 98],  [253, 231, 37]
+            ];
+            const n = colors.length - 1;
+            const i = Math.min(Math.floor(t * n), n - 1);
+            const ratio = (t * n) - i;
+            const r = Math.round(colors[i][0] + ratio * (colors[i+1][0] - colors[i][0]));
+            const g = Math.round(colors[i][1] + ratio * (colors[i+1][1] - colors[i][1]));
+            const b = Math.round(colors[i][2] + ratio * (colors[i+1][2] - colors[i][2]));
+            return `rgb(${r},${g},${b})`;
+        };
+
+        // --- CONSTANTS ---
         const CATEGORIES = {
             LOW: { label: "Low-Mass Winds", color: "slate", warning: "Restricted to luminosity < cutoff." },
             THIN: { label: "Optically Thin", color: "blue", warning: "Tunable Teff range applied." },
@@ -184,7 +202,12 @@
                 return C[0] + C[1]*log10(p.L) + C[2]*log10(p.T) + C[3]*log10(1-p.X) + C[4]*log10(p.Z/s.Zsun);
             },
             S19: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) ? null : -8.31 + 0.68*log10(p.L),
-            B20: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) ? null : -5.19 + 2.69*log10(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M) - 3.19*log10(1-(Math.pow(10, -4.813) * (1+p.X) * p.L / p.M)) + (log10(p.Z/s.Zsun)+0.3)*(0.4 + 15.75/p.M),
+            B20: (p, s) => {
+                if (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) return null;
+                const ge = Math.pow(10, -4.813) * (1+p.X) * p.L / p.M;
+                if (ge <= 0.3) return null; // Logic Block: Gamma_e <= 0.3
+                return -5.19 + 2.69*log10(ge) - 3.19*log10(1-ge) + (log10(p.Z/s.Zsun)+0.3)*(0.4 + 15.75/p.M);
+            },
             Vb98_WR: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) ? null : log10(p.L) + 0.85*log10(p.Z/s.Zsun) - 10,
             dJ88: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) return null;
@@ -213,7 +236,7 @@
         const App = () => {
             const [viewMode, setViewMode] = useState('dependencies'); 
             const [axis, setAxis] = useState('temp');
-            const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
+            const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0, hrResolution: 40 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
             const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr_cool: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: true });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
@@ -221,10 +244,10 @@
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
             
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
-            const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
+            const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0", hrResolution: "40" });
             const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 800, autoY: true, linearX: false, linearY: false });
 
-            // --- Scoped derived constants ---
+            // --- Derived Values ---
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
             const xLabel = useMemo(() => axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)', [axis]);
@@ -242,7 +265,8 @@
                 thinTMin: !isNaN(parseFloat(optionInputs.thinTMin)),
                 thinTMax: !isNaN(parseFloat(optionInputs.thinTMax)) && (parseFloat(optionInputs.thinTMax) > parseFloat(optionInputs.thinTMin)),
                 coolCutoff: !isNaN(parseFloat(optionInputs.coolCutoff)),
-                lumCutoff: !isNaN(parseFloat(optionInputs.lumCutoff))
+                lumCutoff: !isNaN(parseFloat(optionInputs.lumCutoff)),
+                hrResolution: !isNaN(parseFloat(optionInputs.hrResolution)) && parseFloat(optionInputs.hrResolution) >= 5
             }), [optionInputs]);
 
             useEffect(() => {
@@ -252,6 +276,8 @@
                 });
                 setParams(prev => ({...prev, ...update}));
             }, [optionInputs]);
+
+            const translateVal = (val) => plotOpt.linearY ? Math.pow(10, val) : val;
 
             const plotData = useMemo(() => {
                 if (!isMarginValid.all || viewMode === 'hr') return []; 
@@ -266,9 +292,7 @@
                     Object.keys(activeModels).forEach(k => {
                         if (activeModels[k]) {
                             const val = (k === 'V11') ? recipes[k](p, vinkSettings) : recipes[k](p, params, options);
-                            if (val !== null && !isNaN(val)) {
-                                point[k] = plotOpt.linearY ? Math.pow(10, val) : val;
-                            }
+                            if (val !== null && !isNaN(val)) point[k] = translateVal(val);
                         }
                     });
                     data.push(point);
@@ -296,27 +320,23 @@
                     setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max, ymin: "-11", ymax: "-3"}));
                 } else {
                     setMarginInputs(prev => ({...prev, xmin: "3.4", xmax: "5.3", ymin: "3.5", ymax: "7.0"}));
-                    setActiveModels({}); // Uncheck all models on switch to HR mode
+                    setActiveModels({}); 
                 }
             }, [axis, viewMode]);
-
-            const translateVal = (val) => plotOpt.linearY ? Math.pow(10, val) : val;
 
             const getShadeBounds = (rMin_log, rMax_log, customScale = null) => {
                 const curXmin = parseFloat(marginInputs.xmin); const curXmax = parseFloat(marginInputs.xmax);
                 const currentAxis = customScale || axis;
                 let dMin, dMax;
-                if (viewMode === 'hr' && currentAxis === 'temp') {
-                    dMin = 3.4; dMax = 5.3;
-                } else if (viewMode === 'hr' && currentAxis === 'metal') {
-                    dMin = -3.0; dMax = 0.5;
-                } else {
-                    dMin = Math.min(curXmin, curXmax); dMax = Math.max(curXmin, curXmax);
-                }
+                if (viewMode === 'hr' && currentAxis === 'temp') { dMin = 3.4; dMax = 5.3; } 
+                else if (viewMode === 'hr' && currentAxis === 'metal') { dMin = -3.0; dMax = 0.5; } 
+                else { dMin = Math.min(curXmin, curXmax); dMax = Math.max(curXmin, curXmax); }
+
                 const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
                 const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
                 const vStart = Math.max(effectiveRMin, dMin); const vEnd = Math.min(effectiveRMax, dMax);
                 if (vStart >= vEnd) return null;
+                
                 return {
                     x1: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vStart) : vStart,
                     x2: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vEnd) : vEnd,
@@ -334,6 +354,50 @@
                 for(let t=crossingLogT; t>=3.4; t-=0.05) { pts.push({x: t, l: translateVal(5.5)}); }
                 return pts;
             }, [plotOpt.linearY]);
+
+            const heatmapData = useMemo(() => {
+                if (viewMode !== 'hr') return null;
+                const activeModelKeys = Object.keys(activeModels).filter(k => activeModels[k]);
+                if (activeModelKeys.length === 0) return null;
+                const key = activeModelKeys[0];
+                const res = params.hrResolution;
+                const yMin = parseFloat(marginInputs.ymin); const yMax = parseFloat(marginInputs.ymax);
+                const xMin = parseFloat(marginInputs.xmin); const xMax = parseFloat(marginInputs.xmax);
+                
+                const cells = [];
+                const dx = (xMax - xMin) / res;
+                const dy = (yMax - yMin) / res;
+                let globalMdotMin = Infinity;
+                let globalMdotMax = -Infinity;
+
+                for (let i = 0; i < res; i++) {
+                    for (let j = 0; j < res; j++) {
+                        const logT = xMin + i * dx + dx/2;
+                        const logL = yMin + j * dy + dy/2;
+                        const T = Math.pow(10, logT);
+                        const L = Math.pow(10, logL);
+                        const p = { L, T, M: params.mass, Z: params.z, X: params.X, Mi: params.Mi };
+                        p.R = calcRadius(p.L, p.T);
+                        const mdot = (key === 'V11') ? recipes[key](p, vinkSettings) : recipes[key](p, params, options);
+                        if (mdot !== null && !isNaN(mdot)) {
+                            if (mdot < globalMdotMin) globalMdotMin = mdot;
+                            if (mdot > globalMdotMax) globalMdotMax = mdot;
+                            cells.push({ x: logT, y: logL, mdot, dx, dy });
+                        }
+                    }
+                }
+                return { cells, min: globalMdotMin, max: globalMdotMax };
+            }, [viewMode, activeModels, params, vinkSettings, options, marginInputs]);
+
+            const colorbarTicks = useMemo(() => {
+                if (!heatmapData) return [];
+                const ticks = [];
+                const count = 7;
+                for (let i = 0; i < count; i++) {
+                    ticks.push(heatmapData.min + (heatmapData.max - heatmapData.min) * (i / (count - 1)));
+                }
+                return ticks.reverse();
+            }, [heatmapData]);
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-800">
@@ -379,7 +443,7 @@
                                                         <span className="font-bold">More Details</span>
                                                     </label>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase cursor-help">Zsun Calibration</label>
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase">Zsun Calibration</label>
                                                         <input type="text" value={optionInputs.Zsun} onChange={e => setOptionInputs({...optionInputs, Zsun: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.Zsun ? 'input-error' : ''}`} />
                                                     </div>
                                                     <div>
@@ -396,6 +460,10 @@
                                                     <div>
                                                         <label className="text-[10px] font-black text-slate-400 uppercase block text-indigo-600 font-bold italic">High/Low-mass logL cutoff</label>
                                                         <input type="text" value={optionInputs.lumCutoff} onChange={e => setOptionInputs({...optionInputs, lumCutoff: e.target.value})} className={`w-full mt-1 p-2 bg-indigo-50 border border-indigo-200 rounded font-mono text-indigo-800 ${!isOptionValid.lumCutoff ? 'input-error' : ''}`} />
+                                                    </div>
+                                                    <div>
+                                                        <label className={`text-[10px] font-black uppercase block ${viewMode === 'dependencies' ? 'text-slate-300' : 'text-slate-400'}`}>HR Resolution</label>
+                                                        <input type="text" disabled={viewMode === 'dependencies'} value={optionInputs.hrResolution} onChange={e => setOptionInputs({...optionInputs, hrResolution: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-30 ${!isOptionValid.hrResolution ? 'input-error' : ''}`} />
                                                     </div>
                                                 </div>
                                             ) : sortedModels.filter(([_, m]) => m.cat === id).map(([key, meta]) => (
@@ -436,10 +504,10 @@
                         </aside>
 
                         <section className="flex-1 flex flex-col p-6 space-y-4 overflow-y-auto custom-scrollbar">
-                            <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-col shrink-0" style={{ height: plotOpt.height + 'px' }}>
-                                <div className="flex-1">
+                            <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-row shrink-0" style={{ height: plotOpt.height + 'px' }}>
+                                <div className="flex-1 relative">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart margin={{ top: 20, right: 20, left: 10, bottom: 100 }}>
+                                        <LineChart margin={{ top: 20, right: 10, left: 10, bottom: 100 }}>
                                             <defs>
                                                 <pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                                     <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.45" />
@@ -471,52 +539,67 @@
                                             />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '14px', fontWeight: 'bold' }} />
                                             
+                                            {/* HEATMAP LAYER */}
+                                            {viewMode === 'hr' && heatmapData && (
+                                                <Customized component={({ xAxisMap, yAxisMap }) => {
+                                                    const xAxis = xAxisMap[0];
+                                                    const yAxis = yAxisMap[0];
+                                                    return (
+                                                        <g>
+                                                            {heatmapData.cells.map((c, idx) => {
+                                                                const t = (c.mdot - heatmapData.min) / (heatmapData.max - heatmapData.min);
+                                                                const x1 = xAxis.scale(c.x - c.dx/2);
+                                                                const x2 = xAxis.scale(c.x + c.dx/2);
+                                                                const y1 = yAxis.scale(c.y - c.dy/2);
+                                                                const y2 = yAxis.scale(c.y + c.dy/2);
+                                                                return (
+                                                                    <rect 
+                                                                        key={idx}
+                                                                        x={Math.min(x1, x2)}
+                                                                        y={Math.min(y1, y2)}
+                                                                        width={Math.abs(x2 - x1)}
+                                                                        height={Math.abs(y2 - y1)}
+                                                                        fill={getViridisColor(t)}
+                                                                        fillOpacity={0.7}
+                                                                    />
+                                                                );
+                                                            })}
+                                                        </g>
+                                                    );
+                                                }} />
+                                            )}
+
                                             {/* REFERENCE LAYERS */}
                                             {options.moreDetails && (viewMode === 'hr' || axis === 'temp') && (
                                                 <React.Fragment>
                                                     {(() => {
                                                         const rsg = getShadeBounds(-100, Math.log10(4000), 'temp');
                                                         return rsg && params.logL > params.lumCutoff && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={rsg.mid} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#dc2626" }} />
-                                                            </React.Fragment>
+                                                            <ReferenceArea key="rsg" y1={viewMode === 'hr' ? params.lumCutoff : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} label={{ value: "RSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#dc2626" }} />
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const ysg = getShadeBounds(Math.log10(4000), Math.log10(8000), 'temp');
                                                         return ysg && params.logL > params.lumCutoff && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={ysg.mid} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#ca8a04" }} />
-                                                            </React.Fragment>
+                                                            <ReferenceArea key="ysg" y1={viewMode === 'hr' ? params.lumCutoff : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} label={{ value: "YSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#ca8a04" }} />
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const bsg = getShadeBounds(Math.log10(8000), Math.log10(12000), 'temp');
                                                         return bsg && params.logL > params.lumCutoff && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={bsg.mid} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#2563eb" }} />
-                                                            </React.Fragment>
+                                                            <ReferenceArea key="bsg" y1={viewMode === 'hr' ? params.lumCutoff : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} label={{ value: "BSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#2563eb" }} />
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const wn = getShadeBounds(Math.log10(30000), 5.0, 'temp');
                                                         return wn && params.logL > 5.1 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(5.1) : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} />
-                                                                <ReferenceLine x={wn.mid} stroke="transparent" label={{ value: "WN", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
-                                                            </React.Fragment>
+                                                            <ReferenceArea key="wn" y1={viewMode === 'hr' ? 5.1 : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} label={{ value: "WN", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const wr = getShadeBounds(5.0, 100, 'temp');
                                                         return wr && params.logL > 5.1 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(5.1) : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={wr.mid} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
-                                                            </React.Fragment>
+                                                            <ReferenceArea key="wr" y1={viewMode === 'hr' ? 5.1 : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} label={{ value: "Canonical WR", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                         );
                                                     })()}
                                                 </React.Fragment>
@@ -527,37 +610,25 @@
                                                 <React.Fragment>
                                                     {(() => {
                                                         const p3 = getShadeBounds(-100, -11, 'metal');
-                                                        return p3 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p3.x1} x2={p3.x2} fill="#94a3b8" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p3.mid} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 14, fontWeight: "bold", fill: "#475569" }} />
-                                                            </React.Fragment>
-                                                        );
+                                                        return p3 && <ReferenceArea key="p3" x1={p3.x1} x2={p3.x2} fill="#94a3b8" fillOpacity={0.1} isFront={false} label={{ value: "Pop III", position: "top", fontSize: 14, fontWeight: "bold", fill: "#475569" }} />;
                                                     })()}
                                                     {(() => {
                                                         const p2 = getShadeBounds(-11, -5, 'metal');
-                                                        return p2 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p2.x1} x2={p2.x2} fill="#64748b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p2.mid} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 14, fontWeight: "bold", fill: "#334155" }} />
-                                                            </React.Fragment>
-                                                        );
+                                                        return p2 && <ReferenceArea key="p2" x1={p2.x1} x2={p2.x2} fill="#64748b" fillOpacity={0.1} isFront={false} label={{ value: "Pop II", position: "top", fontSize: 14, fontWeight: "bold", fill: "#334155" }} />;
                                                     })()}
                                                     {(() => {
                                                         const p1 = getShadeBounds(-5, 100, 'metal');
-                                                        return p1 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p1.x1} x2={p1.x2} fill="#1e293b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p1.mid} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />
-                                                            </React.Fragment>
-                                                        );
+                                                        return p1 && <ReferenceArea key="p1" x1={p1.x1} x2={p1.x2} fill="#1e293b" fillOpacity={0.1} isFront={false} label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />;
                                                     })()}
                                                 </React.Fragment>
                                             )}
 
                                             {/* HD LIMIT ON HR DIAGRAM (Piecewise) */}
                                             {viewMode === 'hr' && (
-                                                <Line data={hrHDLimitData} dataKey="l" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} dot={false} legendType="none" isAnimationActive={false} />
+                                                <React.Fragment>
+                                                    <ReferenceLine x={3.8} y={translateVal(5.5)} stroke="none" label={{ value: "HD limit", position: "top", fill: "#64748b", fontWeight: "bold", offset: 10 }} />
+                                                    <Line data={hrHDLimitData} dataKey="l" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} dot={false} legendType="none" isAnimationActive={false} />
+                                                </React.Fragment>
                                             )}
 
                                             {/* DYNAMIC HD LIMIT ON 1D LOG-L PLOT */}
@@ -571,18 +642,37 @@
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex justify-center gap-4 mt-8 border-t pt-4 shrink-0">
-                                    {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
-                                        <button 
-                                            key={opt.id} 
-                                            disabled={viewMode === 'hr'}
-                                            onClick={() => setAxis(opt.id)} 
-                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === 'hr' ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50' : (axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                
+                                {/* IMPROVED COLORBAR FOR HR DIAGRAM */}
+                                {viewMode === 'hr' && heatmapData && (
+                                    <div className="w-20 h-full flex flex-col items-center justify-start pb-[100px] pt-[20px] ml-[-10px]">
+                                        <span className="text-[10px] font-black mb-2 uppercase tracking-tighter text-center">log (Ṁ [M<sub>⊙</sub>/yr])</span>
+                                        <div className="w-5 flex-1 colorbar-gradient border border-slate-300 rounded relative">
+                                            {colorbarTicks.map((val, idx) => {
+                                                const topPercent = (idx / (colorbarTicks.length - 1)) * 100;
+                                                return (
+                                                    <div key={idx} className="absolute -right-12 flex items-center" style={{ top: `${topPercent}%`, transform: 'translateY(-50%)' }}>
+                                                        <div className="w-2 h-[2px] bg-slate-800"></div>
+                                                        <span className="text-[12px] font-black font-mono ml-1">{val.toFixed(1)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-center gap-4 mt-4 shrink-0">
+                                {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
+                                    <button 
+                                        key={opt.id} 
+                                        disabled={viewMode === 'hr'}
+                                        onClick={() => setAxis(opt.id)} 
+                                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === 'hr' ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : (axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 bg-white p-6 rounded-2xl border shadow-sm border-slate-200 shrink-0">
