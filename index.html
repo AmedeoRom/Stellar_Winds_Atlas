@@ -47,7 +47,7 @@
         const { useState, useMemo, useEffect } = React;
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, Label } = window.Recharts;
 
-        // --- PHYSICS CONSTANTS & UTILS ---
+        // --- UTILS ---
         const log10 = (x) => Math.log10(x > 1e-45 ? x : 1e-45);
         const calcRadius = (L_sol, T_eff) => Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
         const calcLogG = (M_sol, R_sol) => Math.log10(6.67430e-8 * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
@@ -203,7 +203,7 @@
                     else return 0.26 * logL - 14.19 * log10(Math.min(p.T, 4000) / 4000) - 9.17;
                 } else {
                     if (p.T > 4000 && opts.A24TCorr) return 2.49536 * logL - 19.1022;
-                    else return 2.49536 * logL - 33.7 * log10(p.T/4000) - 19.1022;
+                    else return 2.49536 * logL - (p.T < 4000 ? 33.7 * log10(p.T/4000) : 0) - 19.1022;
                 }
             },
             D24: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.coolCutoff) ? null : 1.71 - 1.63 * (p.Mi/10) + 3.47 * log10(p.L/1e5) - 5,
@@ -211,6 +211,7 @@
         };
 
         const App = () => {
+            const [viewMode, setViewMode] = useState('dependencies'); 
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
@@ -222,6 +223,11 @@
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
             const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
+
+            // --- Scoped Constants ---
+            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
+            const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
+            const xLabel = useMemo(() => axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)', [axis]);
 
             const isMarginValid = useMemo(() => {
                 const xmin = parseFloat(marginInputs.xmin); const xmax = parseFloat(marginInputs.xmax);
@@ -239,9 +245,6 @@
                 lumCutoff: !isNaN(parseFloat(optionInputs.lumCutoff))
             }), [optionInputs]);
 
-            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
-            const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
-
             useEffect(() => {
                 const update = {};
                 Object.entries(optionInputs).forEach(([key, val]) => {
@@ -251,7 +254,7 @@
             }, [optionInputs]);
 
             const plotData = useMemo(() => {
-                if (!isMarginValid.all) return []; 
+                if (!isMarginValid.all || viewMode === 'hr') return []; 
                 const data = []; const stepCount = 100;
                 const curMin = parseFloat(marginInputs.xmin); const curMax = parseFloat(marginInputs.xmax);
                 for (let i = 0; i <= stepCount; i++) {
@@ -269,7 +272,7 @@
                     data.push(point);
                 }
                 return data;
-            }, [axis, params, activeModels, vinkSettings, marginInputs, options, isMarginValid]);
+            }, [axis, params, activeModels, vinkSettings, marginInputs, options, isMarginValid, viewMode]);
 
             useEffect(() => {
                 if (plotOpt.autoY && plotData.length > 0) {
@@ -283,32 +286,32 @@
             }, [plotData, plotOpt.autoY]);
 
             useEffect(() => {
-                let newX = { min: "3.5", max: "5.3" };
-                if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
-                else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
-                setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
-            }, [axis]);
+                if (viewMode === 'dependencies') {
+                    let newX = { min: "3.5", max: "5.3" };
+                    if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
+                    else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
+                    setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
+                }
+            }, [axis, viewMode]);
 
             const getShadeBounds = (rMin_log, rMax_log) => {
                 const curXmin = parseFloat(marginInputs.xmin); const curXmax = parseFloat(marginInputs.xmax);
-                if (isNaN(curXmin) || isNaN(curXmax)) return null;
-                const dMin = Math.min(curXmin, curXmax); const dMax = Math.max(curXmin, curXmax);
+                const dMin = viewMode === 'hr' ? 3.4 : Math.min(curXmin, curXmax);
+                const dMax = viewMode === 'hr' ? 5.3 : Math.max(curXmin, curXmax);
                 const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
                 const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
                 const vStart = Math.max(effectiveRMin, dMin); const vEnd = Math.min(effectiveRMax, dMax);
                 if (vStart >= vEnd) return null;
                 return {
-                    x1: plotOpt.linearX ? Math.pow(10, vStart) : vStart,
-                    x2: plotOpt.linearX ? Math.pow(10, vEnd) : vEnd,
-                    mid: plotOpt.linearX ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2
+                    x1: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, vStart) : vStart,
+                    x2: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, vEnd) : vEnd,
+                    mid: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2
                 };
             };
 
-            const xLabel = axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)';
-
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-800">
-                    <header className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shadow-sm z-10">
+                    <header className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shadow-sm z-10 shrink-0">
                         <div className="flex items-center">
                             <h1 className="text-xl font-bold italic text-slate-700 whitespace-nowrap">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v1.0.0</span></h1>
                         </div>
@@ -319,18 +322,19 @@
                         </div>
                         <div className="flex justify-end items-center gap-4">
                             <a href="https://github.com/AmedeoRom" target="_blank">
-                                <img
-                                    src="Atlas_logo.png"
-                                    alt="GitHub Profile"
-                                    className="h-10 w-10 rounded-md shadow-sm hover:scale-110 transition-transform"
-                                    onerror="this.style.display='none'"
-                                />
+                                <img src="Atlas_logo.png" alt="Logo" className="h-10 w-10 rounded-md shadow-sm hover:scale-110 transition-transform" onerror="this.style.display='none'" />
                             </a>
                         </div>
                     </header>
 
+                    <div className="bg-white border-b px-6 py-4 flex justify-center shrink-0">
+                        <button onClick={() => setViewMode(viewMode === 'dependencies' ? 'hr' : 'dependencies')} className="px-10 py-3 bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 shadow-lg transition-all active:scale-95">
+                            {viewMode === 'dependencies' ? 'Hertzsprung-Russell Diagram' : 'Functional 1D dependencies'}
+                        </button>
+                    </div>
+
                     <main className="flex-1 flex overflow-hidden">
-                        <aside className="w-80 border-r bg-white flex flex-col overflow-y-auto p-4 custom-scrollbar space-y-4">
+                        <aside className="w-80 border-r bg-white flex flex-col overflow-y-auto p-4 custom-scrollbar space-y-4 shrink-0">
                             {Object.entries(CATEGORIES).map(([id, cat]) => (
                                 <div key={id} className="border rounded-xl overflow-hidden shadow-sm">
                                     <div onClick={() => setExpandedCats(p => ({ ...p, [id]: !p[id] }))} className={`collapsible-header flex justify-between items-center p-3 bg-${cat.color}-50 text-${cat.color}-800 border-b`}>
@@ -344,12 +348,12 @@
                                         <div className="p-2 space-y-1 bg-white max-h-64 overflow-y-auto custom-scrollbar">
                                             {id === 'OTHER' ? (
                                                 <div className="p-3 space-y-4 text-xs">
-                                                    <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent hover:border-slate-200 transition" title="Adds information on supergiant and WR temperature ranges, HD limit and Pop I to III metallicity regimes">
+                                                    <label className="flex items-center gap-3 p-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent hover:border-slate-200 transition">
                                                         <input type="checkbox" checked={options.moreDetails} onChange={e => setOptions({...options, moreDetails: e.target.checked})} className="w-4 h-4 text-blue-600 rounded" />
                                                         <span className="font-bold">More Details</span>
                                                     </label>
                                                     <div>
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase cursor-help block" title="Anders+ 1989 (0.019), Grevesse+ 1998 (0.017), or Asplund+ 2009 (0.0142)">Zsun Calibration</label>
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase cursor-help">Zsun Calibration</label>
                                                         <input type="text" value={optionInputs.Zsun} onChange={e => setOptionInputs({...optionInputs, Zsun: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isOptionValid.Zsun ? 'input-error' : ''}`} />
                                                     </div>
                                                     <div>
@@ -378,7 +382,6 @@
                                                         <div className="flex-1 overflow-hidden">
                                                             <div className="flex items-center gap-1">
                                                                 <div className="text-[11px] font-bold text-slate-700 truncate">{meta.name}</div>
-                                                                {meta.warning && <div className="warning-tooltip" title={meta.warning}><span className="text-[10px]">⚠️</span></div>}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-1">
                                                                 <div className="h-0.5 w-8" style={{ background: meta.color, borderTop: meta.dash === "0" ? 'none' : `2.5px dashed ${meta.color}` }}></div>
@@ -386,46 +389,18 @@
                                                             </div>
                                                         </div>
                                                     </label>
-                                                    {key === 'dJ88' && activeModels.dJ88 && (
+                                                    {['dJ88', 'NdJ90', 'NdJ90_cool', 'SV20', 'A24'].includes(key) && activeModels[key] && (
                                                         <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
                                                             <label className="flex items-center gap-2 cursor-pointer group">
-                                                                <input type="checkbox" checked={options.dJ88ZCorr} onChange={e => setOptions({...options, dJ88ZCorr: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="Original recipe doesn't have Z-scaling">Z-correction</span>
+                                                                <input type="checkbox" checked={options[key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr'] || options[key+'TCorr']} 
+                                                                    onChange={e => setOptions({...options, [key === 'A24' || key === 'SV20' ? key+'TCorr' : (key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr')]: e.target.checked})} 
+                                                                    className="w-3 h-3 rounded" />
+                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600">
+                                                                    {key === 'A24' || key === 'SV20' ? 'T-correction' : 'Z-correction'}
+                                                                </span>
                                                             </label>
                                                         </div>
                                                     )}
-                                                    {key === 'NdJ90' && activeModels.NdJ90 && (
-                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
-                                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                                <input type="checkbox" checked={options.NdJ90ZCorr} onChange={e => setOptions({...options, NdJ90ZCorr: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Vink & de Koeter (2005)">Z-correction</span>
-                                                            </label>
-                                                        </div>
-                                                    )}
-                                                    {key === 'NdJ90_cool' && activeModels.NdJ90_cool && (
-                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
-                                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                                <input type="checkbox" checked={options.NdJ90ZCorr_cool} onChange={e => setOptions({...options, NdJ90ZCorr_cool: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Vink & de Koeter (2005)">Z-correction</span>
-                                                            </label>
-                                                        </div>
-                                                    )}
-                                                    {key === 'SV20' && activeModels.SV20 && (
-                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
-                                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                                <input type="checkbox" checked={options.sv20TCorr} onChange={e => setOptions({...options, sv20TCorr: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Sander+ (2023)">T-correction</span>
-                                                            </label>
-                                                        </div>
-                                                    )}
-                                                    {key === 'A24' && activeModels.A24 && (
-                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
-                                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                                <input type="checkbox" checked={options.A24TCorr} onChange={e => setOptions({...options, A24TCorr: e.target.checked})} className="w-3 h-3 rounded" />
-                                                                <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600" title="From Atlas I (Romagnolo+ 2026)">T-correction</span>
-                                                            </label>
-                                                        </div>
-                                                    )} 
                                                 </div>
                                             ))}
                                         </div>
@@ -439,159 +414,124 @@
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={plotData} margin={{ top: 20, right: 20, left: 10, bottom: 100 }}>
+                                            <defs>
+                                                <pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                                    <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2" opacity="0.2" />
+                                                </pattern>
+                                            </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis 
                                                 dataKey={plotOpt.linearX ? "linearX" : "x"} 
                                                 type="number" 
-                                                domain={[
+                                                domain={viewMode === 'hr' ? [3.4, 5.3] : [
                                                     plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmin)) : parseFloat(marginInputs.xmin), 
                                                     plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmax)) : parseFloat(marginInputs.xmax)
                                                 ]} 
-                                                reversed={axis === 'temp'} 
-                                                tickFormatter={v => plotOpt.linearX ? Math.round(v).toLocaleString() : v.toFixed(1)} 
-                                                stroke="#1e293b" 
-                                                strokeWidth={2} 
-                                                fontSize={12} 
-                                                tick={{ fontWeight: 600 }}
-                                                label={{ 
-                                                    value: plotOpt.linearX ? xLabel.replace('log ', '') : xLabel, 
-                                                    position: 'insideBottom', 
-                                                    offset: 0, 
-                                                    fontSize: 16, 
-                                                    fontWeight: 700, 
-                                                    fill: '#1e293b' 
-                                                }} 
+                                                reversed={viewMode === 'hr' || axis === 'temp'} 
+                                                tickFormatter={v => (plotOpt.linearX && axis !== 'temp' && viewMode !== 'hr') ? Math.round(v).toLocaleString() : v.toFixed(1)} 
+                                                stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }}
+                                                label={{ value: viewMode === 'hr' ? 'log (Teff / K)' : (plotOpt.linearX ? xLabel.replace('log ', '') : xLabel), position: 'insideBottom', offset: 0, fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
                                             />
-                                            <YAxis domain={[parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
+                                            <YAxis 
+                                                domain={viewMode === 'hr' ? [3, 7] : [parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} 
+                                                stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }}
+                                                label={{ value: viewMode === 'hr' ? 'log (L / Lsun)' : 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
+                                            />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} 
                                                 labelFormatter={(v) => typeof v === 'number' ? v.toFixed(1) : v}
                                                 formatter={(v) => typeof v === 'number' ? v.toFixed(2) : v}
                                             />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '14px', fontWeight: 'bold' }} />
                                             
-                                            {/* REFERENCE LAYERS */}
-                                            {options.moreDetails && axis === 'temp' && (
+                                            {options.moreDetails && (viewMode === 'hr' || axis === 'temp') && (
                                                 <React.Fragment>
                                                     {(() => {
                                                         const rsg = getShadeBounds(-100, Math.log10(4000));
-                                                        return rsg && (
+                                                        return rsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={rsg.mid} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#dc2626" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const ysg = getShadeBounds(Math.log10(4000), Math.log10(8000));
-                                                        return ysg && (
+                                                        return ysg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={ysg.mid} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#ca8a04" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
                                                     {(() => {
                                                         const bsg = getShadeBounds(Math.log10(8000), Math.log10(12000));
-                                                        return bsg && (
+                                                        return bsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={bsg.mid} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#2563eb" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
                                                     {(() => {
-                                                        const wr = getShadeBounds(Math.log10(100000), 100);
-                                                        return wr && (
+                                                        const wn = getShadeBounds(Math.log10(30000), 5.0);
+                                                        return wn && params.logL > 5.1 && (
                                                             <React.Fragment>
-                                                                <ReferenceArea x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} />
+                                                                <ReferenceLine x={wn.mid} stroke="transparent" label={{ value: "WN", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
+                                                            </React.Fragment>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const wr = getShadeBounds(5.0, 100);
+                                                        return wr && params.logL > 5.1 && (
+                                                            <React.Fragment>
+                                                                <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={wr.mid} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                             </React.Fragment>
                                                         );
                                                     })()}
                                                 </React.Fragment>
                                             )}
-                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />}
-                                            {options.moreDetails && axis === 'metal' && (
-                                                <React.Fragment>
-                                                    {(() => {
-                                                        const p3 = getShadeBounds(-100, -11);
-                                                        return p3 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p3.x1} x2={p3.x2} fill="#94a3b8" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p3.mid} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 14, fontWeight: "bold", fill: "#475569" }} />
-                                                            </React.Fragment>
-                                                        );
-                                                    })()}
-                                                    {(() => {
-                                                        const p2 = getShadeBounds(-11, -5);
-                                                        return p2 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p2.x1} x2={p2.x2} fill="#64748b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p2.mid} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 14, fontWeight: "bold", fill: "#334155" }} />
-                                                            </React.Fragment>
-                                                        );
-                                                    })()}
-                                                    {(() => {
-                                                        const p1 = getShadeBounds(-5, 100);
-                                                        return p1 && (
-                                                            <React.Fragment>
-                                                                <ReferenceArea x1={p1.x1} x2={p1.x2} fill="#1e293b" fillOpacity={0.1} isFront={false} />
-                                                                <ReferenceLine x={p1.mid} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />
-                                                            </React.Fragment>
-                                                        );
-                                                    })()}
-                                                </React.Fragment>
-                                            )}
-
-                                            {Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
+                                            {options.moreDetails && viewMode === 'dependencies' && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />}
+                                            {viewMode === 'dependencies' && Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
                                                 <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={meta.cat === 'THIN' ? 3.5 : 2.5} dot={false} animationDuration={300} connectNulls={false} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex justify-center gap-4 mt-8 border-t pt-4">
-                                    {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
-                                        <button key={opt.id} onClick={() => setAxis(opt.id)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{opt.label}</button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 bg-white p-6 rounded-2xl border shadow-sm border-slate-200">
-                                {axis !== 'lum' && (
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>log L</span><span className="text-blue-600">{params.logL}</span></div>
-                                        <input type="range" min="3" max="7" step="0.1" value={params.logL} onChange={e => setParams({...params, logL: parseFloat(e.target.value)})} className="w-full" />
+                                {viewMode === 'dependencies' && (
+                                    <div className="flex justify-center gap-4 mt-8 border-t pt-4 shrink-0">
+                                        {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
+                                            <button key={opt.id} onClick={() => setAxis(opt.id)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{opt.label}</button>
+                                        ))}
                                     </div>
                                 )}
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 bg-white p-6 rounded-2xl border shadow-sm border-slate-200 shrink-0">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>log L</span><span className="text-blue-600">{params.logL}</span></div>
+                                    <input type="range" min="3" max="7" step="0.1" value={params.logL} onChange={e => setParams({...params, logL: parseFloat(e.target.value)})} className="w-full" />
+                                </div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>Mass</span><span className="text-blue-600">{params.mass}</span></div>
                                     <input type="range" min="5" max="150" step="1" value={params.mass} onChange={e => setParams({...params, mass: parseFloat(e.target.value)})} className="w-full" />
                                 </div>
-                                {axis !== 'temp' && (
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>log Teff</span><span className="text-blue-600">{params.logT}</span></div>
-                                        <input type="range" min="3.4" max="5.3" step="0.05" value={params.logT} onChange={e => setParams({...params, logT: parseFloat(e.target.value)})} className="w-full" />
-                                    </div>
-                                )}
-                                {axis !== 'metal' && (
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>Z (Absolute)</span><span className="text-blue-600">{params.z}</span></div>
-                                        <input type="range" min="0.0001" max="0.04" step="0.0001" value={params.z} onChange={e => setParams({...params, z: parseFloat(e.target.value)})} className="w-full" />
-                                    </div>
-                                )}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>log Teff</span><span className="text-blue-600">{params.logT}</span></div>
+                                    <input type="range" min="3.4" max="5.3" step="0.05" value={params.logT} onChange={e => setParams({...params, logT: parseFloat(e.target.value)})} className="w-full" />
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>Z (Absolute)</span><span className="text-blue-600">{params.z}</span></div>
+                                    <input type="range" min="0.0001" max="0.04" step="0.0001" value={params.z} onChange={e => setParams({...params, z: parseFloat(e.target.value)})} className="w-full" />
+                                </div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-[11px] font-black uppercase text-slate-400"><span>Surface X</span><span className="text-blue-600">{params.X}</span></div>
                                     <input type="range" min="0" max="0.75" step="0.01" value={params.X} onChange={e => setParams({...params, X: parseFloat(e.target.value)})} className="w-full" />
                                 </div>
-                                {needsInitialMass && (
-                                    <div className="col-span-full space-y-2 border-l-4 pl-4 border-amber-500 bg-amber-50 rounded-r-lg p-2 text-xs">
-                                        <div className="flex justify-between font-black uppercase text-amber-600"><span>Initial Mass (Mi)</span><span>{params.Mi}</span></div>
-                                        <input type="range" min="5" max="120" step="1" value={params.Mi} onChange={e => setParams({...params, Mi: parseFloat(e.target.value)})} className="w-full" />
-                                    </div>
-                                )}
                             </div>
 
-                            <div className="border rounded-2xl overflow-hidden shadow-sm border-blue-200 bg-white">
+                            <div className="border rounded-2xl overflow-hidden shadow-sm border-blue-200 bg-white shrink-0">
                                 <div onClick={() => setExpandedCats(p => ({ ...p, PLOT: !p.PLOT }))} className="collapsible-header flex justify-between items-center p-4 bg-blue-50 text-blue-800 border-b">
                                     <span className="text-xs font-black uppercase tracking-widest">Plot Viewport & Margins</span>
                                     <svg className={`w-4 h-4 transition-transform ${expandedCats.PLOT ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
@@ -600,17 +540,11 @@
                                     <div className="p-6 grid grid-cols-2 md:grid-cols-7 gap-6 animate-in slide-in-from-top-1 duration-200 text-xs">
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Min</label>
-                                            <input type="text" value={marginInputs.xmin} 
-                                                onChange={e => setMarginInputs({...marginInputs, xmin: e.target.value})} 
-                                                className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmin ? 'input-error' : ''}`} 
-                                            />
+                                            <input type="text" value={marginInputs.xmin} onChange={e => setMarginInputs({...marginInputs, xmin: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmin ? 'input-error' : ''}`} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Max</label>
-                                            <input type="text" value={marginInputs.xmax} 
-                                                onChange={e => setMarginInputs({...marginInputs, xmax: e.target.value})} 
-                                                className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmax ? 'input-error' : ''}`} 
-                                            />
+                                            <input type="text" value={marginInputs.xmax} onChange={e => setMarginInputs({...marginInputs, xmax: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono ${!isMarginValid.xmax ? 'input-error' : ''}`} />
                                         </div>
                                         <div className="flex flex-col justify-end pb-1">
                                             <label className="flex items-center gap-2 cursor-pointer">
@@ -620,17 +554,11 @@
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min</label>
-                                            <input type="text" value={marginInputs.ymin} disabled={plotOpt.autoY} 
-                                                onChange={e => setMarginInputs({...marginInputs, ymin: e.target.value})} 
-                                                className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymin && !plotOpt.autoY ? 'input-error' : ''}`} 
-                                            />
+                                            <input type="text" value={marginInputs.ymin} disabled={plotOpt.autoY} onChange={e => setMarginInputs({...marginInputs, ymin: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymin && !plotOpt.autoY ? 'input-error' : ''}`} />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max</label>
-                                            <input type="text" value={marginInputs.ymax} disabled={plotOpt.autoY} 
-                                                onChange={e => setMarginInputs({...marginInputs, ymax: e.target.value})} 
-                                                className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymax && !plotOpt.autoY ? 'input-error' : ''}`} 
-                                            />
+                                            <input type="text" value={marginInputs.ymax} disabled={plotOpt.autoY} onChange={e => setMarginInputs({...marginInputs, ymax: e.target.value})} className={`w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50 ${!isMarginValid.ymax && !plotOpt.autoY ? 'input-error' : ''}`} />
                                         </div>
                                         <div className="flex flex-col justify-end pb-1">
                                             <label className="flex items-center gap-2 cursor-pointer">
@@ -648,7 +576,6 @@
                         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-50 backdrop-blur-md">
                             <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full border-t-8 border-blue-600 animate-in fade-in zoom-in duration-300">
                                 <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight mb-2">Vink 2011 Switch</h2>
-                                <p className="text-[10px] text-slate-500 mb-6 font-bold uppercase">Transition parameters for sticky optically-thick winds.</p>
                                 <div className="space-y-4">
                                     {['mdot', 'L', 'M'].map(key => (
                                         <div key={key}>
