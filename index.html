@@ -224,7 +224,7 @@
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
             const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
 
-            // --- Scoped Constants ---
+            // --- Derived Values & Scoped Constants ---
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
             const xLabel = useMemo(() => axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)', [axis]);
@@ -294,18 +294,28 @@
                 }
             }, [axis, viewMode]);
 
-            const getShadeBounds = (rMin_log, rMax_log) => {
+            const getShadeBounds = (rMin_log, rMax_log, customScale = null) => {
                 const curXmin = parseFloat(marginInputs.xmin); const curXmax = parseFloat(marginInputs.xmax);
-                const dMin = viewMode === 'hr' ? 3.4 : Math.min(curXmin, curXmax);
-                const dMax = viewMode === 'hr' ? 5.3 : Math.max(curXmin, curXmax);
+                const currentAxis = customScale || axis;
+                let dMin, dMax;
+
+                if (viewMode === 'hr' && currentAxis === 'temp') {
+                    dMin = 3.4; dMax = 5.3;
+                } else if (viewMode === 'hr' && currentAxis === 'metal') {
+                    dMin = -3.0; dMax = 0.5;
+                } else {
+                    dMin = Math.min(curXmin, curXmax); dMax = Math.max(curXmin, curXmax);
+                }
+
                 const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
                 const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
                 const vStart = Math.max(effectiveRMin, dMin); const vEnd = Math.min(effectiveRMax, dMax);
                 if (vStart >= vEnd) return null;
+                
                 return {
-                    x1: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, vStart) : vStart,
-                    x2: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, vEnd) : vEnd,
-                    mid: (plotOpt.linearX && viewMode !== 'hr') ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2
+                    x1: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vStart) : vStart,
+                    x2: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vEnd) : vEnd,
+                    mid: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2
                 };
             };
 
@@ -416,7 +426,7 @@
                                         <LineChart data={plotData} margin={{ top: 20, right: 20, left: 10, bottom: 100 }}>
                                             <defs>
                                                 <pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                                    <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2" opacity="0.2" />
+                                                    <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.4" />
                                                 </pattern>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -443,10 +453,11 @@
                                             />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '14px', fontWeight: 'bold' }} />
                                             
+                                            {/* REFERENCE LAYERS */}
                                             {options.moreDetails && (viewMode === 'hr' || axis === 'temp') && (
                                                 <React.Fragment>
                                                     {(() => {
-                                                        const rsg = getShadeBounds(-100, Math.log10(4000));
+                                                        const rsg = getShadeBounds(-100, Math.log10(4000), 'temp');
                                                         return rsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
                                                                 <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
@@ -455,7 +466,7 @@
                                                         );
                                                     })()}
                                                     {(() => {
-                                                        const ysg = getShadeBounds(Math.log10(4000), Math.log10(8000));
+                                                        const ysg = getShadeBounds(Math.log10(4000), Math.log10(8000), 'temp');
                                                         return ysg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
                                                                 <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
@@ -464,7 +475,7 @@
                                                         );
                                                     })()}
                                                     {(() => {
-                                                        const bsg = getShadeBounds(Math.log10(8000), Math.log10(12000));
+                                                        const bsg = getShadeBounds(Math.log10(8000), Math.log10(12000), 'temp');
                                                         return bsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
                                                                 <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
@@ -473,7 +484,7 @@
                                                         );
                                                     })()}
                                                     {(() => {
-                                                        const wn = getShadeBounds(Math.log10(30000), 5.0);
+                                                        const wn = getShadeBounds(Math.log10(30000), 5.0, 'temp');
                                                         return wn && params.logL > 5.1 && (
                                                             <React.Fragment>
                                                                 <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} />
@@ -482,7 +493,7 @@
                                                         );
                                                     })()}
                                                     {(() => {
-                                                        const wr = getShadeBounds(5.0, 100);
+                                                        const wr = getShadeBounds(5.0, 100, 'temp');
                                                         return wr && params.logL > 5.1 && (
                                                             <React.Fragment>
                                                                 <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
@@ -492,6 +503,40 @@
                                                     })()}
                                                 </React.Fragment>
                                             )}
+
+                                            {/* METALLICITY POP REGIMES */}
+                                            {options.moreDetails && viewMode === 'dependencies' && axis === 'metal' && (
+                                                <React.Fragment>
+                                                    {(() => {
+                                                        const p3 = getShadeBounds(-100, -11, 'metal');
+                                                        return p3 && (
+                                                            <React.Fragment>
+                                                                <ReferenceArea x1={p3.x1} x2={p3.x2} fill="#94a3b8" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceLine x={p3.mid} stroke="transparent" label={{ value: "Pop III", position: "top", fontSize: 14, fontWeight: "bold", fill: "#475569" }} />
+                                                            </React.Fragment>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const p2 = getShadeBounds(-11, -5, 'metal');
+                                                        return p2 && (
+                                                            <React.Fragment>
+                                                                <ReferenceArea x1={p2.x1} x2={p2.x2} fill="#64748b" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceLine x={p2.mid} stroke="transparent" label={{ value: "Pop II", position: "top", fontSize: 14, fontWeight: "bold", fill: "#334155" }} />
+                                                            </React.Fragment>
+                                                        );
+                                                    })()}
+                                                    {(() => {
+                                                        const p1 = getShadeBounds(-5, 100, 'metal');
+                                                        return p1 && (
+                                                            <React.Fragment>
+                                                                <ReferenceArea x1={p1.x1} x2={p1.x2} fill="#1e293b" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceLine x={p1.mid} stroke="transparent" label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />
+                                                            </React.Fragment>
+                                                        );
+                                                    })()}
+                                                </React.Fragment>
+                                            )}
+
                                             {options.moreDetails && viewMode === 'dependencies' && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />}
                                             {viewMode === 'dependencies' && Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
                                                 <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={meta.cat === 'THIN' ? 3.5 : 2.5} dot={false} animationDuration={300} connectNulls={false} />
@@ -499,13 +544,18 @@
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
-                                {viewMode === 'dependencies' && (
-                                    <div className="flex justify-center gap-4 mt-8 border-t pt-4 shrink-0">
-                                        {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
-                                            <button key={opt.id} onClick={() => setAxis(opt.id)} className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{opt.label}</button>
-                                        ))}
-                                    </div>
-                                )}
+                                <div className="flex justify-center gap-4 mt-8 border-t pt-4 shrink-0">
+                                    {[{ id: 'temp', label: 'log (Teff / K)' }, { id: 'lum', label: 'log (L / Lsun)' }, { id: 'metal', label: 'log (Z / Zsun)' }].map(opt => (
+                                        <button 
+                                            key={opt.id} 
+                                            disabled={viewMode === 'hr'}
+                                            onClick={() => setAxis(opt.id)} 
+                                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${viewMode === 'hr' ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50' : (axis === opt.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 bg-white p-6 rounded-2xl border shadow-sm border-slate-200 shrink-0">
