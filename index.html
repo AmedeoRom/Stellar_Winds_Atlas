@@ -222,9 +222,9 @@
             
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
-            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false, linearY: false });
+            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 800, autoY: true, linearX: false, linearY: false });
 
-            // --- Derived Values & Scoped Constants ---
+            // --- Scoped derived constants ---
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
             const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
             const xLabel = useMemo(() => axis === 'temp' ? 'log (Teff / K)' : axis === 'lum' ? 'log (L / Lsun)' : 'log (Z / Zsun)', [axis]);
@@ -293,17 +293,19 @@
                     let newX = { min: "3.5", max: "5.3" };
                     if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
                     else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
-                    setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
+                    setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max, ymin: "-11", ymax: "-3"}));
                 } else {
                     setMarginInputs(prev => ({...prev, xmin: "3.4", xmax: "5.3", ymin: "3.5", ymax: "7.0"}));
+                    setActiveModels({}); // Uncheck all models on switch to HR mode
                 }
             }, [axis, viewMode]);
+
+            const translateVal = (val) => plotOpt.linearY ? Math.pow(10, val) : val;
 
             const getShadeBounds = (rMin_log, rMax_log, customScale = null) => {
                 const curXmin = parseFloat(marginInputs.xmin); const curXmax = parseFloat(marginInputs.xmax);
                 const currentAxis = customScale || axis;
                 let dMin, dMax;
-
                 if (viewMode === 'hr' && currentAxis === 'temp') {
                     dMin = 3.4; dMax = 5.3;
                 } else if (viewMode === 'hr' && currentAxis === 'metal') {
@@ -311,12 +313,10 @@
                 } else {
                     dMin = Math.min(curXmin, curXmax); dMax = Math.max(curXmin, curXmax);
                 }
-
                 const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
                 const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
                 const vStart = Math.max(effectiveRMin, dMin); const vEnd = Math.min(effectiveRMax, dMax);
                 if (vStart >= vEnd) return null;
-                
                 return {
                     x1: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vStart) : vStart,
                     x2: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, vEnd) : vEnd,
@@ -324,9 +324,6 @@
                 };
             };
 
-            const translateVal = (val) => plotOpt.linearY ? Math.pow(10, val) : val;
-
-            // Dynamic HD limit piecewise
             const dynHDLimitLog = Math.max(5.5, 5 + 2 * (params.logT - 3.7618));
             const dynHDLimit = translateVal(dynHDLimitLog);
             
@@ -463,6 +460,7 @@
                                             />
                                             <YAxis 
                                                 domain={[parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} 
+                                                allowDataOverflow={true}
                                                 stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }}
                                                 tickFormatter={v => viewMode === 'hr' ? v.toFixed(1) : (plotOpt.linearY ? v.toExponential(1) : v.toFixed(1))}
                                                 label={{ value: viewMode === 'hr' ? (plotOpt.linearY ? 'L / Lsun' : 'log (L / Lsun)') : (plotOpt.linearY ? 'M-dot [Msun/yr]' : 'log M-dot [Msun/yr]'), angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
@@ -559,7 +557,7 @@
 
                                             {/* HD LIMIT ON HR DIAGRAM (Piecewise) */}
                                             {viewMode === 'hr' && (
-                                                <Line data={hrHDLimitData} dataKey="l" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} dot={false} legendType="none" />
+                                                <Line data={hrHDLimitData} dataKey="l" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} dot={false} legendType="none" isAnimationActive={false} />
                                             )}
 
                                             {/* DYNAMIC HD LIMIT ON 1D LOG-L PLOT */}
