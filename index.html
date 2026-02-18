@@ -47,17 +47,10 @@
         const { useState, useMemo, useEffect } = React;
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, Label } = window.Recharts;
 
-        // --- CONSTANTS ---
-        const LSUN_CGS = 3.826e33; 
-        const RSUN_CGS = 6.9599e10; 
-        const MSUN_CGS = 1.989e33;
-        const G_CGS = 6.67430e-8;
-        const Z_SUN_DEF = 0.0142;
+        // --- PHYSICS CONSTANTS & UTILS ---
         const log10 = (x) => Math.log10(x > 1e-45 ? x : 1e-45);
-
-        // --- PHYSICS UTILS ---
         const calcRadius = (L_sol, T_eff) => Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
-        const calcLogG = (M_sol, R_sol) => Math.log10(G_CGS * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
+        const calcLogG = (M_sol, R_sol) => Math.log10(6.67430e-8 * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
 
         const CATEGORIES = {
             LOW: { label: "Low-Mass Winds", color: "slate", warning: "Restricted to luminosity < cutoff." },
@@ -76,9 +69,9 @@
             V17: { name: "Vink 2017", cat: "THIN", color: "#7c3aed", dash: "0", year: 2017 },
             VS21: { name: "Vink & Sander 2021", cat: "THIN", color: "#2563eb", dash: "5 5", year: 2021 },
             Bj23: { name: "Bjorklund+ 2023", cat: "THIN", color: "#7c3aed", dash: "5 5", year: 2023 },
-            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#0ea5e9", dash: "0", year: 2023, warning: "Restricted to log(g) > 3.2." },
+            GM23: { name: "Gormaz-Matamala+ 2023", cat: "THIN", color: "#0ea5e9", dash: "0", year: 2023 },
             K24: { name: "Krticka+ 2024", cat: "THIN", color: "#4f46e5", dash: "0", year: 2024, warning: "Restricted to Z >= 0.2 Zsun." },
-            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025, warning: "Restricted to 10 - 45 kK and Z < Zsun." },
+            K25: { name: "Krticka+ 2025", cat: "THIN", color: "#4f46e5", dash: "5 5", year: 2025 },
             Sa25: { name: "Sabhahit+ 2025", cat: "THIN", color: "#a855f7", dash: "0", year: 2025.2 },
             P25: { name: "Pauli+ 2025", cat: "THIN", color: "#312e81", dash: "0", year: 2025.3 },
             L89: { name: "Langer 1989", cat: "THICK", color: "#064e3b", dash: "0", year: 1989 },
@@ -132,8 +125,8 @@
             Bj23: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin) ? null : -5.52 + 2.39 * log10(p.L/1e6) - 1.48 * log10(p.M/45) + 2.12 * log10(p.T/4.5e4) + (0.75 - 1.87 * log10(p.T/4.5e4)) * log10(p.Z/s.Zsun),
             K24: (p, s) => {
                 if (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin || (p.Z / s.Zsun < 0.2)) return null;
-                const lZ = log10(p.Z/s.Zsun); const tk = p.T/1000.0;
-                return -13.82 + 0.358*lZ + (1.52 - 0.11*lZ)*(log10(p.L) - 6.0) + 13.82 * log10((1.0 + 0.73*lZ)*Math.exp(-Math.pow((tk - 14.16)/3.58, 2)) + 3.84*Math.exp(-Math.pow((tk - 37.9)/56.5, 2)));
+                const tk = p.T/1000.0;
+                return -13.82 + 0.358*log10(p.Z/s.Zsun) + (1.52 - 0.11*log10(p.Z/s.Zsun))*(log10(p.L) - 6.0) + 13.82 * log10((1.0 + 0.73*log10(p.Z/s.Zsun))*Math.exp(-Math.pow((tk - 14.16)/3.58, 2)) + 3.84*Math.exp(-Math.pow((tk - 37.9)/56.5, 2)));
             },
             K25: (p, s) => {
                 if (log10(p.L) <= s.lumCutoff || log10(p.T) > s.thinTMax || log10(p.T) < s.thinTMin || p.T < 10000 || p.T > 45000) return null;
@@ -221,7 +214,7 @@
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
-            const [options, setOptions] = useState({ dJ88ZCorr: false,NdJ90ZCorr_cool: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: true });
+            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr_cool: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: true });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
@@ -246,6 +239,9 @@
                 lumCutoff: !isNaN(parseFloat(optionInputs.lumCutoff))
             }), [optionInputs]);
 
+            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
+            const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
+
             useEffect(() => {
                 const update = {};
                 Object.entries(optionInputs).forEach(([key, val]) => {
@@ -253,9 +249,6 @@
                 });
                 setParams(prev => ({...prev, ...update}));
             }, [optionInputs]);
-
-            const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
-            const needsInitialMass = useMemo(() => Object.keys(activeModels).some(k => activeModels[k] && MODEL_META[k].reqMini), [activeModels]);
 
             const plotData = useMemo(() => {
                 if (!isMarginValid.all) return []; 
@@ -315,9 +308,25 @@
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-800">
-                    <header className="px-6 py-3 bg-white border-b flex justify-between items-center shadow-sm z-10">
-                        <h1 className="text-xl font-bold italic text-slate-700">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v1.0.0</span></h1>
-                        <a href="https://github.com/AmedeoRom" className="text-xs text-slate-400 hover:text-blue-600 transition" target="_blank">GitHub Profile</a>
+                    <header className="px-6 py-3 bg-white border-b grid grid-cols-3 items-center shadow-sm z-10">
+                        <div className="flex items-center">
+                            <h1 className="text-xl font-bold italic text-slate-700 whitespace-nowrap">Stellar Wind Atlas <span className="text-xs font-normal text-slate-400 not-italic ml-2">v1.0.0</span></h1>
+                        </div>
+                        <div className="text-center">
+                            <a href="https://github.com/AmedeoRom/Stellar_Winds_Atlas/tree/main" target="_blank" className="text-sm font-bold text-blue-600 hover:underline">
+                                MESA Models and Argus Automated Wind Builder Here
+                            </a>
+                        </div>
+                        <div className="flex justify-end items-center gap-4">
+                            <a href="https://github.com/AmedeoRom" target="_blank">
+                                <img
+                                    src="Atlas_logo.png"
+                                    alt="GitHub Profile"
+                                    className="h-10 w-10 rounded-md shadow-sm hover:scale-110 transition-transform"
+                                    onerror="this.style.display='none'"
+                                />
+                            </a>
+                        </div>
                     </header>
 
                     <main className="flex-1 flex overflow-hidden">
@@ -377,7 +386,7 @@
                                                             </div>
                                                         </div>
                                                     </label>
-                                                     {key === 'dJ88' && activeModels.dJ88 && (
+                                                    {key === 'dJ88' && activeModels.dJ88 && (
                                                         <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
                                                             <label className="flex items-center gap-2 cursor-pointer group">
                                                                 <input type="checkbox" checked={options.dJ88ZCorr} onChange={e => setOptions({...options, dJ88ZCorr: e.target.checked})} className="w-3 h-3 rounded" />
@@ -385,7 +394,6 @@
                                                             </label>
                                                         </div>
                                                     )}
-
                                                     {key === 'NdJ90' && activeModels.NdJ90 && (
                                                         <div className="mt-2 ml-7 pl-2 border-l border-slate-200">
                                                             <label className="flex items-center gap-2 cursor-pointer group">
@@ -630,12 +638,6 @@
                                                 <span className="text-[10px] font-black text-slate-400 uppercase">Auto-fit Y</span>
                                             </label>
                                         </div>
-                                        {/*
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Height (px)</label>
-                                            <input type="number" step="10" value={plotOpt.height} onChange={e => setPlotOpt({...plotOpt, height: parseInt(e.target.value)})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" />
-                                        </div>
-                                        */}
                                     </div>
                                 )}
                             </div>
