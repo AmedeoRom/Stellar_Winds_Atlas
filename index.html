@@ -47,7 +47,7 @@
         const { useState, useMemo, useEffect } = React;
         const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceArea, ReferenceLine, Label } = window.Recharts;
 
-        // --- UTILS ---
+        // --- PHYSICS CONSTANTS & UTILS ---
         const log10 = (x) => Math.log10(x > 1e-45 ? x : 1e-45);
         const calcRadius = (L_sol, T_eff) => Math.sqrt(L_sol) / Math.pow(T_eff / 5778, 2);
         const calcLogG = (M_sol, R_sol) => Math.log10(6.67430e-8 * (M_sol * 1.989e33) / Math.pow(R_sol * 6.9599e10, 2));
@@ -222,7 +222,7 @@
             
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0" });
-            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false });
+            const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 720, autoY: true, linearX: false, linearY: false });
 
             // --- Derived Values & Scoped Constants ---
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
@@ -266,24 +266,27 @@
                     Object.keys(activeModels).forEach(k => {
                         if (activeModels[k]) {
                             const val = (k === 'V11') ? recipes[k](p, vinkSettings) : recipes[k](p, params, options);
-                            if (val !== null && !isNaN(val)) point[k] = val;
+                            if (val !== null && !isNaN(val)) {
+                                point[k] = plotOpt.linearY ? Math.pow(10, val) : val;
+                            }
                         }
                     });
                     data.push(point);
                 }
                 return data;
-            }, [axis, params, activeModels, vinkSettings, marginInputs, options, isMarginValid, viewMode]);
+            }, [axis, params, activeModels, vinkSettings, marginInputs, options, isMarginValid, viewMode, plotOpt.linearY]);
 
             useEffect(() => {
-                if (plotOpt.autoY && plotData.length > 0) {
+                if (plotOpt.autoY && plotData.length > 0 && viewMode !== 'hr') {
                     let min = Infinity, max = -Infinity;
                     plotData.forEach(p => { Object.keys(p).forEach(k => { if (k !== 'x' && k !== 'linearX') { if (p[k] < min) min = p[k]; if (p[k] > max) max = p[k]; } }); });
                     if (min !== Infinity) {
-                        const newYMin = Math.floor(min - 0.5); const newYMax = Math.ceil(max + 0.5);
+                        const newYMin = plotOpt.linearY ? min * 0.9 : Math.floor(min - 0.5);
+                        const newYMax = plotOpt.linearY ? max * 1.1 : Math.ceil(max + 0.5);
                         setMarginInputs(prev => ({...prev, ymin: newYMin.toString(), ymax: newYMax.toString()}));
                     }
                 }
-            }, [plotData, plotOpt.autoY]);
+            }, [plotData, plotOpt.autoY, plotOpt.linearY, viewMode]);
 
             useEffect(() => {
                 if (viewMode === 'dependencies') {
@@ -291,6 +294,8 @@
                     if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
                     else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
                     setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max}));
+                } else {
+                    setMarginInputs(prev => ({...prev, xmin: "3.4", xmax: "5.3", ymin: "3.5", ymax: "7.0"}));
                 }
             }, [axis, viewMode]);
 
@@ -318,6 +323,20 @@
                     mid: (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp') ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2
                 };
             };
+
+            const translateVal = (val) => plotOpt.linearY ? Math.pow(10, val) : val;
+
+            // Dynamic HD limit piecewise
+            const dynHDLimitLog = Math.max(5.5, 5 + 2 * (params.logT - 3.7618));
+            const dynHDLimit = translateVal(dynHDLimitLog);
+            
+            const hrHDLimitData = useMemo(() => {
+                const pts = [];
+                const crossingLogT = 4.0118; 
+                for(let t=5.3; t>=crossingLogT; t-=0.02) { pts.push({x: t, l: translateVal(5 + 2*(t - 3.7618))}); }
+                for(let t=crossingLogT; t>=3.4; t-=0.05) { pts.push({x: t, l: translateVal(5.5)}); }
+                return pts;
+            }, [plotOpt.linearY]);
 
             return (
                 <div className="flex flex-col h-screen overflow-hidden bg-slate-50 text-slate-800">
@@ -423,33 +442,34 @@
                             <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-col shrink-0" style={{ height: plotOpt.height + 'px' }}>
                                 <div className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={plotData} margin={{ top: 20, right: 20, left: 10, bottom: 100 }}>
+                                        <LineChart margin={{ top: 20, right: 20, left: 10, bottom: 100 }}>
                                             <defs>
                                                 <pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                                    <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.4" />
+                                                    <line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.45" />
                                                 </pattern>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis 
-                                                dataKey={plotOpt.linearX ? "linearX" : "x"} 
+                                                dataKey={viewMode === 'hr' ? "x" : (plotOpt.linearX ? "linearX" : "x")} 
                                                 type="number" 
                                                 domain={viewMode === 'hr' ? [3.4, 5.3] : [
                                                     plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmin)) : parseFloat(marginInputs.xmin), 
                                                     plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmax)) : parseFloat(marginInputs.xmax)
                                                 ]} 
                                                 reversed={viewMode === 'hr' || axis === 'temp'} 
-                                                tickFormatter={v => (plotOpt.linearX && axis !== 'temp' && viewMode !== 'hr') ? Math.round(v).toLocaleString() : v.toFixed(1)} 
+                                                tickFormatter={v => (viewMode === 'hr') ? v.toFixed(1) : (plotOpt.linearX && axis !== 'temp' ? Math.round(v).toLocaleString() : v.toFixed(1))} 
                                                 stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }}
                                                 label={{ value: viewMode === 'hr' ? 'log (Teff / K)' : (plotOpt.linearX ? xLabel.replace('log ', '') : xLabel), position: 'insideBottom', offset: 0, fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
                                             />
                                             <YAxis 
-                                                domain={viewMode === 'hr' ? [3, 7] : [parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} 
+                                                domain={[parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} 
                                                 stroke="#1e293b" strokeWidth={2} fontSize={12} tick={{ fontWeight: 600 }}
-                                                label={{ value: viewMode === 'hr' ? 'log (L / Lsun)' : 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
+                                                tickFormatter={v => viewMode === 'hr' ? v.toFixed(1) : (plotOpt.linearY ? v.toExponential(1) : v.toFixed(1))}
+                                                label={{ value: viewMode === 'hr' ? (plotOpt.linearY ? 'L / Lsun' : 'log (L / Lsun)') : (plotOpt.linearY ? 'M-dot [Msun/yr]' : 'log M-dot [Msun/yr]'), angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} 
                                             />
                                             <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} 
                                                 labelFormatter={(v) => typeof v === 'number' ? v.toFixed(1) : v}
-                                                formatter={(v) => typeof v === 'number' ? v.toFixed(2) : v}
+                                                formatter={(v) => typeof v === 'number' ? (plotOpt.linearY ? v.toExponential(2) : v.toFixed(2)) : v}
                                             />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '14px', fontWeight: 'bold' }} />
                                             
@@ -460,7 +480,7 @@
                                                         const rsg = getShadeBounds(-100, Math.log10(4000), 'temp');
                                                         return rsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={rsg.x1} x2={rsg.x2} fill="#dc2626" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={rsg.mid} stroke="transparent" label={{ value: "RSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#dc2626" }} />
                                                             </React.Fragment>
                                                         );
@@ -469,7 +489,7 @@
                                                         const ysg = getShadeBounds(Math.log10(4000), Math.log10(8000), 'temp');
                                                         return ysg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={ysg.x1} x2={ysg.x2} fill="#eab308" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={ysg.mid} stroke="transparent" label={{ value: "YSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#ca8a04" }} />
                                                             </React.Fragment>
                                                         );
@@ -478,7 +498,7 @@
                                                         const bsg = getShadeBounds(Math.log10(8000), Math.log10(12000), 'temp');
                                                         return bsg && params.logL > params.lumCutoff && (
                                                             <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? params.lumCutoff : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(params.lumCutoff) : null} x1={bsg.x1} x2={bsg.x2} fill="#2563eb" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={bsg.mid} stroke="transparent" label={{ value: "BSG", position: "top", fontSize: 14, fontWeight: "bold", fill: "#2563eb" }} />
                                                             </React.Fragment>
                                                         );
@@ -487,7 +507,7 @@
                                                         const wn = getShadeBounds(Math.log10(30000), 5.0, 'temp');
                                                         return wn && params.logL > 5.1 && (
                                                             <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(5.1) : null} x1={wn.x1} x2={wn.x2} fill="url(#pattern-dashed)" isFront={false} />
                                                                 <ReferenceLine x={wn.mid} stroke="transparent" label={{ value: "WN", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                             </React.Fragment>
                                                         );
@@ -496,7 +516,7 @@
                                                         const wr = getShadeBounds(5.0, 100, 'temp');
                                                         return wr && params.logL > 5.1 && (
                                                             <React.Fragment>
-                                                                <ReferenceArea y1={viewMode === 'hr' ? 5.1 : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
+                                                                <ReferenceArea y1={viewMode === 'hr' ? translateVal(5.1) : null} x1={wr.x1} x2={wr.x2} fill="#059669" fillOpacity={0.1} isFront={false} />
                                                                 <ReferenceLine x={wr.mid} stroke="transparent" label={{ value: "Canonical WR", position: "top", fontSize: 14, fontWeight: "bold", fill: "#059669" }} />
                                                             </React.Fragment>
                                                         );
@@ -537,9 +557,18 @@
                                                 </React.Fragment>
                                             )}
 
-                                            {options.moreDetails && viewMode === 'dependencies' && axis === 'lum' && <ReferenceLine x={5.5} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />}
+                                            {/* HD LIMIT ON HR DIAGRAM (Piecewise) */}
+                                            {viewMode === 'hr' && (
+                                                <Line data={hrHDLimitData} dataKey="l" stroke="#64748b" strokeDasharray="5 5" strokeWidth={2} dot={false} legendType="none" />
+                                            )}
+
+                                            {/* DYNAMIC HD LIMIT ON 1D LOG-L PLOT */}
+                                            {options.moreDetails && viewMode === 'dependencies' && axis === 'lum' && (
+                                                <ReferenceLine x={dynHDLimit} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 14, fontWeight: "bold", fill: "#64748b" }} />
+                                            )}
+                                            
                                             {viewMode === 'dependencies' && Object.entries(MODEL_META).map(([key, meta]) => activeModels[key] && (
-                                                <Line key={key} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={meta.cat === 'THIN' ? 3.5 : 2.5} dot={false} animationDuration={300} connectNulls={false} />
+                                                <Line key={key} data={plotData} type="monotone" dataKey={key} stroke={meta.color} strokeDasharray={meta.dash} strokeWidth={meta.cat === 'THIN' ? 3.5 : 2.5} dot={false} animationDuration={300} connectNulls={false} />
                                             ))}
                                         </LineChart>
                                     </ResponsiveContainer>
@@ -614,6 +643,12 @@
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={plotOpt.autoY} onChange={e => setPlotOpt({...plotOpt, autoY: e.target.checked})} className="w-4 h-4" />
                                                 <span className="text-[10px] font-black text-slate-400 uppercase">Auto-fit Y</span>
+                                            </label>
+                                        </div>
+                                        <div className="flex flex-col justify-end pb-1">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={plotOpt.linearY} onChange={e => setPlotOpt({...plotOpt, linearY: e.target.checked})} className="w-4 h-4" />
+                                                <span className="text-[10px] font-black text-slate-400 uppercase">Linear Y</span>
                                             </label>
                                         </div>
                                     </div>
