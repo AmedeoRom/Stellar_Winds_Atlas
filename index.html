@@ -242,8 +242,6 @@
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
             const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-            const [feedbackName, setFeedbackName] = useState('');
-            const [feedbackSurname, setFeedbackSurname] = useState('');
             
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0", hrResolution: "40" });
@@ -620,38 +618,11 @@
                                 </button>
                             </div>
                             <div className="p-5">
-                                <p className="text-xs text-slate-600 font-medium mb-4 leading-relaxed">Probably many things can be improved. I am just one person. If you have any feedback feel free to send via the following form!</p>
-                                {/* Note: Replace with actual email. 
-                                    If you want this to send silently in the background without opening the user's mail client, 
-                                    you can change the action URL below to a free service like Formspree (e.g., https://formspree.io/f/your_id) */}
-                                <form action={`mailto:amedeo.romagnolo@uni-heidelberg.de?subject=${encodeURIComponent(`[Stellar Winds Atlas Feedback -- ${feedbackName} ${feedbackSurname}]`)}`} method="POST" encType="text/plain" className="space-y-3">
-                                    <div className="flex gap-3">
-                                        <div className="w-1/2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Name</label>
-                                            <input type="text" name="Name" value={feedbackName} onChange={(e) => setFeedbackName(e.target.value)} required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-                                        </div>
-                                        <div className="w-1/2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase">Surname</label>
-                                            <input type="text" name="Surname" value={feedbackSurname} onChange={(e) => setFeedbackSurname(e.target.value)} required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase">Institution <span className="text-slate-300 font-normal lowercase">(optional)</span></label>
-                                        <input type="text" name="Institution" className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase">Email Address</label>
-                                        <input type="email" name="Email" required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase">Message</label>
-                                        <textarea name="Message" required rows="3" className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none custom-scrollbar transition-all"></textarea>
-                                    </div>
-                                    <button type="submit" className="w-full py-2.5 mt-2 bg-blue-600 text-white rounded-lg font-black uppercase tracking-wider text-xs hover:bg-blue-700 transition-colors shadow-md active:scale-95 flex items-center justify-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                        Send Mail
-                                    </button>
-                                </form>
+                                <p className="text-xs text-slate-600 font-medium mb-4 leading-relaxed">Probably many things can be improved. I am just one person. If you have any feedback, feel free to send an email!</p>
+                                <div className="mt-2 p-5 bg-slate-50 border border-slate-200 rounded-xl text-center shadow-inner">
+                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-wide mb-3">Feel free to send an email to</p>
+                                    <p className="text-sm font-mono font-bold text-blue-600 select-all">amedeo.romagnolo[at]uni-heidelberg.de</p>
+                                </div>
                             </div>
                         </div>
                     )}
