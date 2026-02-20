@@ -242,6 +242,8 @@
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
             const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+            const [feedbackName, setFeedbackName] = useState('');
+            const [feedbackSurname, setFeedbackSurname] = useState('');
             
             const [marginInputs, setMarginInputs] = useState({ xmin: "3.5", xmax: "5.3", ymin: "-11", ymax: "-3" });
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0", hrResolution: "40" });
@@ -622,15 +624,15 @@
                                 {/* Note: Replace with actual email. 
                                     If you want this to send silently in the background without opening the user's mail client, 
                                     you can change the action URL below to a free service like Formspree (e.g., https://formspree.io/f/your_id) */}
-                                <form action="mailto:amedeo.romagnolo@uni-heidelberg.de" method="POST" encType="text/plain" className="space-y-3">
+                                <form action={`mailto:amedeo.romagnolo@uni-heidelberg.de?subject=${encodeURIComponent(`[Stellar Winds Atlas Feedback -- ${feedbackName} ${feedbackSurname}]`)}`} method="POST" encType="text/plain" className="space-y-3">
                                     <div className="flex gap-3">
                                         <div className="w-1/2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Name</label>
-                                            <input type="text" name="Name" required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                                            <input type="text" name="Name" value={feedbackName} onChange={(e) => setFeedbackName(e.target.value)} required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                                         </div>
                                         <div className="w-1/2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase">Surname</label>
-                                            <input type="text" name="Surname" required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                                            <input type="text" name="Surname" value={feedbackSurname} onChange={(e) => setFeedbackSurname(e.target.value)} required className="w-full mt-1 p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                                         </div>
                                     </div>
                                     <div>
