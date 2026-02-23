@@ -29,7 +29,7 @@ scheme_id = "24.0"
 info = wind_map['schemes'].get(scheme_id)
 
 if info:
-    print(f"This is the {info['label']} model ({info['author']})")
+    print(f"This is the {info['label']} model ({info['author']} {info['year']})")
     print(f"Category: {info['category']}")
   ```
 This makes it much easier to keep track of which mass-loss recipe is active at different stages of the stellar evolution without having to check the Fortran source code every time.
