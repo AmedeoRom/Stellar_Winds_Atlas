@@ -252,11 +252,12 @@
         "id": "V01",
         "ref": "Vink et al. 2001",
         "note": "Theoretical, includes bistability jump",
+        "note_2": "XShootU IV (Sander et al. 2024) finds empirical rates for LMC O-supergiants consistent with V01 ONLY if clumping is moderate (f_cl < 5). Stronger clumping implies lower rates.",
         "parameter_space": "1/30, 1/10, 1/3, 1, 3, 10 Zsolar. Mass: 20, 40, 60 Msun grid. No clumping.",
         "z_solar_calibration": 0.019,
         "warning": "XShootU XIII (Alkousa et al. 2025) and IX (Verhamme et al. 2024) find NO evidence for a bi-stability jump in mass-loss rates for LMC B supergiants. XShootU VII (Bernini-Peron et al. 2024) confirms a jump in v_inf but not Mdot for SMC B supergiants.",
         "warning_2": "The Vink & Graefener (2012) model-independent study supporting this mass loss at the transition between optically thin and thick winds was based on a small sample (~20 stars in Arches cluster) and only checked the mass loss for their current features (i.e. a snapshot), not the evolutionary history. Pauli et al. (2025) find significantly lower empirical rates for transition stars.",
-        "note_2": "XShootU IV (Sander et al. 2024) finds empirical rates for LMC O-supergiants consistent with V01 ONLY if clumping is moderate (f_cl < 5). Stronger clumping implies lower rates.",
+        "warning_3": "This model should be used in parallel with vterm_type = 'Lamers95' in run_star_extras for consistency with their formulation of the bistability jump",
         "url": "http://adsabs.harvard.edu/abs/2001A%26A...369..574V"
       },
       {
@@ -276,28 +277,30 @@
         "z_solar_calibration": 0.014,
         "warning": "This should be used only above roughly 0.2Zsun",
         "warning_2": "Existence and effective temperature initiation of bistability jump were not observationally verified",
+        "warning_3": "This model should be used in parallel with vterm_type = 'Kritcka25' in run_star_extras for consistency with their formulation",
         "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..29K"
       },
       {
         "id": "K25",
         "ref": "Krticka et al. 2025",
         "note": "Theoretical: includes bistability jump near Zsolar, but not at low metallicities",
-        "note_2": "For self-consistency, vinf_type should be set to 'Kritcka25' to properly calculate terminal velocities",
         "parameter_space": "Metallicity: From Zsolar to 0.01 Zsolar. 10 to 45 kK. OB stars. Finds steepening of Z-dependence (alpha > 1) for Z <= 0.1 Zsolar due to CNO driving.",
         "z_solar_calibration": 0.014,
         "warning": "This should be used only at Z <= Zsun",
         "warning_2": "Originally, when extrapolated beyond the effective temperature parameter space it can heavily underestimate mass loss (from personal experience of the dev Amedeo Romagnolo when testing it at Zsun). Clamping to the extremes is applied to avoid for underestimation.",
         "warning_3": "Existence and effective temperature initiation of bistability jump were not observationally verified",
+        "warning_4": "This model should be used in parallel with vterm_type = 'Kritcka25' in run_star_extras for consistency with their formulation",
         "url": "https://ui.adsabs.harvard.edu/abs/2025arXiv250821702K",
-        "url": "The more detailed fits for this mass-loss recipe come from the Zenodo link https://zenodo.org/records/15965163"
+        "url_2": "The more detailed fits for this mass-loss recipe come from the Zenodo link https://zenodo.org/records/15965163"
       },
       {
         "id": "VS21",
         "ref": "Vink & Sander 2021",
-        "note": "Includes second bistability jump",
+        "note": "Includes second bistability jump. Besides that, it is identical to Vink et al. (2001) - V01",
         "parameter_space": "Solar metallicity. Mass: 20, 30, 60 Msun O-stars. No clumping.",
         "z_solar_calibration": 0.019,
         "warning": "Existence and effective temperature initiation of both bistability jumps were not observationally verified",
+        "warning_2": "This model should be used in parallel with vterm_type = 'Lamers95' in run_star_extras for consistency with their formulation of the bistability jump",
         "url": "https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.2051V"
       },
       {
@@ -324,8 +327,8 @@
       {
         "id": "NdJ90",
         "ref": "Nieuwenhuijzen & de Jager 1990",
-        "note": "Empirical",
-        "parameter_space": "Implicitly Galactic (Solar). Wide mass/luminosity range. No clumping (pre-dates major clumping consensus).",
+        "note": "Empirical. Canonically used for both line-driven and cool supergiant winds",
+        "parameter_space": "Implicitly Galactic (Solar). Wide mass/luminosity range. No clumping (pre-dates major clumping consensus). Same observational sample of dJ88",
         "z_solar_calibration": "No Zsolar dependency, but it usually given a metallicity dependency from Vink & de Koeter (2005) with Zsolar = 0.019",
         "url": "https://ui.adsabs.harvard.edu/abs/1990A&A...231..134N"
       }
@@ -334,9 +337,17 @@
       {
         "id": "dJ88",
         "ref": "de Jager et al. 1988",
-        "note": "Canonical empirical",
+        "note": "Canonical empirical. Same observational sample of NdJ90",
         "parameter_space": "Galactic (Solar). T_eff 3000-4000 K for cool stars. Based on sample of 271 stars.",
         "url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D"
+      },
+      {
+        "id": "NdJ90",
+        "ref": "Nieuwenhuijzen & de Jager 1990",
+        "note": "Empirical. Canonically used for both line-driven and cool supergiant winds",
+        "parameter_space": "Implicitly Galactic (Solar). Wide mass/luminosity range. Same observational sample of dJ88",
+        "z_solar_calibration": "No Zsolar dependency, but it usually given a metallicity dependency from Vink & de Koeter (2005) with Zsolar = 0.019",
+        "url": "https://ui.adsabs.harvard.edu/abs/1990A&A...231..134N"
       },
       {
         "id": "Vb98",
@@ -396,12 +407,12 @@
         "url": "https://ui.adsabs.harvard.edu/abs/1989A%26A...220..135L"
       },
       {
-        "id": "Ha98",
-        "ref": "Hamann & Koesterke 1998",
+        "id": "Ha95",
+        "ref": "Hamann, Koesterke, and Wessolowski 1995",
         "note": "With Vink 2005 Z-dep",
         "parameter_space": "Galactic WN stars. Includes clumping corrections. Standard empirical recipe.",
         "z_solar_calibration": 0.019,
-        "url": "https://ui.adsabs.harvard.edu/abs/1998A&A...335.1003H"
+        "url": "https://ui.adsabs.harvard.edu/abs/1995A%26A...299..151H"
       },
       {
         "id": "Vb98",
@@ -560,10 +571,32 @@
         "url": "https://ui.adsabs.harvard.edu/abs/1975MSRSL...8..369R"
       },
       {
+        "label": "ScCu05",
+        "author": "Schroeder & Cuntz 2005",
+        "note": "RGB winds",
+        "url": "https://ui.adsabs.harvard.edu/abs/2005ApJ...630L..73S/abstract",
+        "category": "RGB"
+      },
+      {
+        "label": "CSa11",
+        "author": "Cranmer & Saar 2011",
+        "note": "RGB winds. Both hot coronal + cool extended chromosphere winds included",
+        "url": "https://ui.adsabs.harvard.edu/abs/2011ApJ...741...54C/abstract",
+        "category": "RGB"
+      },
+      {
+        "label": "Li25",
+        "author": "Li 2025",
+        "note": "RGB winds. Metallicity-dependent winds",
+        "url": "https://ui.adsabs.harvard.edu/abs/2025ApJ...988..179L/abstract",
+        "category": "RGB"
+      },
+      {
         "id": "B95",
         "ref": "Bloecker 1995",
         "note": "AGB winds",
-        "z_solar_calibration": 0.019
+        "z_solar_calibration": 0.019,
+        "url": : "https://ui.adsabs.harvard.edu/abs/1995A&A...297..727B"
       }
     ]
   },
