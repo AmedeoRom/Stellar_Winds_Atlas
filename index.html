@@ -396,7 +396,15 @@
                         </div>
                     </header>
 
-                    <div className="bg-white border-b px-6 py-4 flex justify-center shrink-0">
+                    <div className="bg-white border-b px-6 py-4 flex justify-center items-center shrink-0 relative">
+                        <button 
+                            onClick={() => setActiveModels({})}
+                            title="Resets all the mass-loss recipes currently selected"
+                            className="absolute left-6 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black uppercase tracking-wider text-xs hover:bg-red-700 shadow-md transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <span className="text-base leading-none">💥</span> Erase Everything
+                        </button>
+                        
                         <button onClick={() => setViewMode(viewMode === 'dependencies' ? 'hr' : 'dependencies')} className="px-10 py-3 bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 shadow-lg transition-all active:scale-95">
                             {viewMode === 'dependencies' ? 'Hertzsprung-Russell Diagram' : 'Functional 1D dependencies'}
                         </button>
