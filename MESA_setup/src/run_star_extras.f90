@@ -41,7 +41,7 @@
 
       ! this is used to soften too large changes in wind mass loss rates
       real(dp) :: old_wind = 0
-      character(len=10) :: vterm_type = "Hawcroft24"                            ! Options Lamers95, Crowther06, Hawcroft24, Kritcka25
+      character(len=10) :: vterm_type = "Hawcroft24"                            ! Options Lamers95, Crowther06, Hawcroft24, Kritcka25, Alkousa26
 
 
       real(dp) :: max_years_dt_old
@@ -180,6 +180,9 @@
        case ("Kritcka25")
          v_out = (107+25*log10(Z_ratio))*(Tsurf/1d3) - 1190 - 430*log10(Z_ratio)
 
+       case ("Alkousa26")
+         v_out = (8.0d-2*Tsurf-963) * Z_ratio**0.22d0                           ! Metallicity correction from Hawcroft24
+
        case default
          v_out = 0d0 ! Safety fallback
        end select
@@ -230,9 +233,9 @@
          if (ierr /= 0) return
 
          if ( s% x_logical_ctrl(9) ) then
-            how_many_extra_history_columns = 17
+            how_many_extra_history_columns = 19
          else
-           how_many_extra_history_columns = 8
+           how_many_extra_history_columns = 10
          end if
 
       end function how_many_extra_history_columns
@@ -242,13 +245,15 @@
          integer, intent(in) :: id, n
          character (len=maxlen_history_column_name) :: names(n)
          real(dp) :: vals(n)
-         real(dp) :: Msum,Rsum,E_Bind_G,E_Bind_B,E_Bind_H
+         real(dp) :: Msum,Rsum,E_Bind_G,E_Bind_B,E_Bind_H,gamma_1_c,gamma_1_tot
+         real(dp) :: gamma1_num_c,gamma1_den_c,gamma1_num_tot,gamma1_den_tot
          integer, intent(out) :: ierr
          integer :: i
          type (star_info), pointer :: s
          ierr = 0
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
+
          names(1) = "wind_scheme"
          names(2) = "eta"
          names(3) = "gamma_edd"
@@ -257,18 +262,20 @@
          names(6) = "E_Bind_G"                                                  ! Summary of the different binding energies from Sgalletta+ (2026)
          names(7) = "E_Bind_B"
          names(8) = "E_Bind_H"
+         names(9) = "gamma_1_c"
+         names(10) = "gamma_1_tot"
 
          if ( s% x_logical_ctrl(9) ) then                                       ! In case magnetic braking is active
 
-           names(9) = "Beq"; vals(9) = Beq
-           names(10) = "Ra"; vals(10) = Ra
-           names(11) = "Rc"; vals(11) = Rc
-           names(12) = "Rk"; vals(12) = Rk
-           names(13) = "etastar"; vals(13) = etastar
-           names(14) = "Jbrake"; vals(14) = Jbrake
-           names(15) = "vterm_km_s"; vals(15) = vterm
-           names(16) = "enclosedm_braking"; vals(16) = enclosedm
-           names(17) = "nin_braking"; vals(17) = real(nin, dp)
+           names(11) = "Beq"; vals(11) = Beq
+           names(12) = "Ra"; vals(12) = Ra
+           names(13) = "Rc"; vals(13) = Rc
+           names(14) = "Rk"; vals(14) = Rk
+           names(15) = "etastar"; vals(15) = etastar
+           names(16) = "Jbrake"; vals(16) = Jbrake
+           names(17) = "vterm_km_s"; vals(17) = vterm
+           names(18) = "enclosedm_braking"; vals(18) = enclosedm
+           names(19) = "nin_braking"; vals(19) = real(nin, dp)
 
          end if
 
@@ -278,6 +285,12 @@
          E_Bind_G = 0
          E_Bind_B = 0
          E_Bind_H = 0
+         gamma1_num_c = 0
+         gamma1_den_c = 0
+         gamma1_num_tot = 0
+         gamma1_den_tot = 0
+         gamma_1_c = 0
+         gamma_1_tot = 0
 
          do i=1, s% nz
            if ((s% center_he4 > 1d-3 .and. s% x(i) >= s% he_core_boundary_h1_fraction) .or. &
@@ -286,18 +299,21 @@
              E_Bind_B = E_Bind_B + s% dm(i)*(-standard_cgrav* s% m(i)/s% r(i) + s% energy(i))
              E_Bind_H = E_Bind_H + s% dm(i)*(-standard_cgrav* s% m(i)/s% r(i) + s% energy(i) + (s% prad(i) + s% pgas(i))/s% rho(i))
            else
-             exit
+             gamma1_num_c = gamma1_num_c + s% gamma1(i) * ((s% prad(i) + s% pgas(i)) / s% rho(i)) * s% dm(i)
+             gamma1_den_c = gamma1_den_c + ((s% prad(i) + s% pgas(i)) / s% rho(i)) * s% dm(i)
            end if
          end do
 
          do i = s% nz, 1, -1
             Msum = Msum + s% m(i)/Msun
 
-            if (Msum>=s% star_mass*0.99) then
-              exit
+            if (Msum<=s% star_mass*0.99) then
+              Rsum = Rsum + s% r(i)/Rsun
             end if
 
-            Rsum = Rsum + s% r(i)/Rsun
+            gamma1_num_tot = gamma1_num_tot + s% gamma1(i) * ((s% prad(i) + s% pgas(i)) / s% rho(i)) * s% dm(i)
+            gamma1_den_tot = gamma1_den_tot + ((s% prad(i) + s% pgas(i)) / s% rho(i)) * s% dm(i)
+
          end do
 
          vals(1) = wind_scheme
@@ -308,6 +324,17 @@
          vals(6) = E_Bind_G
          vals(7) = E_Bind_B
          vals(8) = E_Bind_H
+
+         if ( gamma1_den_c > 0) then
+           gamma_1_c = gamma1_num_c / gamma1_den_c
+         end if
+         vals(9) = gamma_1_c
+
+         if ( gamma1_den_tot > 0) then
+           gamma_1_tot = gamma1_num_tot / gamma1_den_tot
+         end if
+         vals(10) = gamma_1_tot
+
       end subroutine data_for_extra_history_columns
 
 

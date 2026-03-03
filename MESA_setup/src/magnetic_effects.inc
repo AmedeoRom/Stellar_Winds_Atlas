@@ -14,7 +14,7 @@ subroutine magnetic_evolution(id,ierr,R_cgs,Z_ratio,B0,B_eq)
   call star_ptr(id, s, ierr)
   if (ierr /= 0) return
 
-  Deceff = s% x_ctrl(12)                                                      ! Decay efficiency (for DEC model)
+  Deceff = s% x_ctrl(11)                                                      ! Decay efficiency (for DEC model)
 
 
   if (s% model_number <= 10) then                                             ! WATCH OUT FOR THIS ONE!!!!
@@ -25,7 +25,7 @@ subroutine magnetic_evolution(id,ierr,R_cgs,Z_ratio,B0,B_eq)
   end if
 
   ! Determine field evolution scenario
-  evolution_str = trim(adjustl(s% x_character_ctrl(13)))
+  evolution_str = trim(adjustl(s% x_character_ctrl(14)))
   select case (evolution_str)
   case ('const')
       evolution_id = 1
@@ -77,12 +77,12 @@ subroutine magnetic_braking(id, ierr)
     ! Exit if magnetic braking is not enabled or if relaxing
     ! if (s% doing_relax) return
 
-    B0 = s% x_ctrl(10)                                                          ! Initial Equatorial Magnetic Field (Gauss)
-    Beff = s% x_ctrl(11)                                                        ! Efficiency factor for torque
+    B0 = s% x_ctrl(9)                                                          ! Initial Equatorial Magnetic Field (Gauss)
+    Beff = s% x_ctrl(10)                                                        ! Efficiency factor for torque
     if (Beff == 0) Beff = 1.0d0
 
-    ! Determine torque method from character string (x_character_ctrl(12))
-    method_str = trim(adjustl(s% x_character_ctrl(12)))
+    ! Determine torque method from character string (x_character_ctrl(13))
+    method_str = trim(adjustl(s% x_character_ctrl(13)))
     select case (method_str)
     case ('uniform')
         torque_id = UNIFORM_ID

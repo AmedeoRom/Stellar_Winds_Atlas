@@ -2,41 +2,44 @@
 !                      WIND SCHEME ID LEGEND
 !-----------------------------------------------------------------------------------
 ! Low-Mass Winds:
-!  10.0: R75   (Reimers 1975)
-!  11.0: B95   (Bloecker 1995)
+!  10.0: Re75   (Reimers 1975)  -- RGB
+!  10.5: ScCu05 (Schroeder & Cuntz 2005) -- RGB
+!  11.0: CSa11  (Cranmer & Saar 2011) -- RGB = hot coronal + cool extended chromosphere winds
+!  11.5: Li25   (Li 2025) -- RGB with Z-dependence
+!  12.0: Bl95   (Bloecker 1995)
 !
 ! Thin Winds (Hot Stars):
-!  20.0: NdJ90 (Nieuwenhuijzen & de Jager 1990) --> Also for cool supergiants!
-!  21.0: V01   (Vink+ 2001)
-!  21.5: VS21  (Vink & Sander 2021)
-!  22.0: V17   (Vink 2017)
-!  23.0: Bj23  (Bjorklund+ 2023)
-!  24.0: GM23  (Gormaz-Matamala+ 2023)
-!  25.0: K24   (Krticka+ 2024)
-!  25.5: K25   (Krticka+ 2025) --> Only for Z < 0.2 Zsun
-!  26.0: Sa25  (Sabhahit+ 2025) --> Only for very massive stars!
+!  20.0: NdJ90  (Nieuwenhuijzen & de Jager 1990) --> Also for cool supergiants!
+!  21.0: V01    (Vink+ 2001)
+!  21.5: VS21   (Vink & Sander 2021)
+!  22.0: V17    (Vink 2017)
+!  23.0: Bj23   (Bjorklund+ 2023)
+!  24.0: GM23   (Gormaz-Matamala+ 2023)
+!  25.0: K24    (Krticka+ 2024)
+!  25.5: K25    (Krticka+ 2025) --> Only for Z < 0.2 Zsun
+!  26.0: Sa25   (Sabhahit+ 2025) --> Only for very massive stars!
 !
 ! Dust/Cool Winds:
-!  30.0: dJ88  (de Jager+ 1988)
-!  31.0: vL05  (van Loon+ 2005)
-!  32.0: Be23  (Beasor+ 2023)
-!  33.0: Ya23  (Yang+ 2023)
-!  34.0: A24   (Antoniadis+ 2024)
-!  35.0: D24   (Decin+ 2024)
+!  30.0: dJ88   (de Jager+ 1988)
+!  31.0: vL05   (van Loon+ 2005)
+!  32.0: Be23   (Beasor+ 2023)
+!  33.0: Ya23   (Yang+ 2023)
+!  34.0: A24    (Antoniadis+ 2024)
+!  35.0: D24    (Decin+ 2024)
 !
 ! Thick/WR Winds:
-!  40.0: L89   (Langer 1989  + Vink, de Koter 2005)
-!  40.5: Ha95  (Hamann, Koesterke, and Wessolowski 1995 + Vink, de Koter 2005)
-!  41.0: NL00  (Nugis & Lamers 2000)
-!  41.5: Y06   (Yoon+ 2006)
-!  42.0: GH08  (Grafener & Hamann 2008)
-!  42.5: V11   (Vink+ 2011)
-!  43.0: TSK16 (Tramper, Sana & de Koter 2016)
-!  43.5: Y17   (Yoon 2017)
-!  44.0: Sh19  (Shenar+ 2019 plus 2020 erratum)
-!  44.5: S19   (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
-!  45.0: B20   (Bestenlehner 2020)
-!  45.5: SV20  (Sander & Vink 2020)
+!  40.0: L89    (Langer 1989  + Vink, de Koter 2005)
+!  40.5: Ha95   (Hamann, Koesterke, and Wessolowski 1995 + Vink, de Koter 2005)
+!  41.0: NL00   (Nugis & Lamers 2000)
+!  41.5: Y06    (Yoon+ 2006)
+!  42.0: GH08   (Grafener & Hamann 2008)
+!  42.5: V11    (Vink+ 2011)
+!  43.0: TSK16  (Tramper, Sana & de Koter 2016)
+!  43.5: Y17    (Yoon 2017)
+!  44.0: Sh19   (Shenar+ 2019 plus 2020 erratum)
+!  44.5: S19    (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
+!  45.0: B20    (Bestenlehner 2020)
+!  45.5: SV20   (Sander & Vink 2020)
 !
 ! LBV:
 !  50.0: H00    (Hurley+ 2000; LBV)
@@ -46,7 +49,7 @@
 !
 ! Special Cases:
 !  90.0: Vb98   (Vanbeveren+ 1998 + Vink, de Koter 2005 for WR/OB; three different formulae for OB, WR, and cool supergiants)
-!  90.5: P25   (Pauli+ 2025) --> Also for WR and He stars!
+!  90.5: P25    (Pauli+ 2025) --> Also for WR and He stars!
 
 !===================================================================================
 
@@ -75,7 +78,7 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
   gmrstar=R/Rsun
   lteff=log10(s% Teff/1000)
 
-  Zsolar = s% x_ctrl(9)
+  Zsolar = s% x_ctrl(8)
 
   Z_div_Z_solar = s% kap_rq% Zbase/Zsolar
   logZ_div_Zsun=log10(Z_div_Z_solar)
@@ -98,21 +101,15 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
     return
 
   elseif (s% star_mass<8.5) then
-    if (((Tsurf < 10**3.7 .and. logL_div_Lsun > 1.0) .or. &               ! GENEC calibrations for low-mass stars + my linear Teff fit
-      (log10(Tsurf) < 0.385*logL_div_Lsun+3.705)) .and. &                 ! RGB
+    if (((Tsurf < 10**3.7 .and. logL_div_Lsun > 1.0) .or. &                     ! GENEC calibrations for low-mass stars + my linear Teff fit
+      (log10(Tsurf) < 0.385*logL_div_Lsun+3.705)) .and. &                       ! RGB
       s% center_he4 > s% RGB_to_AGB_wind_switch) then
-      call eval_Reimers_wind(w)
-      write(*,*) "Here are Reimers RGB cool winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
+      call eval_RGB_wind(w)
 
-    elseif (Tsurf < 10**3.7 .and. &                                       ! AGB
+    elseif (Tsurf < 10**3.7 .and. &                                             ! AGB
       s% center_he4 < s% RGB_to_AGB_wind_switch) then
       call eval_Blocker_wind(w)
       write(*,*) "Here are Blocker AGB cool winds: log(Mdot [Msun/yr]) =", log10(ABS(w))
-
-    elseif ( s% w_div_w_crit_avg_surf > 1.01*s% surf_omega_div_omega_crit_limit ) then
-      w=1d-11                                                             ! Mechanical mass loss; just enough to take away angular momentum
-      write(*,*) 'Small MS star -- Mechanical mass loss: log(Mdot [Msun/yr]) =', log10(ABS(w))
-      s% max_years_for_timestep = 1d3                                     ! I constrain this
 
     else
       w=0
@@ -168,7 +165,7 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
   ! --------------------------------------------- Check for thick winds ---------------------------------------------------
   thick_met = .false.
 
-  ! Logic: If x_logical_ctrl(8) is .true., the "sticky" behavior is enabled.
+  ! Logic: If x_logical_ctrl(6) is .true., the "sticky" behavior is enabled.
   ! If it's .false., already_thick is ignored for the initial thick_met check,
   ! allowing the star to revert to thin winds if physical conditions are no longer met.
 
@@ -191,7 +188,7 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
        HPoor_WR_condition = .false.
   end if
 
-  if (s% x_logical_ctrl(8) .and. already_thick) then                       ! Sticky winds applied and always thick winds after transition
+  if (s% x_logical_ctrl(6) .and. already_thick) then                       ! Sticky winds applied and always thick winds after transition
     thick_met = .true.
   end if
 
@@ -212,7 +209,7 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
 
 ! --------------------------------------------- Rate Selection ---------------------------------------------------
 
-if ( Tsurf < s% x_ctrl(7) ) then                                          ! cool supergiant winds
+if ( Tsurf < s% x_ctrl(6) ) then                                          ! cool supergiant winds
 
     ! s% max_years_for_timestep = 3d2                                       ! To have more resolution during this phase
 
@@ -223,7 +220,7 @@ elseif (.not. thick_met) then                                             ! Thin
 
 elseif(thick_met) then
 
-    if ((Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2))) then    ! Cool WR winds, if requested
+    if ((Tsurf/1000 < s% x_ctrl(4) .and. s% x_logical_ctrl(2))) then    ! Cool WR winds, if requested
       call eval_thin_winds(w)
     else
       call eval_thick_winds(w)
@@ -231,123 +228,11 @@ elseif(thick_met) then
 
 end if
 
-  !  ---------------------- Thick winds interpolation -------------------------
-
-  ! Here I check which thick winds condition is used and if we are near to that switch
-  !  In case of multiple conditions, the philosophy is also: first come, first served
-
-  gamma_condition = ("gamma" == s%x_character_ctrl(1) .or. &
-  "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1)) .and. &
-            gamma_edd > gamma_trans - s%x_ctrl(4) .and. &
-            gamma_edd < gamma_trans + s%x_ctrl(4) .and. &
-            .not. ((eta > eta_trans + s%x_ctrl(4) .and. ("eta" == s%x_character_ctrl(1) .or. &
-            "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
-            (X < 0.4 - s%x_ctrl(4) .and. ("Xsurf" == s%x_character_ctrl(1) .or. &
-            "any" == s%x_character_ctrl(1))))
-
-  eta_condition = ("eta" == s%x_character_ctrl(1) .or. &
-  "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1)) .and. &
-          eta > eta_trans - s%x_ctrl(4) .and. &
-          eta < eta_trans + s%x_ctrl(4) .and. &
-          .not. ((gamma_edd > gamma_trans + s%x_ctrl(4) .and. ("gamma" == s%x_character_ctrl(1) .or. &
-          "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
-          (X < 0.4 - s%x_ctrl(1) .and. ("Xsurf" == s%x_character_ctrl(1) .or. &
-          "any" == s%x_character_ctrl(1))))
-
-  xsurf_condition = ("Xsurf" == s%x_character_ctrl(1) .or. &
-  "any" == s%x_character_ctrl(1)) .and. &
-          X > 0.4 - s%x_ctrl(4) .and. &
-          X < 0.4 + s%x_ctrl(4) .and. &
-          .not. ((eta > eta_trans + s%x_ctrl(4) .and. ("eta" == s%x_character_ctrl(1) .or. &
-          "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))) .or. &
-          (gamma_edd > gamma_trans + s%x_ctrl(4) .and. ("gamma" == s%x_character_ctrl(1) .or. &
-          "gamma_eta" == s%x_character_ctrl(1) .or. "any" == s%x_character_ctrl(1))))
-
-  ! These conditions above are a way to say "If I am within this range AND
-  !   I am not well deep in thick winds due to another transition condition,
-  !   then interpolate"
-
-  if (s% x_logical_ctrl(4) .and. Tsurf > s% hot_wind_full_on_T .and. &
-  (gamma_condition .or. eta_condition .or. xsurf_condition) .and. s% x_character_ctrl(5) /= "V11") then
-
-      if ( Tsurf/1000 < s% x_ctrl(5) .and. ((gmlogg>3.0d0 .and. s% x_character_ctrl(2) == s% x_character_ctrl(4)) .or. &
-      (gmlogg<=3.0d0 .and. s% x_character_ctrl(3) == s% x_character_ctrl(4))) ) then
-        write(*,*) "Cool WR winds == Thin winds ; no need for transition"
-
-      else
-        write(*,*) "Near optically-thick winds threshold interpolation"
-        wind_scheme_interp = wind_scheme
-
-        if (Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2)) then
-          call eval_thin_winds(w1)
-        else
-          call eval_thick_winds(w1)
-        end if
-
-      call eval_thin_winds(w2)
-
-      if(s% x_ctrl(4) == 0) then
-         w = 0.5d0*(w1 + w2)
-        else
-          divisor = 2*s%x_ctrl(4)
-        if (gamma_condition) then
-          beta = min( (0.5+s%x_ctrl(4) - gamma_edd) / divisor, 1d0)
-        else if (eta_condition) then
-          beta = min( (eta_trans+s%x_ctrl(4) - eta) / divisor, 1d0)
-        else
-          beta = min( (X+s%x_ctrl(4) - 0.4) / divisor, 1d0)
-        end if
-        alfa_mid = 1d0 - beta
-        w = alfa_mid*w1 + beta*w2
-      end if
-      write(*,*) "Interpolated mass loss: log(Mdot [Msun/yr]) =", log10(ABS(w))
-      wind_scheme=wind_scheme_interp                                      !This is to not mess up with the tags
-    end if
-  end if
-
-
-  !  ---------------------- low Teff interpolation -------------------------
-
-
-if (s% cool_wind_full_on_T<=Tsurf .and. Tsurf<=s% hot_wind_full_on_T .and. &
-s% x_logical_ctrl(5)) then
-
-  write(*,*) "Near cool supergiant winds threshold interpolation"
-  wind_scheme_interp = wind_scheme
-
-  call eval_cool_wind(w1)
-
-  if (.not. thick_met) then                                               ! No need to combine the two interpolations because
-                                                                          !  if I am close to cool winds, I get at most cool WR
-      call eval_thin_winds(w2)                                            !  winds. So even if I am near to the thick winds
-                                                                          !  transition, mass loss rates are not about to super-change
-
- else
-    if (Tsurf/1000 < s% x_ctrl(5) .and. s% x_logical_ctrl(2) .and. &
-    s% x_character_ctrl(5) /= "V11") then
-      call eval_thin_winds(w2)
-    else
-      call eval_thick_winds(w2)
-    end if
-    if(s% hot_wind_full_on_T == s% cool_wind_full_on_T)then
-       w = 0.5d0*(w1 + w2)
-    else
-      divisor = s% hot_wind_full_on_T - s% cool_wind_full_on_T
-      beta = min( (s% hot_wind_full_on_T - Tsurf) / divisor, 1d0)
-      alfa_mid = 1d0 - beta
-      w = alfa_mid*w2 + beta*w1
-    end if
-
-    write(*,*) "Interpolated mass loss: log(Mdot [Msun/yr]) =", log10(ABS(w))
-    wind_scheme=wind_scheme_interp                                        !This is to not mess up with the tags
-  end if
-end if
-
 gamma_edd_old = gamma_edd
 
 !  -----------------------------LBV Winds---------------------------------
 
-if ( s% x_logical_ctrl(6) ) then
+if ( s% x_logical_ctrl(4) .and. s% center_h1 <= 0.4) then
 
  call eval_LBV_winds(w)
 
@@ -378,15 +263,20 @@ subroutine smooth_wind_log(w, scheme_name)
 
   is_smoothed = .false.
 
-  ! Pauli26-like logic: prevent the wind from dropping too fast.
+  ! Marchant-like logic: prevent the wind from dropping too fast.
   ! This avoids numerical noise and "crazy jumps" downwards.
   ! We allow rapid increases (no check for w > old_wind).
   if (old_wind /= 0d0) then
-    if (abs(w) < abs(old_wind) * 0.5d0 .and. s% x_logical_ctrl(7)) then
+    if (abs(w) < abs(old_wind) * 0.5d0 .and. s% x_logical_ctrl(5)) then
       w = old_wind * 0.5d0
       is_smoothed = .true.
 
       s%dt_next = s%dt_next/2                                                   ! We also reduce the timestep to not allow big overestimation artefacts
+    elseif (abs(w) > abs(old_wind) * 1.5d0 .and. s% x_logical_ctrl(5)) then
+      w = old_wind * 1.5d0
+      is_smoothed = .true.
+
+      s%dt_next = s%dt_next/2
     end if
   end if
 
@@ -399,36 +289,251 @@ subroutine smooth_wind_log(w, scheme_name)
 end subroutine smooth_wind_log
 ! ====================================================================
 
-subroutine eval_Reimers_wind(w)
-real(dp), intent(out) :: w
-include 'formats'
+subroutine eval_Reimers75_wind(w)
+  real(dp), intent(out) :: w
+  include 'formats'
 
-if ( s% center_h1 > 0.001 ) then                                       ! GENEC calibrations
-s% Reimers_scaling_factor = 0.85d0
-elseif (L/s% prev_Ledd > 1) then
-s% Reimers_scaling_factor = 3.0d0
-else
-s% Reimers_scaling_factor = 1.0d0
-end if
+  if ( s% center_h1 > 0.001 ) then                                       ! GENEC calibrations
+    s% Reimers_scaling_factor = 0.85d0
+  elseif (L/s% prev_Ledd > 1) then
+    s% Reimers_scaling_factor = 3.0d0
+  else
+    s% Reimers_scaling_factor = 1.0d0
+  end if
 
-wind_scheme = 10.0
+  wind_scheme = 10.0
 
-w = 4d-13*(L*R/M)/(Lsun*Rsun/Msun)
-w = w*s% Reimers_scaling_factor
+  w = 4d-13*(L*R/M)/(Lsun*Rsun/Msun)
+  w = w*s% Reimers_scaling_factor
 
-call smooth_wind_log(w, "Reimers RGB cool")
+  call smooth_wind_log(w, "R75")
 
-end subroutine eval_Reimers_wind
+end subroutine eval_Reimers75_wind
+
+subroutine eval_SchroederCuntz05_wind(w)
+  real(dp), intent(out) :: w
+  real(dp) :: SchroederCuntz_scaling_factor, grav_sun
+  include 'formats'
+
+  SchroederCuntz_scaling_factor = 1.0d0
+
+  wind_scheme = 10.5
+  grav_sun = mu_sun/(Rsun*Rsun)                                                 ! The "mu_sun/(Rsun*Rsun)" is the MESA constant for solar surface gravity
+
+  w = 8d-14 * (Tsurf/4000)**3.5*(L*R/M)/(Lsun*Rsun/Msun)*(1+grav_sun/(4300*gmlogg))
+  w = w*SchroederCuntz_scaling_factor
+
+  call smooth_wind_log(w, "ScCu05")
+
+end subroutine eval_SchroederCuntz05_wind
+
+subroutine eval_CranmerSaar11_wind(w)
+  ! Author (Romagnolo) note: I used Gemini to adopt the original IDL and adopt a Newton-Raphson solver
+
+  real(dp), intent(out) :: w
+  real(dp) :: CranmerSaar_scaling_factor
+  real(dp) :: w_hot, w_cool, M_ATR, Mdotcgs_cold, Mdotcgs_hot
+  real(dp) :: mu_atomic, H_star, B_eq, B_star, F_A_star, v_perp_star, V_A_star
+  real(dp) :: tau_c, Rossby, f_star, f_TR, f_floor, x_rossby, grav_sun
+  real(dp) :: g_tilde, F0, T0, epsilon_p, exponent_term
+  real(dp) :: Q_star, Lambda_max, c_rad, P_TR, rho_TR, Q_TR, R_refl, ReflCoef, quench, sqbrac
+  real(dp) :: F_H_TR, F_cond, F_A_TR, V_A_TR, u_TR, u_inf, rot_period
+  real(dp) :: r_crit, u_crit, rho_crit, Bcrit, Areaphoto, Areacrit, action_photo
+  real(dp) :: K_NR, f_val, df_val, M_A_crit
+  real(dp) :: k_B, m_H, H_sun, lambda_perp_sun, alpha_0, theta_param, h_param
+  real(dp) :: enn, beta, eee36
+  integer :: iter
+
+  include 'formats'
+
+  ! --- Constants (cgs) ---
+  k_B = 1.38064852d-16
+  m_H = 1.6733d-24
+  H_sun = 139d5                                     ! 139 km
+  lambda_perp_sun = 300d5                           ! 300 km
+  alpha_0 = 0.5d0                                   ! standard efficiency
+  theta_param = 1.0d0/3.0d0                         ! f_TR = f_star^theta
+  h_param = 0.5d0                                   ! energy flux scaling
+  f_floor = 1.0d-4                                  ! basal magnetic floor
+  grav_sun = mu_sun/(Rsun*Rsun)                     ! Solar surface gravity
+
+  if (s% omega(1) > 0.0d0) then
+      rot_period = (2.0d0 * pi / s% omega(1))
+  else
+      ! Fallback for non-rotating stars: conserve angular momentum from MS to giant
+      ! rot_period in seconds. 25.3 days = 2185920 seconds
+      rot_period = 25.3d0 * 86400.0d0 * max(1.0d0, (R/Rsun)**2.0d0)
+  end if
+
+  CranmerSaar_scaling_factor = 1.0d0
+  wind_scheme = 11.0
+
+  u_inf = sqrt(2.0d0 * standard_cgrav * M / R) ! escape velocity
+
+  ! Photospheric Properties (Section 2.1)
+  mu_atomic = 1.75d0 + 0.5d0 * tanh((3500.0d0 - Tsurf)/600.0d0)
+  H_star = (k_B * Tsurf) / (mu_atomic * m_H * s% grav(1))
+  B_eq = sqrt(8.0d0 * pi * s% rho(1) * k_B * Tsurf / (mu_atomic * m_H))
+  B_star = 1.13d0 * B_eq
+
+  ! Alfvén Wave Flux (Eq 7-10)
+  g_tilde = log10(s% grav(1))
+  F0 = 5.724d9 * exp(-g_tilde / 11.48d0)
+  T0 = (5.624d0 + 0.6002d0 * g_tilde) * 1000.0d0
+  epsilon_p = 6.774d0 + 0.5057d0 * g_tilde
+
+  exponent_term = -(Tsurf/T0)**25.0d0
+  exponent_term = max(exponent_term, -700.0d0)
+  F_A_star = F0 * (Tsurf/T0)**epsilon_p * exp(exponent_term)
+  F_A_star = max(F_A_star, 1.0d-10)
+
+  V_A_star = B_star / sqrt(4.0d0 * pi * s% rho(1))
+  v_perp_star = sqrt(F_A_star / (s% rho(1) * V_A_star))
+
+  ! Prevent unphysical Mdot blowouts if wave speed wildly exceeds escape speed
+  v_perp_star = min(v_perp_star, 0.95d0 * u_inf)
+
+  ! Magnetic Filling Factor (Section 4)
+  ! We use the gravity-modified turnover time suggested in Section 5.2
+  tau_c = 314.24d0 * exp(-(Tsurf/1952.5d0)) * exp(-(Tsurf/6250.0d0)**18.0d0) + 0.002d0
+  if (s% grav(1) < grav_sun) then
+     tau_c = tau_c * (grav_sun / s% grav(1))**0.18d0
+  endif
+  ! rot_period is in seconds, tau_c is in days. Convert rot_period to days for Rossby.
+  Rossby = (rot_period / 86400.0d0) / tau_c
+  x_rossby = Rossby / 1.96d0 ! Normalized to solar
+
+  ! f_min is the proxy for open flux (Eq 38)
+  f_star = 0.5d0 / (1.0d0 + (x_rossby / 0.16d0)**2.6d0)**1.3d0
+  f_star = max(f_star, f_floor)
+  f_TR = f_star**theta_param
+
+  ! 4. Hot Coronal Mass Loss (Section 3.1)
+  lambda_perp_star = lambda_perp_sun * (H_star / H_sun)
+  Q_star = alpha_0 * s% rho(1) * v_perp_star**3 / lambda_perp_star
+
+  ! Radiative loss max (Eq 21)
+  Lambda_max = (7.4d0 + 42.0d0 * Z_div_Z_solar**1.13d0) * 1.0d-23
+
+  ! Iteration to find TR density and heating rate (IDL boreas.pro structure)
+  ReflCoef = 0.5d0
+  rho_TR = s% rho(1) * 1.0d-5 ! dummy initialization
+  Q_TR = Q_star ! dummy initialization
+
+  do iter = 1, 50
+     quench = ReflCoef * (1.0d0 + ReflCoef) / ((1.0d0 + ReflCoef**2)**1.5d0) * sqrt(2.0d0)
+     sqbrac = quench * Q_star * (m_H**2) / (s% rho(1)**0.25d0) / Lambda_max
+     rho_TR = (sqbrac**(4.0d0/7.0d0)) * (f_star**(2.0d0*(1.0d0-theta_param)/7.0d0))
+     Q_TR = Q_star * quench * ((rho_TR/s% rho(1))**0.25d0) * sqrt(f_star/f_TR)
+     V_A_TR = (B_star * (f_star/f_TR)) / sqrt(4.0d0 * pi * rho_TR)
+     R_refl = abs((V_A_TR - u_inf) / (V_A_TR + u_inf))
+     ReflCoef = sqrt(R_refl * ReflCoef)
+  end do
+
+  F_H_TR = Q_TR * R * h_param
+  F_A_TR = F_A_star * (f_star / f_TR)
+  F_H_TR = min(F_H_TR, F_A_TR) ! Energy conservation cap
+
+  c_rad = 14.0d5 * sqrt(Lambda_max / (49.4d-23)) ! speed in cm/s
+  P_TR = (rho_TR * k_B * 2.0d5) / (0.6d0 * m_H) ! assumed T_TR = 2e5 K
+  F_cond = min(c_rad * P_TR, 0.9d0 * F_H_TR)
+
+  ! Hot Mdot (Eq 26)
+  w_hot = (4.0d0 * pi * R**2 * f_TR / u_inf**2) * max(0.0d0, F_H_TR - F_cond)
+  Mdotcgs_hot = w_hot
+  w_hot = (w_hot / Msun) * secyer
+
+  u_TR = Mdotcgs_hot / (4.0d0 * pi * R**2 * f_TR * rho_TR)
+  M_ATR = u_TR / V_A_TR
+
+  ! Cold Wave-Driven Mdot (Section 3.2)
+  enn = 2.0d0
+  beta = 0.5d0 * enn
+  eee36 = (3.0d0/7.0d0/beta + 4.0d0/7.0d0) / (1.0d0 + (v_perp_star/u_inf)**2)
+
+  r_crit = 1.75d0 * eee36 * R
+  r_crit = max(r_crit, R)
+  u_crit = sqrt(standard_cgrav * M / enn / r_crit)
+  Bcrit = B_star * ((R/r_crit)**2) * f_star
+
+  Areaphoto = f_star * (4.0d0 * pi * R**2)
+  Areacrit = 4.0d0 * pi * r_crit**2
+  action_photo = s% rho(1) * (v_perp_star**2) * V_A_star * Areaphoto
+
+  ! Exact Newton-Raphson solver for the Alfven Mach number at the critical point
+  ! M_A * (1+M_A)^3 / (1+3M_A) = K_NR
+  ! Quartic: M_A^4 + 3 M_A^3 + 3 M_A^2 + (1 - 3 K) M_A - K = 0
+  K_NR = (pi * action_photo) / (Bcrit**2 * Areacrit * u_crit)
+
+  M_A_crit = K_NR**(1.0d0/3.0d0) ! Initial guess
+  do iter = 1, 10
+     f_val = M_A_crit**4 + 3.0d0*M_A_crit**3 + 3.0d0*M_A_crit**2 + (1.0d0 - 3.0d0*K_NR)*M_A_crit - K_NR
+     df_val = 4.0d0*M_A_crit**3 + 9.0d0*M_A_crit**2 + 6.0d0*M_A_crit + 1.0d0 - 3.0d0*K_NR
+     M_A_crit = M_A_crit - f_val / df_val
+  end do
+  M_A_crit = max(M_A_crit, 0.0d0)
+
+  rho_crit = (M_A_crit**2 * Bcrit**2) / (4.0d0 * pi * u_crit**2)
+
+  Mdotcgs_cold = rho_crit * u_crit * Areacrit
+  w_cool = (Mdotcgs_cold / Msun) * secyer
+
+  ! 6. Combination (Eq 35)
+  w = w_cool + w_hot * exp(-4.0d0 * M_ATR**2)
+  w = w * CranmerSaar_scaling_factor
+
+  call smooth_wind_log(w, "CSa11")
+
+end subroutine eval_CranmerSaar11_wind
+
+subroutine eval_Li25_wind(w)
+  real(dp), intent(out) :: w
+  real(dp) :: Li_scaling_factor
+  include 'formats'
+
+  Li_scaling_factor = 1.0d0
+
+  wind_scheme = 11.5
+
+  w = 1d-9 * (-4.15*logZ_div_Zsun + 1.48)
+  w = w*Li_scaling_factor
+
+  call smooth_wind_log(w, "Li25")
+
+end subroutine eval_Li25_wind
+
+
+subroutine eval_RGB_wind(w)
+  real(dp), intent(inout) :: w
+
+  select case (trim(s% x_character_ctrl(12)))
+
+  case ("R75")
+    call eval_Reimers75_wind(w)
+
+  case ("ScCu05")
+    call eval_SchroederCuntz05_wind(w)
+
+  case ("CSa11")
+    call eval_CranmerSaar11_wind(w)
+
+  case ("Li25")
+    call eval_Li25_wind(w)
+  end select
+
+end subroutine eval_RGB_wind
 
 subroutine eval_Blocker_wind(w)
 ! Bloecker, T. 1995, A&A, 297, 727
 real(dp), intent(out) :: w
 include 'formats'
-s% Blocker_scaling_factor = 0.1
-w = 4.83d-9*(M/Msun)**(-2.1)*(L/Lsun)**2.7*4d-13*(L/Lsun)*(R/Rsun)/(M/Msun)
+s% Blocker_scaling_factor = 1                                                   !MESA sets it by default at 0.1. See other calibrations in Li (2025)
+
+w = 4.83d-9*(M/Msun)**(-2.1)*(L/Lsun)**2.7*4d-13*(L/Lsun)*(R/Rsun)/(M/Msun)     !It is essentially Reimers75 plus stuff
+
 w = w*s% Blocker_scaling_factor
 
-wind_scheme = 11.0
+wind_scheme = 12.0
 call smooth_wind_log(w, "Blocker AGB cool")
 
 end subroutine eval_Blocker_wind
@@ -457,6 +562,7 @@ real(dp) :: c1, c2, c3, c4, c5, c6, c7
 ! Parameters from fit
 real(dp), parameter :: a     = -7.d0
 real(dp), parameter :: fb    = 1.619d0
+
 real(dp), parameter :: fl1   = -31.333d0
 real(dp), parameter :: fl2   = 119.62d0
 real(dp), parameter :: fl3   = -201.713d0
@@ -464,6 +570,7 @@ real(dp), parameter :: fl4   = 208.466d0
 real(dp), parameter :: fl5   = -140.704d0
 real(dp), parameter :: fl6   = 58.7226d0
 real(dp), parameter :: fl7   = -11.7687d0
+
 real(dp), parameter :: flz1  = -46.3518d0
 real(dp), parameter :: flz2  = 170.353d0
 real(dp), parameter :: flz3  = -284.575d0
@@ -471,6 +578,7 @@ real(dp), parameter :: flz4  = 292.063d0
 real(dp), parameter :: flz5  = -195.337d0
 real(dp), parameter :: flz6  = 80.3569d0
 real(dp), parameter :: flz7  = -15.3933d0
+
 real(dp), parameter :: flzz1 = -19.0704d0
 real(dp), parameter :: flzz2 = 70.4817d0
 real(dp), parameter :: flzz3 = -115.793d0
@@ -478,6 +586,7 @@ real(dp), parameter :: flzz4 = 117.131d0
 real(dp), parameter :: flzz5 = -77.1403d0
 real(dp), parameter :: flzz6 = 31.2397d0
 real(dp), parameter :: flzz7 = -5.729d0
+
 real(dp), parameter :: flzzz1= 0.372222d0
 real(dp), parameter :: flzzz2= 0.119759d0
 real(dp), parameter :: flzzz3= 0.0d0
@@ -1268,7 +1377,11 @@ include 'formats'
 wind_scheme = 34.0
 
 if ( log(L/Lsun) < 4.4 ) then
-  log10w = 0.26*log10(L/Lsun) - 14.19*log10(Tsurf/4000)-9.17
+  if ( Tsurf < 4000 ) then
+    log10w = 0.26*log10(L/Lsun) - 14.19*log10(Tsurf/4000)-9.17
+  else
+    log10w = 0.26*log10(L/Lsun) - 9.17
+  end if
 else
   if ( Tsurf < 4000 ) then
     log10w = 2.49536114*log10(L/Lsun) -33.70573385*log10(Tsurf/4000)-19.10219818
@@ -1346,7 +1459,7 @@ real(dp) :: logMdot
 
 include 'formats'
 
-if (s% x_ctrl(7) /= s% x_ctrl(8) .and. Tsurf < s% x_ctrl(8) .and. &   ! Second switch to cool supergiant winds (supposed to be RSG-only)
+if (s% x_ctrl(6) /= s% x_ctrl(7) .and. Tsurf < s% x_ctrl(7) .and. &   ! Second switch to cool supergiant winds (supposed to be RSG-only)
   log10(L/Lsun) <= 5.8) then
  which_cool = 8
 else
@@ -1356,6 +1469,10 @@ end if
 if ( s%x_character_ctrl(which_cool)=='dJ88' ) then
 
  call eval_de_Jager88_wind(w)
+
+elseif ( s%x_character_ctrl(which_cool)=='NdJ90' ) then
+
+  call eval_Nieuwenhuijzen_deJager90_wind(w)
 
 elseif ( s%x_character_ctrl(which_cool)=='Vb98' ) then
 
@@ -1385,7 +1502,7 @@ elseif ( s%x_character_ctrl(which_cool)=='D24' ) then
 end if
 
 
-! w = w * scaling_factor ! No need for the scaling factor now
+! w = w * scaling_factor ! No need for a scaling factor now
 
 end subroutine eval_cool_wind
 
@@ -1622,7 +1739,7 @@ endif
 beta = 0d0
 if (R / R_core > Rcrit_scaling*2) then
   beta = 1d0
-else if (R / R_core > Rcrit_scaling*1.9 .and. R / R_core < Rcrit_scaling*s% x_ctrl(5)) then
+else if (R / R_core > Rcrit_scaling*1.9 .and. R / R_core < Rcrit_scaling*s% x_ctrl(4)) then
   beta = (R/R_core - Rcrit_scaling*1.9)/(Rcrit_scaling*2-Rcrit_scaling*1.9)
 endif
 
@@ -1644,12 +1761,12 @@ subroutine eval_LBV_winds(w)
       w_standard = w
 
       if (s% x_character_ctrl(11) == 'Bk10') then
-        if (log10(L/Lsun) > s% x_ctrl(6) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
+        if (log10(L/Lsun) > s% x_ctrl(5) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
           call eval_Belczynski10_wLBV(w)
         end if
 
       elseif (s% x_character_ctrl(11) == 'H00') then
-         if (log10(L/Lsun) > s% x_ctrl(6) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
+         if (log10(L/Lsun) > s% x_ctrl(5) .and. 1.0d-5 * R/Rsun * (L/Lsun)**0.5d0 > 1.0d0) then
             call eval_Hurley00_wLBV(w_standard, w)
          end if
 
