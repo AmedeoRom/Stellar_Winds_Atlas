@@ -124,7 +124,7 @@
       "url": "https://ui.adsabs.harvard.edu/abs/1988A&AS...72..259D",
       "category": "thin/cool"
     },
-    "31.0": {
+    "30.5": {
       "label": "vL05",
       "author": "van Loon et al.",
       "year": 2005,
@@ -132,7 +132,7 @@
       "url": "https://doi.org/10.1051/0004-6361:20042555",
       "category": "cool"
     },
-    "32.0": {
+    "31.0": {
       "label": "Be23",
       "author": "Beasor et al.",
       "year": 2023,
@@ -140,7 +140,7 @@
       "url": "https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.2460B",
       "category": "cool"
     },
-    "33.0": {
+    "31.5": {
       "label": "Ya23",
       "author": "Yang et al.",
       "year": 2023,
@@ -148,7 +148,7 @@
       "url": "https://ui.adsabs.harvard.edu/abs/2023A&A...676A..84Y",
       "category": "cool"
     },
-    "34.0": {
+    "32.0": {
       "label": "A24",
       "author": "Antoniadis et al.",
       "year": 2024,
@@ -156,12 +156,20 @@
       "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...686A..88A",
       "category": "cool"
     },
-    "35.0": {
+    "32.5": {
       "label": "D24",
       "author": "Decin et al.",
       "year": 2024,
       "full_citation": "Decin, L., et al. 2024, A&A, 681, A17",
       "url": "https://ui.adsabs.harvard.edu/abs/2024A&A...681A..17D",
+      "category": "cool"
+    },
+    "33.0": {
+      "label": "FT24",
+      "author": "Fuller & Tsuna",
+      "year": 2024,
+      "full_citation": "Fuller. J. & Tsuna, D., The Open Journal of Astrophysics, vol. 7, id. 47",
+      "url": "https://ui.adsabs.harvard.edu/abs/2024OJAp....7E..47F",
       "category": "cool"
     },
     "40.0": {
