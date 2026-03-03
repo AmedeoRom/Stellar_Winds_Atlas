@@ -247,6 +247,33 @@
             const [optionInputs, setOptionInputs] = useState({ Zsun: "0.0142", thinTMin: "3.6", thinTMax: "4.8", coolCutoff: "4.0", lumCutoff: "4.0", hrResolution: "40" });
             const [plotOpt, setPlotOpt] = useState({ xmin: 3.5, xmax: 5.3, ymin: -11, ymax: -3, height: 800, autoY: true, linearX: false });
 
+            const handleLinearXToggle = (e) => {
+                const isLinear = e.target.checked;
+                setPlotOpt(prev => ({ ...prev, linearX: isLinear }));
+                
+                if (viewMode === 'dependencies') {
+                    setMarginInputs(prev => {
+                        const minVal = parseFloat(prev.xmin);
+                        const maxVal = parseFloat(prev.xmax);
+                        if (isNaN(minVal) || isNaN(maxVal)) return prev;
+                        
+                        if (isLinear) {
+                            return {
+                                ...prev,
+                                xmin: Math.pow(10, minVal).toFixed(axis === 'metal' ? 4 : 0),
+                                xmax: Math.pow(10, maxVal).toFixed(axis === 'metal' ? 4 : 0)
+                            };
+                        } else {
+                            return {
+                                ...prev,
+                                xmin: Math.log10(minVal).toFixed(2),
+                                xmax: Math.log10(maxVal).toFixed(2)
+                            };
+                        }
+                    });
+                }
+            };
+
             // --- HELPER WRAPPERS ---
             const translateValY = (val) => val; 
             const sortedModels = useMemo(() => Object.entries(MODEL_META).sort((a, b) => a[1].year - b[1].year), []);
@@ -280,10 +307,17 @@
             const plotData = useMemo(() => {
                 if (!isMarginValid || viewMode === 'hr') return []; 
                 const data = []; const stepCount = 100;
-                const curMin = parseFloat(marginInputs.xmin); const curMax = parseFloat(marginInputs.xmax);
+                const curMin = parseFloat(marginInputs.xmin); 
+                const curMax = parseFloat(marginInputs.xmax);
                 for (let i = 0; i <= stepCount; i++) {
-                    const xLog = curMin + i * (curMax - curMin) / stepCount;
-                    const xLin = Math.pow(10, xLog);
+                    let xLin, xLog;
+                    if (plotOpt.linearX) {
+                        xLin = curMin + i * (curMax - curMin) / stepCount;
+                        xLog = Math.log10(xLin > 0 ? xLin : 1e-10);
+                    } else {
+                        xLog = curMin + i * (curMax - curMin) / stepCount;
+                        xLin = Math.pow(10, xLog);
+                    }
                     const p = { L: axis === 'lum' ? xLin : Math.pow(10, params.logL), M: params.mass, T: axis === 'temp' ? xLin : Math.pow(10, params.logT), Z: axis === 'metal' ? xLin : params.z, X: params.X, Mi: params.Mi };
                     p.R = calcRadius(p.L, p.T);
                     const point = { x: xLog, linearX: xLin };
@@ -294,7 +328,7 @@
                     data.push(point);
                 }
                 return data;
-            }, [axis, params, activeModelKeys, vinkSettings, marginInputs, options, isMarginValid, viewMode]);
+            }, [axis, params, activeModelKeys, vinkSettings, marginInputs, options, isMarginValid, viewMode, plotOpt.linearX]);
 
             useEffect(() => {
                 if (plotOpt.autoY && plotData.length > 0 && viewMode !== 'hr') {
@@ -309,6 +343,11 @@
                     let newX = { min: "3.5", max: "5.3" };
                     if (axis === 'lum') newX = { min: "4.0", max: "6.5" };
                     else if (axis === 'metal') newX = { min: "-3.0", max: "0.5" };
+                    
+                    if (plotOpt.linearX) {
+                        newX.min = Math.pow(10, parseFloat(newX.min)).toFixed(axis === 'metal' ? 4 : 0);
+                        newX.max = Math.pow(10, parseFloat(newX.max)).toFixed(axis === 'metal' ? 4 : 0);
+                    }
                     setMarginInputs(prev => ({...prev, xmin: newX.min, xmax: newX.max, ymin: "-11", ymax: "-3"}));
                 } else {
                     setMarginInputs(prev => ({...prev, xmin: "3.4", xmax: "5.3", ymin: "3.5", ymax: "7.0"}));
@@ -319,16 +358,30 @@
             const getShadeBounds = (rMin_log, rMax_log, customScale = null) => {
                 const curXmin = parseFloat(marginInputs.xmin); const curXmax = parseFloat(marginInputs.xmax);
                 const currentAxis = customScale || axis;
-                let dMin, dMax;
-                if (viewMode === 'hr' && currentAxis === 'temp') { dMin = curXmin; dMax = curXmax; } 
-                else if (viewMode === 'hr' && currentAxis === 'metal') { dMin = -3.0; dMax = 0.5; } 
-                else { dMin = Math.min(curXmin, curXmax); dMax = Math.max(curXmin, curXmax); }
-                const effectiveRMin = rMin_log < -20 ? dMin : rMin_log;
-                const effectiveRMax = rMax_log > 20 ? dMax : rMax_log;
-                const vStart = Math.max(effectiveRMin, dMin); const vEnd = Math.min(effectiveRMax, dMax);
-                if (vStart >= vEnd) return null;
-                const isLinear = (plotOpt.linearX && viewMode !== 'hr' && currentAxis !== 'temp');
-                return { x1: isLinear ? Math.pow(10, vStart) : vStart, x2: isLinear ? Math.pow(10, vEnd) : vEnd, mid: isLinear ? Math.pow(10, (vStart + vEnd) / 2) : (vStart + vEnd) / 2 };
+                const isLinear = (plotOpt.linearX && viewMode !== 'hr');
+                
+                let dMinLog, dMaxLog;
+                if (viewMode === 'hr' && currentAxis === 'temp') { 
+                    dMinLog = curXmin; dMaxLog = curXmax; 
+                } else if (viewMode === 'hr' && currentAxis === 'metal') { 
+                    dMinLog = -3.0; dMaxLog = 0.5; 
+                } else { 
+                    dMinLog = Math.min(isLinear ? Math.log10(curXmin) : curXmin, isLinear ? Math.log10(curXmax) : curXmax); 
+                    dMaxLog = Math.max(isLinear ? Math.log10(curXmin) : curXmin, isLinear ? Math.log10(curXmax) : curXmax); 
+                }
+
+                const effectiveRMin = rMin_log < -20 ? dMinLog : rMin_log;
+                const effectiveRMax = rMax_log > 20 ? dMaxLog : rMax_log;
+                const vStartLog = Math.max(effectiveRMin, dMinLog); 
+                const vEndLog = Math.min(effectiveRMax, dMaxLog);
+                
+                if (vStartLog >= vEndLog) return null;
+                
+                return { 
+                    x1: isLinear ? Math.pow(10, vStartLog) : vStartLog, 
+                    x2: isLinear ? Math.pow(10, vEndLog) : vEndLog, 
+                    mid: isLinear ? Math.pow(10, (vStartLog + vEndLog) / 2) : (vStartLog + vEndLog) / 2 
+                };
             };
 
             const dynHDLimit = Math.max(5.5, 5 + 2 * (params.logT - 3.7618));
@@ -402,7 +455,7 @@
                             title="Resets all the mass-loss recipes currently selected"
                             className="absolute left-6 px-4 py-2.5 bg-red-600 text-white rounded-xl font-black uppercase tracking-wider text-xs hover:bg-red-700 shadow-md transition-all active:scale-95 flex items-center gap-2"
                         >
-                            <span className="text-base leading-none">💥</span> Erase Everything
+                            <span className="text-base leading-none">💥</span> Erase Everything <span className="text-base leading-none">💥</span>
                         </button>
                         
                         <button onClick={() => setViewMode(viewMode === 'dependencies' ? 'hr' : 'dependencies')} className="px-10 py-3 bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 shadow-lg transition-all active:scale-95">
@@ -474,9 +527,9 @@
                                         <LineChart margin={{ top: 20, right: 10, left: 10, bottom: 100 }}>
                                             <defs><pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.6" /></pattern></defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                            <XAxis dataKey={plotOpt.linearX ? "linearX" : "x"} type="number" domain={[plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmin)) : parseFloat(marginInputs.xmin), plotOpt.linearX ? Math.pow(10, parseFloat(marginInputs.xmax)) : parseFloat(marginInputs.xmax)]} reversed={axis === 'temp'} tickFormatter={v => (plotOpt.linearX && axis !== 'temp' ? Math.round(v).toLocaleString() : v.toFixed(1))} stroke="#1e293b" strokeWidth={2} fontSize={14} tick={{ fontWeight: 600 }} label={{ value: (plotOpt.linearX ? xLabel.replace('log ', '') : xLabel), position: 'insideBottom', offset: 0, fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
+                                            <XAxis dataKey={plotOpt.linearX ? "linearX" : "x"} type="number" domain={[parseFloat(marginInputs.xmin), parseFloat(marginInputs.xmax)]} reversed={axis === 'temp'} tickFormatter={v => (plotOpt.linearX ? (v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(axis === 'metal' ? 4 : 2)) : v.toFixed(1))} stroke="#1e293b" strokeWidth={2} fontSize={14} tick={{ fontWeight: 600 }} label={{ value: (plotOpt.linearX ? xLabel.replace('log (', '').replace(')', '') : xLabel), position: 'insideBottom', offset: 0, fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
                                             <YAxis domain={[parseFloat(marginInputs.ymin), parseFloat(marginInputs.ymax)]} allowDataOverflow={true} stroke="#1e293b" strokeWidth={2} fontSize={14} tick={{ fontWeight: 600 }} label={{ value: 'log M-dot [Msun/yr]', angle: -90, position: 'insideLeft', fontSize: 16, fontWeight: 700, fill: '#1e293b' }} />
-                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} labelFormatter={(v) => typeof v === 'number' ? v.toFixed(1) : v} formatter={(v) => typeof v === 'number' ? v.toFixed(2) : v} />
+                                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.2)' }} labelFormatter={(v) => typeof v === 'number' ? (plotOpt.linearX && v >= 1000 ? Math.round(v).toLocaleString() : v.toFixed(plotOpt.linearX && axis === 'metal' ? 4 : 2)) : v} formatter={(v) => typeof v === 'number' ? v.toFixed(2) : v} />
                                             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '14px', fontWeight: 'bold' }} />
                                             {options.moreDetails && axis === 'temp' && (
                                                 <React.Fragment>
@@ -494,7 +547,7 @@
                                                     {(() => { const b = getShadeBounds(-5, 100, 'metal'); return b && <ReferenceArea x1={b.x1} x2={b.x2} fill="#1e293b" fillOpacity={0.1} label={{ value: "Pop I", position: "top", fontSize: 14, fontWeight: "bold", fill: "#0f172a" }} />; })()}
                                                 </React.Fragment>
                                             )}
-                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={dynHDLimit} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 16, fontWeight: "bold", fill: "#64748b" }} />}
+                                            {options.moreDetails && axis === 'lum' && <ReferenceLine x={plotOpt.linearX ? Math.pow(10, dynHDLimit) : dynHDLimit} stroke="#64748b" strokeDasharray="5 5" label={{ value: "HD limit", position: "top", fontSize: 16, fontWeight: "bold", fill: "#64748b" }} />}
                                             {activeModelKeys.map(key => <Line key={key} data={plotData} type="monotone" dataKey={key} stroke={MODEL_META[key].color} strokeDasharray={MODEL_META[key].dash} strokeWidth={MODEL_META[key].cat === 'THIN' ? 3.5 : 2.5} dot={false} animationDuration={300} connectNulls={false} />)}
                                         </LineChart>
                                     </ResponsiveContainer>
@@ -581,7 +634,7 @@
                                     <div className="p-6 grid grid-cols-2 md:grid-cols-7 gap-6 animate-in slide-in-from-top-1 duration-200 text-xs">
                                         <div><label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Min</label><input type="text" value={marginInputs.xmin} onChange={e => setMarginInputs({...marginInputs, xmin: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" /></div>
                                         <div><label className="text-[10px] font-black text-slate-400 uppercase">X-Axis Max</label><input type="text" value={marginInputs.xmax} onChange={e => setMarginInputs({...marginInputs, xmax: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono" /></div>
-                                        <div className="flex flex-col justify-end pb-1"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={plotOpt.linearX} onChange={e => setPlotOpt({...plotOpt, linearX: e.target.checked})} className="w-4 h-4" /><span className="text-[10px] font-black text-slate-400 uppercase">Linear X</span></label></div>
+                                        <div className="flex flex-col justify-end pb-1"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={plotOpt.linearX} onChange={handleLinearXToggle} className="w-4 h-4" /><span className="text-[10px] font-black text-slate-400 uppercase">Linear X</span></label></div>
                                         <div><label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Min</label><input type="text" value={marginInputs.ymin} disabled={plotOpt.autoY} onChange={e => setMarginInputs({...marginInputs, ymin: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50" /></div>
                                         <div><label className="text-[10px] font-black text-slate-400 uppercase">Y-Axis Max</label><input type="text" value={marginInputs.ymax} disabled={plotOpt.autoY} onChange={e => setMarginInputs({...marginInputs, ymax: e.target.value})} className="w-full mt-1 p-2 bg-slate-50 border rounded font-mono disabled:opacity-50" /></div>
                                         <div className="flex flex-col justify-end pb-1"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={plotOpt.autoY} onChange={e => setPlotOpt({...plotOpt, autoY: e.target.checked})} className="w-4 h-4" /><span className="text-[10px] font-black text-slate-400 uppercase">Auto-fit Y</span></label></div>
