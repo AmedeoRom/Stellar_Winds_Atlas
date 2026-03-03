@@ -205,7 +205,7 @@
                 const breakdown_val = Math.max(0, (-0.324 * lZ + 0.244) / gamma_edd);
                 const logMdot_breakdown = log10(2.0) * Math.pow(breakdown_val, (-0.44 * lZ + 9.15));
                 let xlmdot = logMdot_pureWR - logMdot_breakdown;
-                if (opts.sv20TCorr) xlmdot -= 6.0 * log10(p.T/141000);
+                if (opts.SV20TCorr && p.T>1.41e5) xlmdot -= 6.0 * log10(p.T/141000);
                 return xlmdot;
             },
             dJ88: (p, s, opts = {}) => {
@@ -237,7 +237,7 @@
             const [axis, setAxis] = useState('temp');
             const [params, setParams] = useState({ logL: 5.8, mass: 40.0, logT: 4.6, z: 0.0142, X: 0.7, Mi: 40, Zsun: 0.0142, thinTMin: 3.6, thinTMax: 4.8, coolCutoff: 4.0, lumCutoff: 4.0, hrResolution: 40 });
             const [activeModels, setActiveModels] = useState({ K24: true, dJ88: true, Sh19: true });
-            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr_cool: false, NdJ90ZCorr: false, sv20TCorr: false, A24TCorr: false, moreDetails: true });
+            const [options, setOptions] = useState({ dJ88ZCorr: false, NdJ90ZCorr_cool: false, NdJ90ZCorr: false, SV20TCorr: false, A24TCorr: false, moreDetails: true });
             const [vinkSettings, setVinkSettings] = useState({ mdot: 1e-5, L: 1e5, M: 40 });
             const [showVinkModal, setShowVinkModal] = useState(false);
             const [expandedCats, setExpandedCats] = useState({ LOW: false, THIN: false, THICK: false, COOL: false, OTHER: false, PLOT: false });
@@ -503,7 +503,7 @@
                                                         </div>
                                                     </label>
                                                     {['dJ88', 'NdJ90', 'NdJ90_cool', 'SV20', 'A24'].includes(key) && activeModels[key] && (
-                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200"><label className="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked={options[key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr'] || options[key+'TCorr']} onChange={e => setOptions({...options, [key === 'A24' || key === 'SV20' ? key+'TCorr' : (key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr')]: e.target.checked})} className="w-3 h-3 rounded" /><span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600">{key === 'A24' || key === 'SV20' ? 'T-correction' : 'Z-correction'}</span></label></div>
+                                                        <div className="mt-2 ml-7 pl-2 border-l border-slate-200"><label title={key === 'SV20' ? 'Temperature-dependent correction from Sander+ (2023). Only applied at Teff > 1.41e5' : undefined} className="flex items-center gap-2 cursor-pointer group"><input type="checkbox" checked={options[key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr'] || options[key+'TCorr']} onChange={e => setOptions({...options, [key === 'A24' || key === 'SV20' ? key+'TCorr' : (key === 'NdJ90_cool' ? 'NdJ90ZCorr_cool' : key+'ZCorr')]: e.target.checked})} className="w-3 h-3 rounded" /><span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-600">{key === 'A24' || key === 'SV20' ? 'T-correction' : 'Z-correction'}</span></label></div>
                                                     )}
                                                 </div>
                                             ))}
