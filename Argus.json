@@ -13,32 +13,35 @@
     "disclaimer": "I am here to help you configure stellar winds following the Atlas structure. I am by no means a substitute for human-based modelling. Every other initial condition for MESA simulation is a duty of the user. Do not treat the whole stellar simulation setup as a blackbox.",
     "description": "A concise summary of the available wind options and their corresponding control variables.",
     "summary": [
-      "1. Set the initial metallicity [initial_z] and opacity metallicity [Zbase]. These should generally be kept equal.",
-      "2. Set the mass-loss recipe for optically thin winds in the high surface gravity regime (log g > 3.0) [x_character_ctrl(2)].",
-      "3. Set the mass-loss recipe for optically thin winds in the low surface gravity regime (log g <= 3.0) [x_character_ctrl(3)]. Defaults to the high gravity model if not specified.",
-      "4. Define the condition for transitioning from optically thin to thick (Wolf-Rayet) winds [x_character_ctrl(1)]. Options include 'gamma' (Eddington factor), 'eta' (wind efficiency), or 'Xsurf' (surface hydrogen).",
-      "5. Choose the wind prescription for Cool Wolf-Rayet stars (Teff < 30 kK) [x_character_ctrl(4)]. Defaults to the low gravity thin wind model if not specified.",
-      "6. Select the mass-loss model for Hydrogen-rich / Warm Wolf-Rayet stars [x_character_ctrl(5)].",
-      "7. Select the mass-loss model for Hydrogen-poor Wolf-Rayet stars [x_character_ctrl(6)].",
-      "8. Determine the condition to trigger the specific H-poor WR wind model [x_character_ctrl(10)].",
-      "9. Specify the wind model for non-Wolf-Rayet Helium stars [x_character_ctrl(9)].",
-      "10. Define the primary prescription for Cool Supergiant / Dust-driven winds (e.g., RSG/YSG) [x_character_ctrl(7)].",
-      "11. Optionally, set a secondary Cool Supergiant wind model for a different temperature range [x_character_ctrl(8)]. Defaults to the primary model if not specified.",
-      "12. Choose an LBV wind scheme if applicable [x_character_ctrl(11)]."
+      "1. Set initial metallicity [initial_z] and opacity metallicity [Zbase].",
+      "2. Set high surface gravity thin winds (log g > 3.0) [x_character_ctrl(2)].",
+      "3. Set low surface gravity thin winds (log g <= 3.0) [x_character_ctrl(3)].",
+      "4. Define transition condition to optically thick (WR) winds [x_character_ctrl(1)] (gamma, eta, Xsurf, etc.).",
+      "5. Choose terminal velocity type [vterm_type] (Hawcroft24, Kritcka25, etc.).",
+      "6. Define Cool WR wind logic [x_character_ctrl(4)] and toggle [x_logical_ctrl(2)].",
+      "7. Select H-rich [x_character_ctrl(5)] and H-poor [x_character_ctrl(6)] WR models.",
+      "8. Define RSG/YSG Cool Supergiant winds [x_character_ctrl(7)] and [x_character_ctrl(8)].",
+      "9. Set RGB wind model for low-mass stars [x_character_ctrl(12)].",
+      "10. Enable LBV [x_logical_ctrl(4)] and choose scheme [x_character_ctrl(11)]."
     ]
   },
   "general_logic": {
     "description": "Rules for interpreting user requests and generating valid inlists.",
     "defaults": {
-      "thin_winds": "If a specific thin wind model is not provided for low gravity (ctrl 3) or cool WR (ctrl 4), set them equal to the high gravity model (ctrl 2). Logic: x_character_ctrl(4) = x_character_ctrl(3) = x_character_ctrl(2).",
-      "cool_supergiant_winds": "If a secondary cool wind switch (ctrl 8) is not specified, set it equal to the primary cool wind model (ctrl 7). Logic: x_character_ctrl(8) = x_character_ctrl(7).",
-      "initial_metallicity": "If initial metallicity [initial_z] and metallicity [Zbase] are not explicitly requested to be different, then set the same value for both",
-      "he_stars": "if no model is provided for he stars (ctrl 9), set it by default to P25"
+      "thin_winds": "x_character_ctrl(4) = x_character_ctrl(3) = x_character_ctrl(2) if not specified.",
+      "cool_supergiant_winds": "x_character_ctrl(8) = x_character_ctrl(7) if not specified.",
+      "he_stars": "x_character_ctrl(9) defaults to 'P25'.",
+      "rgb_winds": "x_character_ctrl(12) defaults to 'CSa11'.",
+      "terminal_velocity": "vterm_type defaults to 'Hawcroft24'."
     },
     "warnings": {
       "low_metallicity": {
         "condition": "If initial_z <= 0.1 * Zsolar OR Zbase <= 0.1 * Zsolar",
         "message": "WARNING: You have chosen a metallicity <= 0.1 Zsolar. Many mass-loss formulations are past their physical regime of validity here. For higher metallicities, iron is the driver of winds, and models were calibrated accordingly. Below this threshold, CNO becomes the major driver (see Krticka et al. 2025: https://arxiv.org/pdf/2508.21702)."
+      },
+      "cool_wr_problem": {
+        "condition": "Teff < 30kK and thick_met == .true.",
+        "message": "NOTE: The 'Cool Wolf-Rayet Problem'. Gamma_e loses physical consistency below 30kK due to H/He recombination. Current models use ad-hoc extrapolations."
       },
       "xshootu_mixing": {
         "condition": "General note on mixing",
@@ -51,118 +54,46 @@
       "xshootu_bistability": {
         "condition": "General note on bi-stability",
         "message": "NOTE: XShootU IX (Verhamme et al. 2024) and XIII (Alkousa et al. 2025) find no evidence for a bi-stability jump in mass-loss rates for LMC B supergiants, contradicting Vink et al. (2001) predictions in this regime."
+      },
+      "vinf_consistency": {
+        "condition": "x_character_ctrl(2) == 'K24' or 'K25'",
+        "message": "CONSISTENCY: Krticka (2024/2025) recipes are best paired with vterm_type = 'Kritcka25'. You can define it in run_star_extras."
       }
     }
   },
   "mesa_controls_definitions": {
-    "description": "Mapping of physical wind regimes to MESA control variables defined in run_star_extras.f90",
+    "description": "Mapping of physical wind regimes to MESA control variables.",
     "controls": {
-      "use_other_wind": {
-        "type": "logical",
-        "description": "Must be set to .true. to activate the run_star_extras.f90 wind module."
-      },
-      "initial_z": {
-        "description": "Initial metallicity of the star. Standard MESA control in &controls."
-      },
-      "Zbase": {
-        "description": "Metallicity used for opacity tables. Standard MESA control in &kap."
-      },
+      "use_other_wind": { "type": "logical", "description": "Set to .true. to activate the Atlas wind module." },
       "x_character_ctrl(1)": {
-        "description": "Transition condition to optically thick (Wolf-Rayet) winds.",
-        "options": [
-          "gamma",
-          "eta",
-          "Xsurf",
-          "gamma_eta",
-          "any"
-        ],
-        "comments": "The calculation of the eta and eta_trans factors depend on the terminal velocity adopted. Under the vinf_type variable in run_star_extras, one can modify which terminal velocity fits are used"
+        "description": "Transition to thick (WR) winds.",
+        "options": ["gamma", "eta", "Xsurf", "gamma_eta", "any"]
       },
-      "x_character_ctrl(2)": {
-        "description": "Optically thin winds for high surface gravity (log g > 3.0)."
+      "x_character_ctrl(2)": { "description": "Thin winds (log g > 3.0)." },
+      "x_character_ctrl(3)": { "description": "Thin winds (log g <= 3.0). Defaults to ctrl(2)." },
+      "x_character_ctrl(4)": { "description": "Cool WR winds (Teff < x_ctrl(4) kK)." },
+      "x_character_ctrl(5)": { "description": "H-rich WR winds (WN)." },
+      "x_character_ctrl(6)": { "description": "H-poor WR winds (WC/WO)." },
+      "x_character_ctrl(7)": { "description": "1st Cool Supergiant (RSG/YSG)" },
+      "x_character_ctrl(8)": { "description": "2nd Cool Supergiant switch (optional)." },
+      "x_character_ctrl(9)": { "description": "Non-WR Helium star winds: V17, P25." },
+      "x_character_ctrl(10)": { "description": "H-poor WR trigger: Teff (usually 1d5 K), Xsurf (Atlas papers use 1d-7).", "options": ["Xsurf, Teff"] },
+      "x_character_ctrl(11)": { "description": "LBV scheme: H00, Bk10, Ch24, P26." },
+      "x_character_ctrl(12)": { "description": "RGB winds: R75, ScCu05, CSa11, Li25." },
+      "vterm_type": {
+        "type": "character",
+        "description": "Terminal velocity fit used for eta calculations and magnetic braking.",
+        "options": ["Lamers95", "Crowther06", "Hawcroft24", "Kritcka25", "Alkousa26"]
       },
-      "x_character_ctrl(3)": {
-        "description": "Optically thin winds for low surface gravity (log g <= 3.0). Defaults to x_character_ctrl(2) if not specified."
-      },
-      "x_character_ctrl(4)": {
-        "description": "Winds for Cool Wolf-Rayet stars (Teff < x_ctrl(5) kK). Defaults to x_character_ctrl(3) (and thus ctrl(2)) if not specified."
-      },
-      "x_character_ctrl(5)": {
-        "description": "Winds for H-rich / Warm Wolf-Rayet stars."
-      },
-      "x_character_ctrl(6)": {
-        "description": "Winds for H-poor Wolf-Rayet stars."
-      },
-      "x_character_ctrl(7)": {
-        "description": "Primary Cool Supergiant / Dust-driven winds."
-      },
-      "x_character_ctrl(8)": {
-        "description": "Secondary Cool Supergiant winds (optional). Defaults to x_character_ctrl(7) if not specified."
-      },
-      "x_character_ctrl(9)": {
-        "description": "Winds for non-WR Helium stars."
-      },
-      "x_character_ctrl(10)": {
-        "description": "Condition to trigger H-poor WR winds.",
-        "options": [
-          "Xsurf",
-          "Teff"
-        ]
-      },
-      "x_character_ctrl(11)": {
-        "description": "LBV wind scheme (e.g., 'Bk10'). Active if x_logical_ctrl(6) is true."
-      },
-      "x_logical_ctrl(1)": {
-        "description": "If true, stop simulation when center Oxygen mass fraction drops below x_ctrl(1)."
-      },
-      "x_logical_ctrl(2)": {
-        "description": "If true, use thin winds (ctrl 4) for Cool WR stars. If false, use thick winds (ctrl 5)."
-      },
-      "x_logical_ctrl(3)": {
-        "description": "If true, use dedicated H-poor WR winds model (ctrl 6). If false, use H-rich model (ctrl 5)."
-      },
-      "x_logical_ctrl(4)": {
-        "description": "Enable interpolation for optically thick wind transition. Highlight with a warning that this was not tested"
-      },
-      "x_logical_ctrl(5)": {
-        "description": "Enable interpolation for cool supergiant wind transition."
-      },
-      "x_logical_ctrl(6)": {
-        "description": "Enable LBV winds beyond the Humphreys-Davidson limit."
-      },
-      "x_logical_ctrl(7)": {
-        "description": "Smooths transition to weaker winds following Pauli+ (2026)"
-      },
-      "x_logical_ctrl(8)": {
-        "description": "Sticky winds: if enabled, once the star develops thick winds, it cannot go back to thin winds even if the thick winds condition is not anymore valid."
-      },
-      "x_ctrl(1)": {
-        "description": "Center Oxygen mass fraction limit for stopping simulation (usually 1d-4)."
-      },
-      "x_ctrl(2)": {
-        "description": "Gamma_e transition threshold for optically thick winds (usually 0.5)."
-      },
-      "x_ctrl(3)": {
-        "description": "Threshold value for H-poor WR transition (usually 1d-7 for Xsurf or 1d5 for Teff)."
-      },
-      "x_ctrl(4)": {
-        "description": "Delta window for thick winds interpolation (e.g., 0.05)."
-      },
-      "x_ctrl(5)": {
-        "description": "Temperature threshold [kK] for Cool WR winds (usually 30)."
-      },
-      "x_ctrl(6)": {
-        "description": "Humphreys-Davidson minimum luminosity [log L/Lsun] (currently 5.5)."
-      },
-      "x_ctrl(7)": {
-        "description": "Temperature threshold [K] to initiate Cool Supergiant winds. Standard values: < 8000 K for Yellow Supergiants (YSG), < 4000 K for Red Supergiants (RSG)."
-      },
-      "x_ctrl(8)": {
-        "description": "Temperature threshold [K] for secondary Cool Supergiant wind switch."
-      },
-      "x_ctrl(9)": {
-        "description": "Zsolar scaling factor for mass loss rates. See 'solar_metallicity_options' for canonical values."
-      }
+      "x_logical_ctrl(2)": { "description": "If .true., use thin winds for Cool WR stars. If .false., use thick." },
+      "x_logical_ctrl(3)": { "description": "Enable dedicated H-poor WR model (ctrl 6)." },
+      "x_logical_ctrl(4)": { "description": "Enable LBV winds." },
+      "x_logical_ctrl(5)": { "description": "Smooth winds between prescriptions (Pauli+ 2026 logic)." },
+      "x_logical_ctrl(6)": { "description": "Sticky winds: Once thick, always thick." },
+      "x_ctrl(2)": { "description": "Gamma_e threshold for thick winds (usually 0.5)." },
+      "x_ctrl(4)": { "description": "Teff threshold [kK] for Cool WR winds (usually 30)." },
+      "x_ctrl(6)": { "description": "Teff threshold [K] for Cool Supergiant winds (usually 4500)." },
+      "x_ctrl(8)": { "description": "Zsolar scaling reference (Standard 0.0142)." }
     }
   },
   "solar_metallicity_options": {
@@ -244,8 +175,9 @@
       {
         "id": "Vb98",
         "ref": "Vanbeveren et al. 1998",
-        "note": "Standard OB mass loss (Eq. 1.1 in paper). Includes metallicity scaling (+0.85 logZ) adapted from Vink & de Koter (2005).",
-        "parameter_space": "CHB stars prior to LBV phase. Formula: log Mdot = 1.67 log L - 1.55 log Teff - 8.29 .",
+        "note": "Eq. 1.1 in paper. Includes metallicity scaling (+0.85 logZ) adapted from Vink & de Koter (2005).",
+        "note_2": "It uses the sample of de Jager et al. (1998), but updates 24 stars with the values of Puls et al. (1996).",
+        "parameter_space": "Core-H burning stars prior to LBV phase.",
         "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
       },
       {
@@ -353,7 +285,7 @@
         "id": "Vb98",
         "ref": "Vanbeveren et al. 1998",
         "note": "RSG mass loss based on Jura (1987) / Reid (1990) for LMC RSGs (Eq. 1.2 in paper).",
-        "parameter_space": "Derived for LMC RSGs with M_bol < -7. Implementation uses: log Mdot = 0.8 log L - 8.7.",
+        "parameter_space": "Derived for LMC RSGs with M_bol < -7.",
         "warning": "Implementation does NOT scale with metallicity. The paper suggests Galactic rates might be ~1.6x higher than this LMC-based formula. However, recent papers like Antoniadis et al. (2025) disagree",
         "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
       },
@@ -418,7 +350,7 @@
         "id": "Vb98",
         "ref": "Vanbeveren et al. 1998",
         "note": "Generic WR mass loss (Eq. 1.3 in paper). Includes metallicity scaling (+0.85 logZ) from Vink & de Koeter (2005).",
-        "parameter_space": "Defined for Hydrogen-deficient CHeB stars with log L >= 4.5 and Teff >= 30 kK. Formula: log Mdot = log L - 10.",
+        "parameter_space": "Defined for Hydrogen-deficient CHeB stars with log L >= 4.5 and Teff >= 30 kK.",
         "warning": "Simple relation dependent primarily on Luminosity. Does not distinguish between WN/WC types dynamically.",
         "url": "https://ui.adsabs.harvard.edu/abs/1998A%26ARv...9...63V"
       },
@@ -456,6 +388,17 @@
         "warning": "Pauli et al. (2025) do NOT find evidence for the predicted 'kink' (sudden mass-loss increase) at this transition.",
         "parameter_space": "Very Massive Stars (up to 300 Msun). Transition WNh stars. Monte Carlo radiative transfer.",
         "url": "https://ui.adsabs.harvard.edu/abs/2011A&A...531A.132V"
+      },
+      {
+      "id": "Z13",
+      "ref": "Zdziarski, Mikołajewska and Belczynski 2013",
+      "note": "Empirical. Mass-dependent WN prescription derived for Cyg X-3.",
+      "note_2": "Derived from a relationship between WR mass-loss rate and the binary period derivative in Cyg X-3.",
+      "parameter_space": "Specifically calibrated for WN 4-8 stars (moderate mass). Based on a sample of 29 WN stars with M < 22 Msun.",
+      "z_solar_calibration": "Vink & de Koter (2005) Z-scaling (+0.85 logZ).",
+      "methodology": "The relation was derived by self-consistently solving equations for the binary period derivative (P-dot) and mass-loss rate. It uses a tight correlation found between the mass-loss rate and the mass of WN stars, corrected for wind clumping.",
+      "warning": "The mass-loss relationship is steep (index n ≈ 2.93) for stars with M_WR < 22 Msun, but the authors note it flattens significantly for more massive stars (40-57 Msun); therefore, this recipe should be limited to the moderate-mass regime.",
+      "url": "https://ui.adsabs.harvard.edu/abs/2013MNRAS.429L.104Z/abstract"
       },
       {
         "id": "TSK16",
@@ -601,221 +544,87 @@
     ]
   },
   "atlas_recipes": {
-    "description": "Prescriptions to replicate models from Wind Atlas I & II. Apply these settings to the &controls namelist.",
-    "WTW": {
-      "description": "Weak Thin Winds (WTW) model from Atlas I. Combines GM23 for high gravity and V01 for low gravity.",
-      "user_warning": "WARNING: the eta_trans value is calculated dynamically at each timestep, not like they did in the original formulation at ZAMS.",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'eta'",
-        "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(5)": "'V11'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
-        "x_ctrl(7)": "0.4d4",
-        "x_logical_ctrl(2)": ".false.",
-        "x_logical_ctrl(3)": ".true."
-      }
-    },
+    "description": "Unique massive-star evolution models from the Wind Atlas I (Table 2), summarizing specific combinations of wind recipes.",
     "Dutch": {
-      "description": "The canonical Dutch wind scheme.",
-      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+      "description": "Standard Dutch wind scheme baseline. Widely used in literature.",
       "settings": {
         "use_other_wind": ".true.",
         "x_character_ctrl(1)": "'Xsurf'",
         "x_character_ctrl(2)": "'V01'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
         "x_character_ctrl(5)": "'NL00'",
-        "x_character_ctrl(6)": "'NL00'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
-        "x_ctrl(7)": "1.0d4",
-        "x_logical_ctrl(2)": ".false.",
-        "x_logical_ctrl(3)": ".false.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
+        "x_ctrl(3)": "0.4",
+        "x_ctrl(6)": "10000"
       }
     },
-    "Dutch-ish": {
-      "description": "Modified Dutch scheme with GM23 for high surface gravity and EV06/NL00 for H-poor.",
-      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+    "SWE": {
+      "description": "Strong Winds Eta (SWE). Strong mass-loss scenario based on wind efficiency transition (Sabhahit+ 2023).",
+      "user_warning": "NOTE: eta_trans is calculated dynamically using current surface properties.",
       "settings": {
         "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'Xsurf'",
-        "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(5)": "'NL00'",
-        "x_character_ctrl(6)": "'NL00'",
+        "x_character_ctrl(1)": "'eta'",
+        "x_character_ctrl(2)": "'V01'",
+        "x_character_ctrl(5)": "'V11'",
+        "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(7)": "1.0d4",
+        "x_ctrl(6)": "4000",
         "x_logical_ctrl(2)": ".false.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
+        "vterm_type": "'Hawcroft24'"
       }
     },
-    "Slavic": {
-      "description": "Based on Krticka et al. (2024). Clumped thin winds with bistability jump and combination of multiple transition conditions to thick winds",
-      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+    "SWG": {
+      "description": "Strong Winds Gamma (SWG). Strong mass-loss scenario based on Gamma_e transition (Bestenlehner 2020).",
+      "settings": {
+        "use_other_wind": ".true.",
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(2)": "'V01'",
+        "x_character_ctrl(5)": "'B20'",
+        "x_character_ctrl(6)": "'SV20'",
+        "x_character_ctrl(7)": "'dJ88'",
+        "x_ctrl(2)": "0.5",
+        "x_ctrl(6)": "10000"
+      }
+    },
+    "KABS": {
+      "description": "KABS model (Krticka, Antoniadis, Bestenlehner, Sander). Combines recent theoretical and empirical recipes.",
       "settings": {
         "use_other_wind": ".true.",
         "x_character_ctrl(1)": "'gamma_eta'",
         "x_character_ctrl(2)": "'K24'",
-        "x_character_ctrl(3)": "'K24'",
-        "x_character_ctrl(4)": "'K24'",
         "x_character_ctrl(5)": "'B20'",
         "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'A24'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "1.0d4",
-        "x_ctrl(8)": "0.4d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".true.",
-        "x_logical_ctrl(6)": ".false."
+        "x_character_ctrl(7)": "'A24'",
+        "x_ctrl(2)": "0.5",
+        "x_ctrl(4)": "30",
+        "x_ctrl(6)": "10000",
+        "vterm_type": "'Kritcka25'"
       }
     },
-    "FESc": {
-      "description": "Free-Electron Scattering transition model (Gamma_e)",
-      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'gamma'",
-        "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "1.0d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
-      }
-    },
-    "FESc_RSG": {
-      "description": "FESc model but restricts dust-driven winds to RSG phase (T < 4kK).",
-      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'gamma'",
-        "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "0.4d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
-      }
-    },
-    "MSc": {
-      "description": "Multiple-Scattering (eta) transition model.",
-      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
+    "WTW": {
+      "description": "Weak Thin Winds (WTW) from Atlas I. Uses GM23 for MS and V01 for B-supergiants.",
+      "user_warning": "NOTE: eta_trans is calculated dynamically using current surface properties.",
       "settings": {
         "use_other_wind": ".true.",
         "x_character_ctrl(1)": "'eta'",
         "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "1.0d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
-      }
-    },
-    "German_gamma": {
-      "description": "Uses Pauli et al. (2025) for thin winds. No bistability jump detected. Called this way because everything is dependent on Gamma_e and most formulations come from papers that are German-led",
-      "user_warning": "WARNING: this model from the Atlas II paper, which is not yet public and finalized. Use it at your own risk",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'gamma'",
-        "x_character_ctrl(2)": "'P25'",
-        "x_character_ctrl(3)": "'P25'",
-        "x_character_ctrl(4)": "'P25'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'A24'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "1.0d4",
-        "x_ctrl(8)": "0.4d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true.",
-        "x_logical_ctrl(4)": ".false.",
-        "x_logical_ctrl(5)": ".false.",
-        "x_logical_ctrl(6)": ".false."
-      }
-    },
-    "SWG": {
-      "description": "Strong Winds Gamma (SWG) model from Atlas I.",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'gamma'",
-        "x_character_ctrl(2)": "'V01'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(5)": "30",
-        "x_ctrl(7)": "1.0d4",
-        "x_logical_ctrl(3)": ".true."
-      }
-    },
-    "MS23": {
-      "description": "Approximation of Sabhahit et al. (2023) using V11 and Eta transition. MS23 from Atlas I",
-      "user_warning": "WARNING: the eta_trans value is calculated dynamically at each timestep, not like they did in the original formulation at ZAMS.",
-      "settings": {
-        "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'eta'",
-        "x_character_ctrl(2)": "'V01'",
         "x_character_ctrl(3)": "'V01'",
         "x_character_ctrl(5)": "'V11'",
         "x_character_ctrl(6)": "'SV20'",
         "x_character_ctrl(7)": "'dJ88'",
-        "x_character_ctrl(8)": "'dJ88'",
-        "x_ctrl(7)": "0.4d4",
         "x_logical_ctrl(2)": ".false.",
-        "x_logical_ctrl(3)": ".true."
+        "x_logical_ctrl(3)": ".true.",
+        "x_logical_ctrl(6)": ".true.",
+        "vterm_type": "'Hawcroft24'"
       }
     },
-    "Xsurf": {
-      "description": "Standard Xsurf transition model using GM23/V01 thin winds.",
-      "user_warning": "WARNING: The use of this condition to thick winds will only capture post-cool supergiant Wolf-Rayet stars. You will not able to catch H-rich Wolf-Rayet or non-Wolf-Rayet helium stars!",
+    "HyD-Cool": {
+      "description": "Hydrodynamic Cool winds model using FT24 boil-off for RSGs.",
       "settings": {
         "use_other_wind": ".true.",
-        "x_character_ctrl(1)": "'Xsurf'",
-        "x_character_ctrl(2)": "'GM23'",
-        "x_character_ctrl(3)": "'V01'",
-        "x_character_ctrl(4)": "'V01'",
-        "x_character_ctrl(5)": "'B20'",
-        "x_character_ctrl(6)": "'SV20'",
-        "x_character_ctrl(7)": "'dJ88'",
-        "x_ctrl(7)": "1.0d4",
-        "x_logical_ctrl(2)": ".true.",
-        "x_logical_ctrl(3)": ".true."
+        "x_character_ctrl(1)": "'gamma'",
+        "x_character_ctrl(7)": "'FT24'",
+        "x_ctrl(2)": "0.5",
+        "x_ctrl(6)": "4500"
       }
     }
   }
