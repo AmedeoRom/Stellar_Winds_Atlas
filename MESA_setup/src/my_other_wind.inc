@@ -16,16 +16,18 @@
 !  23.0: Bj23   (Bjorklund+ 2023)
 !  24.0: GM23   (Gormaz-Matamala+ 2023)
 !  25.0: K24    (Krticka+ 2024)
-!  25.5: K25    (Krticka+ 2025) --> Only for Z < 0.2 Zsun
+!  25.5: K25    (Krticka+ 2025) --> Only for Zsun >= Z >= 0.2 Zsun
 !  26.0: Sa25   (Sabhahit+ 2025) --> Only for very massive stars!
 !
-! Dust/Cool Winds:
+! Cool Supergiant Winds:
 !  30.0: dJ88   (de Jager+ 1988)
-!  31.0: vL05   (van Loon+ 2005)
-!  32.0: Be23   (Beasor+ 2023)
-!  33.0: Ya23   (Yang+ 2023)
-!  34.0: A24    (Antoniadis+ 2024)
-!  35.0: D24    (Decin+ 2024)
+!  30.5: vL05   (van Loon+ 2005)
+!  31.0: Kee21  (Kee et al. 2021)
+!  31.5: Be23   (Beasor+ 2023)
+!  32.0: Ya23   (Yang+ 2023)
+!  32.5: A24    (Antoniadis+ 2024)
+!  33.0: D24    (Decin+ 2024)
+!  33.5: FT24   (Fuller & Tsuna 2024)
 !
 ! Thick/WR Winds:
 !  40.0: L89    (Langer 1989  + Vink, de Koter 2005)
@@ -34,12 +36,13 @@
 !  41.5: Y06    (Yoon+ 2006)
 !  42.0: GH08   (Grafener & Hamann 2008)
 !  42.5: V11    (Vink+ 2011)
-!  43.0: TSK16  (Tramper, Sana & de Koter 2016)
-!  43.5: Y17    (Yoon 2017)
-!  44.0: Sh19   (Shenar+ 2019 plus 2020 erratum)
-!  44.5: S19    (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
-!  45.0: B20    (Bestenlehner 2020)
-!  45.5: SV20   (Sander & Vink 2020)
+!  43.0: Z13    (Zdziarski, Mikołajewska and Belczynski 2013 + Vink, de Koter 2005)
+!  43.5: TSK16  (Tramper, Sana & de Koter 2016)
+!  44.0: Y17    (Yoon 2017)
+!  44.5: Sh19   (Shenar+ 2019 plus 2020 erratum)
+!  45.0: S19    (Sander+ 2019 + Vink 2015 "True WR origin"; calibrations from Iorio+ 2021)
+!  45.5: B20    (Bestenlehner 2020)
+!  46.0: SV20   (Sander & Vink 2020)
 !
 ! LBV:
 !  50.0: H00    (Hurley+ 2000; LBV)
@@ -267,8 +270,8 @@ subroutine smooth_wind_log(w, scheme_name)
   ! This avoids numerical noise and "crazy jumps" downwards.
   ! We allow rapid increases (no check for w > old_wind).
   if (old_wind /= 0d0) then
-    if (abs(w) < abs(old_wind) * 0.5d0 .and. s% x_logical_ctrl(5)) then
-      w = old_wind * 0.5d0
+    if (abs(w) < abs(old_wind) * 0.85d0 .and. s% x_logical_ctrl(5)) then
+      w = old_wind * 0.85d0
       is_smoothed = .true.
 
       s%dt_next = s%dt_next/2                                                   ! We also reduce the timestep to not allow big overestimation artefacts
@@ -341,7 +344,7 @@ subroutine eval_CranmerSaar11_wind(w)
   real(dp) :: r_crit, u_crit, rho_crit, Bcrit, Areaphoto, Areacrit, action_photo
   real(dp) :: K_NR, f_val, df_val, M_A_crit
   real(dp) :: k_B, m_H, H_sun, lambda_perp_sun, alpha_0, theta_param, h_param
-  real(dp) :: enn, beta, eee36
+  real(dp) :: enn, beta, eee36, lambda_perp_star
   integer :: iter
 
   include 'formats'
@@ -1064,7 +1067,7 @@ call smooth_wind_log(w, "Y06")
 
 end subroutine eval_Yoon06_wind
 
-subroutine eval_NugisLamers_wind(w)
+subroutine eval_NugisLamers00_wind(w)
 real(dp), intent(inout) :: w
 real(dp) :: logMdot
 
@@ -1106,7 +1109,7 @@ w = 10**(logMdot)
 call smooth_wind_log(w, "NL00")
 
 
-end subroutine eval_NugisLamers_wind
+end subroutine eval_NugisLamers00_wind
 
 subroutine eval_Langer89_wind(w)
 real(dp), intent(inout) :: w
@@ -1139,11 +1142,25 @@ call smooth_wind_log(w, "Ha95")
 
 end subroutine eval_Hamann95_wind
 
-subroutine eval_TSK16_wind(w)
+subroutine eval_Zdziarski13_wind(w)
 real(dp), intent(inout) :: w
 real(dp) :: logMdot
 
 wind_scheme = 43.0
+
+
+logMdot = log10(1.9d-5*(M/(Msun*14.7))**2.93) + 0.85*logZ_div_Zsun
+
+w = 10**(logMdot)
+call smooth_wind_log(w, "Z13")
+
+end subroutine eval_Zdziarski13_wind
+
+subroutine eval_TSK16_wind(w)
+real(dp), intent(inout) :: w
+real(dp) :: logMdot
+
+wind_scheme = 43.5
 
 
 logMdot = 0.85*log10(L/Lsun) + 0.44*log10(Y) + 0.25*logZ_div_Zsun - 9.2
@@ -1158,7 +1175,7 @@ real(dp), intent(inout) :: w
 real(dp) :: f_WR
 
 f_WR = 1                                                                       ! Should be 1 for clumping factor D = 4 and 1.58 for D = 10
-wind_scheme = 43.5
+wind_scheme = 44.0
 
 
 w = f_WR*((L/Lsun)**1.18)*(Z_div_Z_solar**0.6)*(10**(-11.32))
@@ -1172,7 +1189,7 @@ real(dp), intent(inout) :: w
 real(dp) :: logMdot
 real(dp) :: C1,C2,C3,C4,C5
 
-wind_scheme = 44.0
+wind_scheme = 44.5
 
 C4 = 1.42
 
@@ -1213,7 +1230,7 @@ subroutine eval_Sander19_wind(w)
 real(dp), intent(inout) :: w
 real(dp) :: logMdot,fWN,fWCO,Zscale
 
-wind_scheme = 44.5
+wind_scheme = 45.0
 
 fWN = -1 + 1.9*tanh(0.58*log10(s% xa(s% net_iso(ife56),0) )+1)                 ! It is hard to scale the absolute value of Fe56 linearly to Z
 fWCO = -0.3 + 1.2*tanh(0.5*log10(s% xa(s% net_iso(ife56),0) )+0.5)
@@ -1242,7 +1259,7 @@ real(dp), intent(inout) :: w
 real(dp) :: mdg_a,mdg_cbd,mdg_geddb,mdg_logMdotOff,logMdot_breakdown,logMdot_pureWR
 real(dp) :: logMdot
 
-wind_scheme = 45.5
+wind_scheme = 46.0
 
 !*** Sander & Vink formula for WR winds as a function of Gamma_e
 mdg_a = 2.932
@@ -1267,7 +1284,6 @@ real(dp), intent(inout) :: w
 real(dp) :: logMdot
 
 include 'formats'
-! gamma_edd = exp10(-4.813d0)*(1+xsurf)*(L/Lsun)*(Msun/M)
 
 if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-rich WR winds
 
@@ -1287,6 +1303,10 @@ if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-r
 
     call eval_Sander19_wind(w)
 
+  elseif ( s%x_character_ctrl(5)=='Z13' ) then
+
+    call eval_Zdziarski13_wind(w)
+
   elseif ( s%x_character_ctrl(5)=='V11' ) then
 
     call eval_Vink11_wind(w)
@@ -1301,7 +1321,7 @@ if (.not. HPoor_WR_condition .or. .not. s% x_logical_ctrl(3)) then         ! H-r
 
   elseif ( s%x_character_ctrl(5)=='NL00' ) then
 
-    call eval_NugisLamers_wind(w)
+    call eval_NugisLamers00_wind(w)
 
   elseif ( s%x_character_ctrl(5)=='Vb98' ) then
 
@@ -1349,7 +1369,7 @@ else
 
  elseif( s%x_character_ctrl(6)=='NL00') then
 
-   call eval_NugisLamers_wind(w)
+   call eval_NugisLamers00_wind(w)
 
  elseif ( s%x_character_ctrl(6)=='Vb98' ) then
 
@@ -1368,13 +1388,54 @@ end if
 
 end subroutine eval_thick_winds
 
+subroutine eval_FullerTsuna24(w)
+  real(dp), intent(inout) :: w
+  real(dp) :: rhosurf, vcon, vconeff
+  real(dp) :: Td, Rd, rhod, vesc
+  integer :: k
+  real(dp) :: tauflag
+
+  wind_scheme = 33.5
+
+  rhosurf = s% rho(1)
+
+  ! Evaluate convection velocity at the outer edge of the surface convection zone
+  tauflag = 0.0d0
+  vcon = 1.0d0
+  do k = 1, s% nz-1
+     if (tauflag < 0.5d0) then
+        if ( s% tau(k) > clight * s% prad(k) / (s% conv_vel(k) * (s% prad(k) + s% pgas(k))) ) then
+           vcon = min(s% conv_vel(k), 1.2d0 * s% csound(k)) ! Limit convective speeds when unreliable
+           tauflag = 1.0d0
+        end if
+     end if
+  end do
+
+  vesc = sqrt(2d0*standard_cgrav*M/R)
+
+  ! Calculate dust formation radius given a dust formation temperature
+  Td = 1200.0d0
+  Rd = (1.0d0 - (1.0d0 - 2.0d0 * Td**4 / Tsurf**4)**2)**(-0.5d0)
+  vconeff = vcon
+
+  ! Calculate density and mass loss rate at dust formation radius
+  rhod = rhosurf * (Rd**(-2.0d0)) * exp(-(vesc / vconeff) * sqrt(1.0d0 - 1.0d0 / Rd))
+  w = 4.0d0 * pi * rhod * vconeff * (Rd * R)**2
+
+  ! Convert from g/s to Msun/yr
+  w = w * secyer / Msun
+
+  ! Pass to the standard smoothing and logging routine
+  call smooth_wind_log(w, "FT24")
+
+end subroutine eval_FullerTsuna24
 
 subroutine eval_Antoniadis24_wind(w)
 ! Antoniadis, K., et al.: A&A, 686, A88 (2024)
 real(dp), intent(out) :: w
 real(dp) :: log10w
 include 'formats'
-wind_scheme = 34.0
+wind_scheme = 32.5
 
 if ( log(L/Lsun) < 4.4 ) then
   if ( Tsurf < 4000 ) then
@@ -1400,18 +1461,89 @@ subroutine eval_van_Loon05_wind(w)
 real(dp), intent(out) :: w
 real(dp) :: log10w
 include 'formats'
-wind_scheme = 31.0
+wind_scheme = 30.5
 
 log10w = 1.05 * log10(L/Lsun/1d4) - 6.3 * log10(Tsurf/3500) - 5.56
 w = exp10(log10w)
 call smooth_wind_log(w, "vL05")
 end subroutine eval_van_Loon05_wind
 
+subroutine eval_Kee21_wind(w)
+  real(dp), intent(inout) :: w
+  real(dp) :: v_turb_kms, v_turb
+  real(dp) :: gamma_Kee, R_p_mod, ratio
+  real(dp) :: rho_p_mod, Mdot_an, Mdot_num
+  real(dp) :: vesc_Kee, correction_factor
+  real(dp) :: m_H_cgs, kappa_surf
+  real(dp) :: c_s_iso
+  real(dp), parameter :: k_B = 1.380649d-16
+  real(dp), parameter :: m_H = 1.6735575d-24
+
+  wind_scheme = 31.0
+
+  ! Tunable turbulent velocity: defaults to 18.2 km/s per Kee+ 2021 recommendation.
+  v_turb_kms = 18.2d0
+  v_turb = v_turb_kms * 1d5
+
+  ! Use surface opacity to dynamically track RSG extended conditions
+  kappa_surf = s% opacity(1)
+  if (kappa_surf <= 0.0d0) kappa_surf = 0.01d0
+
+  ! Safeguard: If this evaluates to Gamma >= 1.0 (negative Parker radius), fall back safely:
+  gamma_Kee = kappa_surf*L/(4d0*pi*standard_cgrav * M * clight)
+  gamma_Kee = min(1.0d0,gamma_Kee)
+
+  ! Note: We calculate this manually instead of using MESA's built-in s% csound(1).
+  ! MESA provides the adiabatic sound speed (which is stiffer and faster due to the
+  ! adiabatic index), while the Kee et al. derivation explicitly relies on the
+  ! isothermal sound speed. Using MESA's adiabatic speed would artificially
+  ! inflate the effective sound speed and alter the final mass-loss rate.
+  c_s_iso = sqrt(k_B * Tsurf / m_H)
+
+  ! Eq 5: Calculate modified Parker radius using isothermal sound speed
+  R_p_mod = (standard_cgrav * M * (1.0d0 - gamma_Kee)) / (2.0d0 * (c_s_iso**2 + v_turb**2))
+
+
+  ratio = 2.0d0 * R_p_mod / R
+  write(*,*) "cs", s% csound(1)
+  write(*,*) "Parker Radius", R_p_mod
+  write(*,*) "Radius", R
+  write(*,*) "ratio", ratio
+
+  ! Eq 14: Density at Parker radius, with protection against exponential underflow
+  if (ratio > 600.0d0) then
+     rho_p_mod = 0.0d0
+  else if (ratio < 1d-5) then                                                   ! This uses a Taylor series expansion 1−e^{−x}≈x for o(x)
+     rho_p_mod = (4.0d0/3.0d0) * (R_p_mod / (kappa_surf * R**2)) &              !   to not lead to a catastrophic cancellation
+                 * exp(-ratio + 1.5d0) / ratio
+  else
+     rho_p_mod = (4.0d0/3.0d0) * (R_p_mod / (kappa_surf * R**2)) &
+                 * exp(-ratio + 1.5d0) / (1.0d0 - exp(-ratio))
+  end if
+
+  ! Eq 13: Analytic isothermal mass-loss rate
+  Mdot_an = 4.0d0 * pi * rho_p_mod * sqrt(s% csound(1)**2 + v_turb**2) * R_p_mod**2
+  Mdot_an = Mdot_an * secyer / Msun
+
+  ! Eq 25: Non-isothermal correction factor
+  ! v_esc = sqrt(GM/R) evaluates closer to 60km/s for standard MESA runs
+  ! than the eff. gravity v_esc. Kee et al 2021 assumes this normalization.
+  vesc_Kee = sqrt(2*standard_cgrav * M / R) / 1d5
+  correction_factor = ( (v_turb_kms / 17.0d0) / (vesc_Kee / 60.0d0) )**1.30d0
+
+  ! Retrieve final theoretical mass loss rate
+  Mdot_num = Mdot_an * correction_factor
+  w = Mdot_num
+
+  call smooth_wind_log(w, "Kee21")
+
+end subroutine eval_Kee21_wind
+
 subroutine eval_Beasor23_wind(w)
 real(dp), intent(out) :: w
 real(dp) :: log10w
 include 'formats'
-wind_scheme = 32.0
+wind_scheme = 31.5
 
 log10w = -0.15 * s% initial_mass + 3.6 * log10(L/Lsun) - 21.5
 w = exp10(log10w)
@@ -1422,7 +1554,7 @@ subroutine eval_Yang23_wind(w)
 real(dp), intent(out) :: w
 real(dp) :: log10w
 include 'formats'
-wind_scheme = 33.0
+wind_scheme = 32.0
 
 log10w = 0.45 * log10(L/Lsun)**3 - 5.26 * (log10(L/Lsun))**2 + 20.93 * log10(L/Lsun) - 34.56
 w = exp10(log10w)
@@ -1433,7 +1565,7 @@ subroutine eval_Decin24_wind(w)
 real(dp), intent(out) :: w
 real(dp) :: log10w
 include 'formats'
-wind_scheme = 35.0
+wind_scheme = 33.0
 
 log10w = 1.71 -1.63 * s% initial_mass/10 + 3.47 * log10(L/Lsun/1d5) - 5
 w = exp10(log10w)
@@ -1482,6 +1614,10 @@ elseif ( s%x_character_ctrl(which_cool)=='vL05' ) then
 
  call eval_van_Loon05_wind(w)
 
+elseif ( s%x_character_ctrl(which_cool)=='Kee21' ) then
+
+ call eval_Kee21_wind(w)
+
 elseif ( s%x_character_ctrl(which_cool)=='Be23' ) then
 
  call eval_Beasor23_wind(w)
@@ -1497,6 +1633,10 @@ elseif ( s%x_character_ctrl(which_cool)=='A24' ) then
 elseif ( s%x_character_ctrl(which_cool)=='D24' ) then
 
  call eval_Decin24_wind(w)
+
+elseif ( s%x_character_ctrl(which_cool)=='FT24' ) then                          ! IT IS JUST FOR RED SUPERGIANTS!!!!
+
+ call eval_FullerTsuna24(w)
 
 
 end if

@@ -42,6 +42,7 @@
       ! this is used to soften too large changes in wind mass loss rates
       real(dp) :: old_wind = 0
       character(len=10) :: vterm_type = "Hawcroft24"                            ! Options Lamers95, Crowther06, Hawcroft24, Kritcka25, Alkousa26
+      character(len=10) :: vterm_type_old
 
 
       real(dp) :: max_years_dt_old
@@ -110,6 +111,7 @@
          if (ierr /= 0) return
 
          max_years_dt_old = s% max_years_for_timestep
+         vterm_type_old = vterm_type
 
          if (s% kap_rq% Zbase/0.0142d0 > 0.5) then
            s% use_superad_reduction = .true.
@@ -159,6 +161,12 @@
 
        ! 2. Calculate Escape Velocity
        vesc = sqrt(2d0*standard_cgrav*M/R)/1d5
+
+       if ( gamma_edd > 1 ) then                                                ! this is a safety condition for low-Z, no rotation boost, or binaries
+         vterm_type = "Hawcroft24"                                              !    for which due to sqrt v_out can become an imaginary number
+       else
+         vterm_type = vterm_type_old
+       end if
 
        ! 3. Calculate Vterm based on selected type
        select case (trim(vterm_type))
