@@ -99,30 +99,30 @@
     x_character_ctrl(2) = 'P25'                                                 ! High log g thin winds: NdJ90/Vb98/GM23/V01/VS21/Bj23/K24/K25/P25/Sa25
     x_character_ctrl(3) = 'P25'                                                 ! Low log g thin winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25
     x_character_ctrl(4) = 'P25'                                                 ! Cool WR winds: NdJ90/Vb98/V01/VS21/Bj23/K24/K25/P25/Sa25 (x_logical_ctrl(2) == .true.)
-    x_character_ctrl(5) = 'B20'                                                 ! WR winds: L89/Ha95/Vb98/NL00/Y06/GH08/V11/Sh19/S19/B20/P25
+    x_character_ctrl(5) = 'B20'                                                 ! WR winds: L89/Ha95/Vb98/NL00/Y06/GH08/V11/Z13/Sh19/S19/B20/P25
     x_character_ctrl(6) = 'SV20'                                                ! WR H-poor winds: L89/Vb98/NL00/Y06/TSK16/Y17/Sh19/S19/SV20/P25
-    x_character_ctrl(7) = 'FT24'                                                ! 1st Cool supergiant winds: dJ88/NdJ90/Vb98/vL05/Be23/Ya23/A24/D24/FT24
-    x_character_ctrl(8) = 'FT24'                                                 ! 2nd (optional) WR-poor winds: dJ88/NdJ90/Vb98/vL05/B23/Ya23/A24/D24/FT24
+    x_character_ctrl(7) = 'Kee21'                                               ! 1st Cool supergiant winds: dJ88/NdJ90/Vb98/vL05/Kee21/Be23/Ya23/A24/D24/FT24
+    x_character_ctrl(8) = 'Kee21'                                               ! 2nd (optional) cool winds: dJ88/NdJ90/Vb98/vL05/B23/Kee21/Ya23/A24/D24/FT24
     x_character_ctrl(9) = 'P25'                                                 ! NON-WR He star winds: V17/P25
 
     x_character_ctrl(10) = 'Teff'                                               ! Canonical WR winds transition: Xsurf/Teff --> usually 1d-7/1d5
     x_ctrl(3) = 1d5                                                             ! Threshold factor for non-WN WR winds, either H-abundance or Teff [K]
 
     x_ctrl(4) = 30                                                              ! [kK] Teff threshold for cool WR winds
-    x_logical_ctrl(2) = .false.                                                 ! Cool WR thin winds: do I use thin (.true.)
+    x_logical_ctrl(2) = .true.                                                  ! Cool WR thin winds: do I use thin (.true.)
                                                                                 !    or thick (.false.) winds for Mdot?
 
     x_logical_ctrl(3) = .true.                                                  ! Dedicated H-poor WR winds model
 
-    x_logical_ctrl(4) = .true.                                                  ! LBV winds beyond the HD limit
+    x_logical_ctrl(4) = .false.                                                 ! LBV winds
     x_ctrl(5) = 5.5                                                             ! [log (L/Lsun)] HD minimum luminosity - Only used for H00 and Bk10
-    x_character_ctrl(11) = 'Bk10'                                                ! LBV winds: H00/Bk10/Ch24/P26
+    x_character_ctrl(11) = 'Bk10'                                               ! LBV winds: H00/Bk10/Ch24/P26
 
 
     x_ctrl(6) = 4.5d3                                                           ! [K] --- The actual threshold for cool supergiant winds
     x_ctrl(7) = 4.5d3                                                           ! [K] --- In case we have a second cool supergiant winds switch
                                                                                 !  ignore if x_character_ctrl(7) and x_character_ctrl(8) are the same
-    x_ctrl(8) = 0.0142d0                                                         ! Zsolar scaling factor for mass loss rates
+    x_ctrl(8) = 0.0142d0                                                        ! Zsolar scaling factor for mass loss rates
 
 
     x_logical_ctrl(5) = .true.                                                  ! Smooth winds between different prescriptions
