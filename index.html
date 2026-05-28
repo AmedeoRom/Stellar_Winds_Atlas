@@ -198,7 +198,7 @@
             S19: (p, s) => (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) ? null : -8.31 + 0.68*log10(p.L),
             SV20: (p, s, opts = {}) => {
                 if (log10(p.L) <= s.lumCutoff || log10(p.T) < s.thinTMin) return null;
-                if (log10(p.T) < 1e5) return null;
+                if (log10(p.T) < 5.0) return null;
                 const log_ge = -4.813 + log10(1+p.X) + log10(p.L) - log10(p.M);
                 const gamma_edd = Math.min(0.999, Math.pow(10, log_ge));
                 const lZ = log10(p.Z/s.Zsun);
