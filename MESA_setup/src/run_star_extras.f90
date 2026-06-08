@@ -27,6 +27,7 @@
       use const_def
       use const_def
       use chem_def
+      use chem_lib
       use binary_def
       use utils_lib
 
@@ -65,11 +66,20 @@
       integer, parameter :: UNIFORM_ID = 1
       integer, parameter :: SURFACE_ID = 2
 
+      ! --- Dynamic Wind Yield Tracking ---
+      logical :: is_tracked_isos_init = .false.
+      integer, parameter :: max_tracked_isos = 50
+      integer :: num_tracked_isos = 0
+      character(len=32) :: tracked_iso_names(max_tracked_isos)
+      integer :: tracked_iso_net_ids(max_tracked_isos)
+      real(dp) :: tracked_iso_step_yield(max_tracked_isos)
+      real(dp) :: tracked_iso_cumulative_yield(max_tracked_isos)
+
       contains
 
       include "my_other_wind.inc"
       include "magnetic_effects.inc"
-
+      include "dynamic_yields.inc"
 
       function round_3(val) result(res)
         real(dp), intent(in) :: val
@@ -105,13 +115,37 @@
          integer, intent(in) :: id
          logical, intent(in) :: restart
          integer, intent(out) :: ierr
+         real(dp) :: gamma_trans
          type (star_info), pointer :: s
          ierr = 0
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
 
+         call init_tracked_isos()
+
+         ! s% job% new_rotation_flag = .true.
+         ! s% job% change_initial_rotation_flag = .true.
+         !
+         ! s% job% new_omega_div_omega_crit = 0.4
+         ! s% job% set_initial_omega_div_omega_crit = .true.
+         ! s% job% relax_initial_omega_div_omega_crit = .true.
+         ! s% job% num_steps_to_relax_rotation = 100
+         ! s% job% near_zams_relax_omega_div_omega_crit = .true.
+
+         write(*,*) "---------------------------------------------"
+
          max_years_dt_old = s% max_years_for_timestep
          vterm_type_old = vterm_type
+
+         if (s% initial_mass > 20) then
+           s% max_years_for_timestep = 1d3
+         else if (s% initial_mass > 10) then
+           s% max_years_for_timestep = 1d4
+         else
+           s% max_years_for_timestep = 1d5
+         endif
+
+         write(*,*) "max_years_for_timestep:", s% max_years_for_timestep
 
          if (s% kap_rq% Zbase/0.0142d0 > 0.5) then
            s% use_superad_reduction = .true.
@@ -122,8 +156,21 @@
          s% overshoot_f(1) = f_ov_fcn_of_mass(s% initial_mass)
          s% overshoot_f0(1) = s% overshoot_f(1)/100
 
+         write(*,*) "Overshoot f_ov:", s% overshoot_f(1)
+
          s% overshoot_f(2) = f_ov_fcn_of_mass(s% initial_mass)/10
          s% overshoot_f0(2) = s% overshoot_f0(2)/100
+
+         write(*,*) "Undershoot u_ov:", s% overshoot_f(2)
+
+
+         gamma_trans = gamma_edd_trans(s% kap_rq% Zbase, s% x_ctrl(2))
+
+         write(*,*) "gamma_trans to thick winds:", gamma_trans
+
+
+         write(*,*) "---------------------------------------------"
+
 
       end subroutine extras_startup
 
@@ -147,13 +194,33 @@
 
      end function f_ov_fcn_of_mass
 
+     function gamma_edd_trans(ZZ,base) result(gamma_trans)                      ! Calculates from 0.5 (calibration from Z = 0.008 to 0.0142) to 1.0
+       real(dp), intent(in) :: ZZ, base
+       real(dp) :: Z_upper, Z_lower,gamma_trans
+       real(dp) :: log_Z_up, log_Z_low
+
+       Z_upper = 0.008
+       Z_lower = 0.0001
+
+       if (ZZ >= Z_upper) then
+           gamma_trans = base;
+       else if (ZZ <= Z_lower) then
+           gamma_trans = 1.0;
+       else                                                                     ! Logarithmic interpolation between 0.5 and 1.0 for declining metallicity
+           log_Z_up = log10(Z_upper);
+           log_Z_low = log10(Z_lower);
+           gamma_trans = 0.5 + 0.5 * ((log_Z_up - log10(ZZ)) / (log_Z_up - log_Z_low));
+       endif
+
+     end function gamma_edd_trans
+
      ! Terminal velocity has its own dedicated function because it is needed for both the winds and the magnetic braking module
 
      subroutine calc_vterm(M, R, L, Tsurf, X, Z_ratio, v_out)
        real(dp), intent(in) :: M, R, L, Tsurf, X, Z_ratio
        real(dp), intent(out) :: v_out
 
-       real(dp) :: log_gamma_edd, gamma_edd, vesc, vterm_e
+       real(dp) :: log_gamma_edd, gamma_edd, vesc, vterm_e,eff_Teff
 
        ! 1. Calculate Gamma_Edd (copied from my_other_wind)
        log_gamma_edd = -4.813d0 + log10(1d0+X) + log10(L/Lsun) - log10(M/Msun)
@@ -168,10 +235,12 @@
          vterm_type = vterm_type_old
        end if
 
+       eff_Teff = min(Tsurf,35000.0d0)                                              ! Safety fallback for extrapolation beyond the OB range
+
        ! 3. Calculate Vterm based on selected type
        select case (trim(vterm_type))
        case ("Lamers95")
-         if ( Tsurf > 25000 ) then
+         if ( eff_Teff > 25000 ) then
            vterm_e = 2.6
          else
            vterm_e = 1.3
@@ -179,21 +248,25 @@
          v_out = vterm_e * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5 * Z_ratio**0.20d0
 
        case ("Crowther06")
-         vterm_e = 1.59d-4*Tsurf - 0.89
+         vterm_e = 1.59d-4*eff_Teff - 0.89
          v_out = vterm_e * sqrt(2d0*standard_cgrav*(M)*(1-gamma_edd)/R)/1d5 * Z_ratio**0.20d0
 
        case ("Hawcroft24")
-         v_out = (9.2d-2*Tsurf-1040) * Z_ratio**0.22d0
+         v_out = (9.2d-2*eff_Teff-1040) * Z_ratio**0.22d0
 
        case ("Kritcka25")
-         v_out = (107+25*log10(Z_ratio))*(Tsurf/1d3) - 1190 - 430*log10(Z_ratio)
+         v_out = (107+25*log10(Z_ratio))*(eff_Teff/1d3) - 1190 - 430*log10(Z_ratio)
 
        case ("Alkousa26")
-         v_out = (8.0d-2*Tsurf-963) * Z_ratio**0.22d0                           ! Metallicity correction from Hawcroft24
+         v_out = (8.0d-2*eff_Teff-963) * Z_ratio**0.22d0                           ! Metallicity correction from Hawcroft24
 
        case default
          v_out = 0d0 ! Safety fallback
        end select
+
+       if (trim(vterm_type) /= "Lamers95" .and. eff_Teff <= 15000) then
+         v_out = 20
+       end if
 
      end subroutine calc_vterm
 
@@ -240,10 +313,12 @@
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
 
+         call init_tracked_isos()
+
          if ( s% x_logical_ctrl(9) ) then
-            how_many_extra_history_columns = 19
+            how_many_extra_history_columns = 20 + num_tracked_isos
          else
-           how_many_extra_history_columns = 10
+           how_many_extra_history_columns = 11 + num_tracked_isos
          end if
 
       end function how_many_extra_history_columns
@@ -255,12 +330,16 @@
          real(dp) :: vals(n)
          real(dp) :: Msum,Rsum,E_Bind_G,E_Bind_B,E_Bind_H,gamma_1_c,gamma_1_tot
          real(dp) :: gamma1_num_c,gamma1_den_c,gamma1_num_tot,gamma1_den_tot
+         real(dp) :: Z_div_Z_solar, Zsolar
          integer, intent(out) :: ierr
-         integer :: i
+         integer :: i, base_cols, k, col_idx
          type (star_info), pointer :: s
          ierr = 0
          call star_ptr(id, s, ierr)
          if (ierr /= 0) return
+
+         ! Prepare tracked yield lists dynamically based on history_columns.list
+         call init_tracked_isos()
 
          names(1) = "wind_scheme"
          names(2) = "eta"
@@ -272,18 +351,19 @@
          names(8) = "E_Bind_H"
          names(9) = "gamma_1_c"
          names(10) = "gamma_1_tot"
+         names(11) = "v_term"
 
          if ( s% x_logical_ctrl(9) ) then                                       ! In case magnetic braking is active
 
-           names(11) = "Beq"; vals(11) = Beq
-           names(12) = "Ra"; vals(12) = Ra
-           names(13) = "Rc"; vals(13) = Rc
-           names(14) = "Rk"; vals(14) = Rk
-           names(15) = "etastar"; vals(15) = etastar
-           names(16) = "Jbrake"; vals(16) = Jbrake
-           names(17) = "vterm_km_s"; vals(17) = vterm
-           names(18) = "enclosedm_braking"; vals(18) = enclosedm
-           names(19) = "nin_braking"; vals(19) = real(nin, dp)
+           names(12) = "Beq"; vals(11) = Beq
+           names(13) = "Ra"; vals(12) = Ra
+           names(14) = "Rc"; vals(13) = Rc
+           names(15) = "Rk"; vals(14) = Rk
+           names(16) = "etastar"; vals(15) = etastar
+           names(17) = "Jbrake"; vals(16) = Jbrake
+           names(18) = "vterm_km_s"; vals(17) = vterm
+           names(19) = "enclosedm_braking"; vals(18) = enclosedm
+           names(20) = "nin_braking"; vals(19) = real(nin, dp)
 
          end if
 
@@ -342,6 +422,30 @@
            gamma_1_tot = gamma1_num_tot / gamma1_den_tot
          end if
          vals(10) = gamma_1_tot
+
+         if ( s% x_logical_ctrl(9) ) then
+            base_cols = 20
+         else
+            base_cols = 11
+         end if
+
+         Zsolar = s% x_ctrl(8)
+         Z_div_Z_solar = s% kap_rq% Zbase/Zsolar
+         call calc_vterm(s% star_mass*Msun, s% photosphere_r*Rsun, s% photosphere_l*Lsun, s% Teff, s% surface_h1, Z_div_Z_solar, vterm)
+         vals(11) = vterm
+
+         call update_tracked_yields(s)
+
+         col_idx = base_cols
+         do k = 1, num_tracked_isos
+            col_idx = col_idx + 1
+            names(col_idx) = 'log10_dm_ej_' // trim(tracked_iso_names(k))
+            vals(col_idx) = tracked_iso_step_yield(k)
+
+         !    col_idx = col_idx + 1
+         !    names(col_idx) = 'yield_' // trim(tracked_iso_names(k))
+         !    vals(col_idx) = tracked_iso_cumulative_yield(k)
+         end do
 
       end subroutine data_for_extra_history_columns
 

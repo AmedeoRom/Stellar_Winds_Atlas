@@ -56,6 +56,7 @@
 
 !===================================================================================
 
+
 subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
   integer, intent(in) :: id
   real(dp), intent(in) :: L, M, R, Tsurf, X, Y, Z ! surface values (cgs)
@@ -94,7 +95,8 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
   s% max_years_for_timestep = max_years_dt_old                            ! Sometimes I change the timesteps in the code to avoid big shifts at the onset of different mass loss recipes
                                                                           !  This is to set everything back
 
-  if (s% stop_near_zams) then
+  if (s% stop_near_zams .or. (s% job% create_pre_main_sequence_model .and. &
+  s% center_h1 >= 0.5 .and. s% L_nuc_burn_total/(L/Lsun) <= s% Lnuc_div_L_zams_limit)) then
     write(*,*) 'pre-ZAMS -- no mass loss'
     w=0
     return
@@ -125,13 +127,7 @@ subroutine my_other_wind(id, L, M, R, Tsurf, X, Y, Z, w, ierr)
 
   end if
 
-  gamma_trans = s% x_ctrl(2)
-
-  ! if ( logZ_div_Zsun >= log10(0.2) ) then
-  !   gamma_trans = 0.5
-  ! else
-  !   gamma_trans = 0.5 - 0.301*logZ_div_Zsun-0.045*logZ_div_Zsun**2
-  ! end if
+  gamma_trans = gamma_edd_trans(s% kap_rq% Zbase, s% x_ctrl(2))
 
   log_gamma_edd = -4.813d0+log10(1+X)+log10(L/Lsun)-log10(M/Msun)
   gamma_edd=10**log_gamma_edd
@@ -244,13 +240,13 @@ end if
 !  -----------------------------------------------------------------------
 
 ! ------ STOP WINDS WHEN WE REACH THE END OF CORE-C BURNING -------------
-if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
-
-  w = 0
-  write(*,*) "We are past core-C burning. Winds are turned off"
-
-
-end if
+! if (s% center_c12<=1d-2 .and. s% center_he4<=1d-3 .and. s% center_h1<=1d-3) then
+!
+!   w = 0
+!   write(*,*) "We are past core-C burning. Winds are turned off"
+!
+!
+! end if
 
 old_wind = w
 
@@ -1856,7 +1852,7 @@ end do
 
 minRho = 1e99
 do i = s % nz, 1, -1
-  if(s% rho(i) .le. minRho) then
+  if(s% rho(i) <= minRho) then
      minRho = s% rho(i)
   end if
 end do
