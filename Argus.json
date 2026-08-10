@@ -196,7 +196,7 @@
         "id": "V17",
         "ref": "Vink 2017",
         "note": "He stars",
-        "note_2": "From the study of WR 2-1 (Müller-Horn et al. 2026; https://arxiv.org/abs/2608.05276v1): V17 could underestimate mass loss in the intermediate-mass regime.",
+        "note_2": "From the study of Gaia DR3 52499302962431590 (Müller-Horn et al. 2026; https://arxiv.org/abs/2608.05276v1): V17 could underestimate mass loss in the intermediate-mass regime.",
         "note_3": "XShootU VIII (Ramachandran et al. 2024) confirms the existence of stripped stars (quasi-WR) that do not look like classical WRs, supporting the need for specific He-star recipes.",
         "parameter_space": "Metallicity: 10^-2 to 1 Zsolar. Mass: 2-60 Msun stripped He stars. Fixed Teff=50kK. No clumping.",
         "z_solar_calibration": 0.019,
@@ -359,7 +359,8 @@
         "id": "NL00",
         "ref": "Nugis & Lamers 2000",
         "note": "Canonical empirical. Provides generic WR formula, plus specific WN and WC formulae. Depends on surface Y and Z directly (not just scaled to solar). Z_solar calibrated with Z/X=0.0244 (Grevesse et al. 1996).",
-        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas I Dutch winds use the dedicated WN and WC formulae with Eldridge & Vink (2006) recalibration",
+        "note_2": "Usually MESA uses the generic WR formula by default in its Dutch winds. GENEC and Atlas winds use the dedicated WN and WC formulae with the Eldridge & Vink (2006) recalibration",
+        "note_3": "In agreement with the observational data of Gaia DR3 52499302962431590 (Müller-Horn et al. 2026; https://arxiv.org/abs/2608.05276v1)",
         "parameter_space": "Galactic WN and WC stars. Often used with Eldridge & Vink (2006) recalibration for WC/WO metallicity scaling. Nugis & Lamers (2002) support the high rates, arguing for deep-seated critical points.",
         "z_solar_calibration": 0.019,
         "url": "https://ui.adsabs.harvard.edu/abs/2000A&A...360..227N"
