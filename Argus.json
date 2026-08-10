@@ -196,9 +196,10 @@
         "id": "V17",
         "ref": "Vink 2017",
         "note": "He stars",
+        "note_2": "From the study of WR 2-1 (Müller-Horn et al. 2026; https://arxiv.org/abs/2608.05276v1): V17 could underestimate mass loss in the intermediate-mass regime.",
+        "note_3": "XShootU VIII (Ramachandran et al. 2024) confirms the existence of stripped stars (quasi-WR) that do not look like classical WRs, supporting the need for specific He-star recipes.",
         "parameter_space": "Metallicity: 10^-2 to 1 Zsolar. Mass: 2-60 Msun stripped He stars. Fixed Teff=50kK. No clumping.",
         "z_solar_calibration": 0.019,
-        "note_2": "XShootU VIII (Ramachandran et al. 2024) confirms the existence of stripped stars (quasi-WR) that do not look like classical WRs, supporting the need for specific He-star recipes.",
         "url": "https://ui.adsabs.harvard.edu/abs/2017A&A...607L...8V"
       },
       {
