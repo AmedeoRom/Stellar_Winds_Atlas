@@ -32,8 +32,13 @@
             color: #b91c1c !important;
         }
 
-        .colorbar-gradient {
-            background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725);
+        .colorbar-gradient-dynamic {
+            background: linear-gradient(to right, #440154, #3b528b, #21918c, #5ec962, #fde725);
+        }
+        @media (min-width: 768px) {
+            .colorbar-gradient-dynamic {
+                background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725);
+            }
         }
 
         /* Aspect ratio lock for HR plots to ensure they are readable squares */
@@ -550,14 +555,14 @@
                         <section className="flex-1 flex flex-col p-4 md:p-6 space-y-4 overflow-y-auto custom-scrollbar w-full">
                             <div className="bg-white rounded-2xl shadow-sm border p-4 sm:p-6 flex flex-col items-center shrink-0 w-full relative">
                                 {viewMode === 'hr' && activeModelKeys.length === 0 ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center py-20 text-center px-4 w-full hr-plot-box">
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4 w-full hr-plot-box">
                                         <h2 className="text-xl md:text-2xl font-black text-blue-600 uppercase tracking-tighter animate-pulse">Select your initial mass-loss model(s)!</h2>
                                         <p className="text-xs md:text-sm font-bold text-blue-500 mt-2">If no mass loss pops-up, check the parameter space warnings!</p>
                                     </div>
                                 ) : viewMode === 'hr' && activeModelKeys.length > 6 ? (
                                     <div className="flex-1 flex flex-col items-center justify-center py-20 w-full hr-plot-box"><h2 className="text-xl md:text-2xl font-black text-red-600 uppercase tracking-tighter text-center px-4">Too many models were selected. Stick to 6 at most, please</h2></div>
                                 ) : viewMode === 'dependencies' ? (
-                                    <div className="hr-plot-box relative bg-slate-50 rounded-xl border shadow-sm p-2 sm:p-4 w-full">
+                                    <div className="hr-plot-box relative bg-slate-50 rounded-xl border shadow-sm p-2 sm:p-4 w-full flex flex-col shrink-0">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <LineChart margin={{ top: 20, right: 10, left: 10, bottom: 80 }}>
                                                 <defs><pattern id="pattern-dashed" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.6" /></pattern></defs>
@@ -588,11 +593,11 @@
                                         </ResponsiveContainer>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-6 lg:gap-8 w-full max-w-7xl mx-auto">
+                                    <div className="flex-1 flex flex-col gap-8 w-full max-w-7xl mx-auto">
                                         {rows.map((row, rowIndex) => (
-                                            <div key={rowIndex} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                                            <div key={rowIndex} className="flex flex-col md:flex-row items-center justify-center gap-4 lg:gap-6 w-full">
                                                 {row.map(key => (
-                                                    <div key={key} className="hr-plot-box relative bg-slate-50 rounded-xl border shadow-sm p-1 sm:p-2">
+                                                    <div key={key} className="hr-plot-box flex-1 w-full max-w-[500px] relative bg-slate-50 rounded-xl border shadow-sm p-1 sm:p-2">
                                                         <ResponsiveContainer width="100%" height="100%">
                                                             <LineChart margin={{ top: 25, right: 10, left: 0, bottom: 25 }}>
                                                                 <defs><pattern id={`pattern-dashed-${key}`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#059669" strokeWidth="2.5" opacity="0.6" /></pattern></defs>
@@ -627,21 +632,27 @@
                                                         <div className="absolute top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 md:px-3 md:py-1 bg-white/80 rounded-full border text-[9px] md:text-[10px] font-black uppercase shadow-sm whitespace-nowrap">{MODEL_META[key].name}</div>
                                                     </div>
                                                 ))}
-                                                {row.length === 1 && <div className="hidden lg:block hr-plot-box" />}
-                                                
-                                                {/* Unified Colorbar Block rendered as a single plot */}
+
+                                                {/* SLIM UNBOXED COLORBAR, CLOSE TO THE RIGHTMOST PLOT */}
                                                 {heatmapResults && (
-                                                    <div className="hr-plot-box relative bg-slate-50 rounded-xl border shadow-sm p-4 sm:p-6 flex flex-col items-center justify-center">
-                                                        <span className="text-[12px] md:text-[14px] font-black uppercase text-center leading-tight mb-4 text-slate-700">log (Ṁ [M<sub>⊙</sub>/yr])</span>
-                                                        <div className="h-[75%] w-6 md:w-8 colorbar-gradient border border-slate-300 rounded relative mr-8">
-                                                            <style dangerouslySetInnerHTML={{__html: `
-                                                                .colorbar-gradient { background: linear-gradient(to top, #440154, #3b528b, #21918c, #5ec962, #fde725) !important; }
-                                                            `}} />
+                                                    <div className="flex flex-row md:flex-col items-center justify-center shrink-0 w-full md:w-16 h-16 md:h-auto md:self-stretch md:py-[35px] mt-2 md:mt-0">
+                                                        <span className="text-[10px] md:text-[11px] font-black uppercase text-center leading-tight mb-0 md:mb-2 mr-4 md:mr-0 text-slate-700">
+                                                            log (Ṁ<br className="hidden md:block"/>[M<sub>⊙</sub>/yr])
+                                                        </span>
+                                                        <div className="h-3 md:h-full w-48 md:w-3 border border-slate-400 rounded relative shadow-sm colorbar-gradient-dynamic">
                                                             {colorbarTicks.map((val, idx) => (
-                                                                <div key={`d-${idx}`} className="absolute -right-10 md:-right-12 flex items-center" style={{ top: `${(idx / (colorbarTicks.length - 1)) * 100}%`, transform: 'translateY(-50%)' }}>
-                                                                    <div className="w-2 h-[2px] bg-slate-800"></div>
-                                                                    <span className="text-[11px] md:text-[13px] font-black font-mono ml-1 text-slate-700">{val.toFixed(1)}</span>
-                                                                </div>
+                                                                <React.Fragment key={idx}>
+                                                                    {/* Desktop Ticks (Vertical) */}
+                                                                    <div className="hidden md:flex absolute -right-8 items-center w-8" style={{ top: `${(idx / (colorbarTicks.length - 1)) * 100}%`, transform: 'translateY(-50%)' }}>
+                                                                        <div className="w-1.5 h-[2px] bg-slate-800"></div>
+                                                                        <span className="text-[10px] font-black font-mono ml-1 text-slate-700">{val.toFixed(1)}</span>
+                                                                    </div>
+                                                                    {/* Mobile Ticks (Horizontal) */}
+                                                                    <div className="md:hidden absolute -bottom-5 flex flex-col items-center h-5" style={{ left: `${(idx / (colorbarTicks.length - 1)) * 100}%`, transform: 'translateX(-50%)' }}>
+                                                                        <div className="h-1.5 w-[2px] bg-slate-800 -mt-1"></div>
+                                                                        <span className="text-[9px] font-black font-mono mt-0.5 text-slate-700">{val.toFixed(1)}</span>
+                                                                    </div>
+                                                                </React.Fragment>
                                                             ))}
                                                         </div>
                                                     </div>
